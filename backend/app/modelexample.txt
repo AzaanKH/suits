@@ -1,0 +1,98 @@
+account_model = {
+    {
+    "user_id":{"$oid":"677c965a9b74ad3922b724e9"},
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "auth_token": "token_abc123",
+    "role": "customer",
+    "phone_number": "+1234567890",
+    "addresses": [
+        {
+            "address_id": "addr_001",
+            "street": "123 Main St",
+            "city": "New York",
+            "state": "NY",
+            "zip_code": "10001",
+            "country": "USA"
+        }
+    ]
+}
+}
+
+# Example Product Document
+product_model = {
+    "item_id": "item_001",
+    "name": "Navy Blue Suit",
+    "description": "A classic navy blue wool suit with a modern fit.",
+    "rating": 4.7,
+    "price": 299.99,
+    "category": "suit",
+    "images": [
+        "https://example.com/images/item_001_front.jpg",
+        "https://example.com/images/item_001_back.jpg"
+    ],
+    "stock": 50,
+    "customizable": True
+}
+
+# Example Order Document
+order_model = {
+    "order_id": "order_001",
+    "user_id": "user_001",
+    "order_date": "2025-01-05T12:00:00Z",
+    "total_price": 399.99,
+    "order_status": "Shipped",
+    "shipping_address": {
+        "street": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "zip_code": "10001",
+        "country": "USA"
+    },
+    "items": [
+        {
+            "item_id": "item_001",
+            "quantity": 1,
+            "customization_id": "cust_001"
+        }
+    ],
+    "payment_details": {
+        "method": "Credit Card",
+        "transaction_id": "txn_123456"
+    },
+    "tracking_number": "track_7890"
+}
+
+# Example Customization Document
+customization_model = {
+    "customization_id": "cust_001",
+    "order_id": "order_001",
+    "fabric_type": "Wool",
+    "colors": {
+        "suit_color": {
+            "primary": "Navy Blue",
+            "secondary": "Black"
+        },
+        "dress_shirt_color": {
+            "primary": "White",
+            "secondary": None
+        },
+        "pants_color": {
+            "primary": "Charcoal Grey",
+            "secondary": "Black"
+        }
+    },
+    "lapel_style": "Notch",
+    "button_count": 3,
+    "fit": "Slim Fit",
+    "pocket_style": "Flap Pockets",
+    "measurements": {
+        "chest": 38,
+        "waist": 32,
+        "sleeve_length": 34,
+        "shoulder_width": 18
+    },
+    "monogram": "JD",
+    "status": "In Production"
+}
