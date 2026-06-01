@@ -12,15 +12,15 @@ import Register from './components/Register';
 import Cart from './components/Cart';
 import Checkout from './components/Checkout';
 import ProtectedRoute from './components/ProtectedRoute';
-
-import { AuthProvider } from './contexts/AuthContext';
-import { CartProvider } from './contexts/CartContext';
+import { Navigate } from 'react-router-dom';
+import { AuthProvider } from './components/AuthContext';
+import { CartProvider } from './components/CartContent';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
 function App() {
-  const [cartItems, setCartItems] = useState([]);
+  // const [cartItems, setCartItems] = useState([]);
   const items = [
     {
       id: 1,

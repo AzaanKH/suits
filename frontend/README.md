@@ -6,6 +6,10 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 In the project directory, you can run:
 
+### npm install
+
+This installs all the dependacies for the frontend and then you can run the frontend server.
+
 ### `npm start`
 
 Runs the app in the development mode.\
