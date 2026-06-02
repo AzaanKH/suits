@@ -42,6 +42,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
         <Button
           type="button"
+          data-testid={`add-to-cart-${product.id}`}
           aria-label={`Add ${product.name} in ${product.color} to cart`}
           className="bg-ink hover:bg-accent hover:text-ink mt-5 size-10 rounded-full"
           onClick={() => addItem(product)}
