@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { products } from "@/data/products";
 import { useCartStore } from "@/store/cart-store";
+import { productFixtures } from "@/test/fixtures";
 
 describe("cart store", () => {
   beforeEach(() => {
@@ -9,7 +9,7 @@ describe("cart store", () => {
   });
 
   it("adds products and increments an existing quantity", () => {
-    const product = products[0];
+    const product = productFixtures[0];
 
     useCartStore.getState().addItem(product);
     useCartStore.getState().addItem(product);
@@ -20,8 +20,8 @@ describe("cart store", () => {
   });
 
   it("adds different products as separate entries", () => {
-    const firstProduct = products[0];
-    const secondProduct = products[1];
+    const firstProduct = productFixtures[0];
+    const secondProduct = productFixtures[1];
 
     useCartStore.getState().addItem(firstProduct);
     useCartStore.getState().addItem(secondProduct);
@@ -33,7 +33,7 @@ describe("cart store", () => {
   });
 
   it("removes an item by product ID", () => {
-    const product = products[0];
+    const product = productFixtures[0];
 
     useCartStore.getState().addItem(product);
     useCartStore.getState().removeItem(product.id);
@@ -42,8 +42,8 @@ describe("cart store", () => {
   });
 
   it("clears the cart", () => {
-    useCartStore.getState().addItem(products[0]);
-    useCartStore.getState().addItem(products[1]);
+    useCartStore.getState().addItem(productFixtures[0]);
+    useCartStore.getState().addItem(productFixtures[1]);
     useCartStore.getState().clearCart();
 
     expect(useCartStore.getState().items).toEqual([]);

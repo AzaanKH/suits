@@ -13,7 +13,7 @@ export function CartView() {
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
   const subtotal = items.reduce(
-    (total, item) => total + item.basePrice * item.quantity,
+    (total, item) => total + item.basePriceCents * item.quantity,
     0,
   );
 
@@ -54,7 +54,7 @@ export function CartView() {
                     {item.color} / Quantity {item.quantity}
                   </p>
                   <PriceDisplay
-                    price={item.basePrice * item.quantity}
+                    priceCents={item.basePriceCents * item.quantity}
                     className="mt-5"
                   />
                 </div>
@@ -76,7 +76,7 @@ export function CartView() {
         <h2 className="text-ink font-serif text-3xl">Order summary</h2>
         <div className="border-border mt-7 flex justify-between border-t pt-5 text-sm">
           <span>Subtotal</span>
-          <PriceDisplay price={subtotal} />
+          <PriceDisplay priceCents={subtotal} />
         </div>
         <p className="text-muted-foreground mt-3 text-sm leading-6">
           Taxes and delivery are calculated at checkout. Each order is confirmed

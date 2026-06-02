@@ -3,9 +3,8 @@ import Link from "next/link";
 import { ArrowRight, Scissors, Sparkles, Waves } from "lucide-react";
 
 import { PageContainer } from "@/components/layout/page-container";
-import { ProductGrid } from "@/components/storefront/product-grid";
+import { FeaturedProducts } from "@/components/storefront/featured-products";
 import { SectionHeading } from "@/components/storefront/section-heading";
-import { getFeaturedProducts } from "@/data/products";
 
 const process = [
   {
@@ -77,8 +76,6 @@ const testimonials = [
 ];
 
 export default function HomePage() {
-  const featuredProducts = getFeaturedProducts();
-
   return (
     <>
       <section className="border-border bg-stone border-b">
@@ -122,7 +119,7 @@ export default function HomePage() {
             description="A focused edit of versatile foundations, seasonal cloths, and occasion tailoring. Every style is made to your measurements."
             action={{ label: "View all suits", href: "/shop" }}
           />
-          <ProductGrid products={featuredProducts} className="mt-11" />
+          <FeaturedProducts />
         </PageContainer>
       </section>
 

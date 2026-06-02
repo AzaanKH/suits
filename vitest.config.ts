@@ -10,8 +10,25 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "jsdom",
     exclude: [...configDefaults.exclude, "tests/e2e/**"],
-    setupFiles: ["./src/test/setup.ts"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "convex",
+          include: ["convex/**/*.test.ts"],
+          environment: "edge-runtime",
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "frontend",
+          include: ["src/**/*.test.{ts,tsx}"],
+          environment: "jsdom",
+          setupFiles: ["./src/test/setup.ts"],
+        },
+      },
+    ],
   },
 });

@@ -2,12 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
-import type { Product } from "@/types";
+import type { ProductSummary } from "@/types";
 
 import { PriceDisplay } from "./price-display";
 
 type ProductCardProps = {
-  product: Product;
+  product: ProductSummary;
 };
 
 export function ProductCard({ product }: ProductCardProps) {
@@ -41,7 +41,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
           <p className="text-muted-foreground mt-1 text-sm">{product.color}</p>
           <PriceDisplay
-            price={product.basePrice}
+            priceCents={product.basePriceCents}
             prefix="From "
             className="mt-3"
           />

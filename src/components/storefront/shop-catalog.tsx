@@ -1,36 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "convex/react";
 
-import { categories } from "@/data/products";
+import { api } from "../../../convex/_generated/api";
+import { ProductGridSkeleton } from "@/components/storefront/loading-skeleton";
 import { cn } from "@/lib/utils";
-import type { Product } from "@/types";
 
 import { ProductGrid } from "./product-grid";
 
-type ShopCatalogProps = {
-  products: Product[];
-};
+type CatalogSort = "featured" | "price-ascending" | "price-descending";
 
-export function ShopCatalog({ products }: ShopCatalogProps) {
+export function ShopCatalog() {
   const [selectedFilter, setSelectedFilter] = useState("all");
-  const [sort, setSort] = useState("featured");
-  const filteredProducts =
+  const [sort, setSort] = useState<CatalogSort>("featured");
+  const categories = useQuery(api.categories.active);
+  const products = useQuery(
+    api.products.catalog,
     selectedFilter === "all"
-      ? products
-      : products.filter((product) => product.categoryId === selectedFilter);
-  const sortedProducts = [...filteredProducts].sort((first, second) => {
-    if (sort === "price-ascending") {
-      return first.basePrice - second.basePrice;
-    }
-
-    if (sort === "price-descending") {
-      return second.basePrice - first.basePrice;
-    }
-
-    return Number(Boolean(second.featured)) - Number(Boolean(first.featured));
-  });
-  const filters = [{ id: "all", name: "All suits" }, ...categories];
+      ? { sort }
+      : { categorySlug: selectedFilter, sort },
+  );
+  const filters = [{ slug: "all", name: "All suits" }, ...(categories ?? [])];
 
   return (
     <>
@@ -44,12 +35,12 @@ export function ShopCatalog({ products }: ShopCatalogProps) {
             <button
               className={cn(
                 "hover:text-ink transition-colors",
-                selectedFilter === filter.id && "text-ink",
+                selectedFilter === filter.slug && "text-ink",
               )}
               type="button"
-              aria-pressed={selectedFilter === filter.id}
-              key={filter.id}
-              onClick={() => setSelectedFilter(filter.id)}
+              aria-pressed={selectedFilter === filter.slug}
+              key={filter.slug}
+              onClick={() => setSelectedFilter(filter.slug)}
             >
               {filter.name}
             </button>
@@ -60,7 +51,7 @@ export function ShopCatalog({ products }: ShopCatalogProps) {
           <select
             className="border-border bg-background text-ink min-h-10 border px-3 text-xs font-bold tracking-[0.08em] uppercase"
             value={sort}
-            onChange={(event) => setSort(event.target.value)}
+            onChange={(event) => setSort(event.target.value as CatalogSort)}
           >
             <option value="featured">Featured</option>
             <option value="price-ascending">Price: low to high</option>
@@ -70,12 +61,33 @@ export function ShopCatalog({ products }: ShopCatalogProps) {
       </div>
       <div className="text-muted-foreground mt-6 flex items-center justify-between text-sm">
         <p>
-          {sortedProducts.length}{" "}
-          {sortedProducts.length === 1 ? "suit" : "suits"}
+          {products?.length ?? 0} {products?.length === 1 ? "suit" : "suits"}
         </p>
         <p className="hidden sm:block">Made to your measurements</p>
       </div>
-      <ProductGrid products={sortedProducts} className="mt-7" />
+      {products === undefined ? (
+        <ProductGridSkeleton className="mt-7" />
+      ) : products.length === 0 ? (
+        <section className="mx-auto max-w-xl py-20 text-center">
+          <h2 className="text-ink font-serif text-5xl leading-none">
+            No suits found.
+          </h2>
+          <p className="text-muted-foreground mt-4 text-sm leading-6">
+            This collection does not have any active suits yet.
+          </p>
+          {selectedFilter !== "all" ? (
+            <button
+              className="button-primary mt-7"
+              type="button"
+              onClick={() => setSelectedFilter("all")}
+            >
+              View all suits
+            </button>
+          ) : null}
+        </section>
+      ) : (
+        <ProductGrid products={products} className="mt-7" />
+      )}
     </>
   );
 }

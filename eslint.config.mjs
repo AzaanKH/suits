@@ -7,6 +7,7 @@ export default defineConfig([
   ...nextTs,
   globalIgnores([
     ".next/**",
+    "convex/_generated/**",
     "coverage/**",
     "playwright-report/**",
     "test-results/**",

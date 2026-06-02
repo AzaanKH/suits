@@ -1,8 +1,3 @@
-export type PriceModifier = {
-  amount: number;
-  label: string;
-};
-
 export type ProductImage = {
   src: string;
   alt: string;
@@ -10,12 +5,14 @@ export type ProductImage = {
 
 export type Category = {
   id: string;
+  slug: string;
   name: string;
   description: string;
 };
 
 export type Fabric = {
   id: string;
+  code: string;
   name: string;
   mill: string;
   color: string;
@@ -25,26 +22,41 @@ export type Fabric = {
   description: string;
 };
 
-export type CustomizationOption = {
+export type CustomizationGroup = {
   id: string;
-  group: "Jacket" | "Trouser" | "Finishing";
-  name: string;
+  code: string;
+  label: string;
   description: string;
-  priceModifier?: PriceModifier;
+  displayOrder: number;
 };
 
-export type Product = {
+export type CustomizationOption = {
+  id: string;
+  code: string;
+  label: string;
+  description: string;
+  priceModifierCents: number;
+  imageReference?: ProductImage;
+  compatibilityMetadata?: unknown;
+  displayOrder: number;
+  group: CustomizationGroup;
+};
+
+export type ProductSummary = {
   id: string;
   slug: string;
   name: string;
   color: string;
-  categoryId: Category["id"];
-  description: string;
-  details: string;
   images: ProductImage[];
-  basePrice: number;
-  fabric: Fabric;
-  customizationOptions: CustomizationOption[];
+  basePriceCents: number;
   badge?: string;
-  featured?: boolean;
+  featured: boolean;
+};
+
+export type Product = ProductSummary & {
+  shortDescription: string;
+  fullDescription: string;
+  displayOrder: number;
+  category: Pick<Category, "id" | "slug" | "name"> | null;
+  availableFabrics: Fabric[];
 };

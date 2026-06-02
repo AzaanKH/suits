@@ -10,6 +10,10 @@
 /test-results/
 /playwright-report/
 
+# convex local compiler artifacts
+/convex/**/*.js
+!/convex/_generated/*.js
+
 # local environment files
 .env
 .env.*

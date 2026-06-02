@@ -1,4 +1,4 @@
-import type { PriceModifier, Product } from "@/types";
+import type { ProductSummary } from "@/types";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -7,19 +7,19 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 });
 
 export function formatCurrency(amount: number) {
-  return currencyFormatter.format(amount);
+  return currencyFormatter.format(amount / 100);
 }
 
-export function formatBasePrice(product: Product) {
-  return `From ${formatCurrency(product.basePrice)}`;
+export function formatBasePrice(product: ProductSummary) {
+  return `From ${formatCurrency(product.basePriceCents)}`;
 }
 
-export function formatPriceModifier(priceModifier?: PriceModifier) {
-  if (!priceModifier || priceModifier.amount === 0) {
+export function formatPriceModifier(priceModifierCents: number) {
+  if (priceModifierCents === 0) {
     return "Included";
   }
 
-  const sign = priceModifier.amount > 0 ? "+" : "-";
+  const sign = priceModifierCents > 0 ? "+" : "-";
 
-  return `${sign}${formatCurrency(Math.abs(priceModifier.amount))}`;
+  return `${sign}${formatCurrency(Math.abs(priceModifierCents))}`;
 }
