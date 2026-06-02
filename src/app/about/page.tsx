@@ -4,21 +4,24 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 
 const values = [
-  [
-    "01",
-    "Proportion over trend",
-    "A balanced silhouette has staying power. We refine the line, not the noise.",
-  ],
-  [
-    "02",
-    "Cloth with purpose",
-    "Every fabric is selected for how it feels, falls, breathes, and ages.",
-  ],
-  [
-    "03",
-    "Service, remembered",
-    "Your preferences and measurements become the start of every future garment.",
-  ],
+  {
+    id: "01",
+    title: "Proportion over trend",
+    description:
+      "A balanced silhouette has staying power. We refine the line, not the noise.",
+  },
+  {
+    id: "02",
+    title: "Cloth with purpose",
+    description:
+      "Every fabric is selected for how it feels, falls, breathes, and ages.",
+  },
+  {
+    id: "03",
+    title: "Service, remembered",
+    description:
+      "Your preferences and measurements become the start of every future garment.",
+  },
 ];
 
 export default function AboutPage() {
@@ -58,13 +61,13 @@ export default function AboutPage() {
             </h2>
           </div>
           <div className="divide-border border-border divide-y border-t">
-            {values.map(([number, title, description]) => (
+            {values.map(({ id, title, description }) => (
               <article
                 className="grid gap-4 py-7 sm:grid-cols-[4rem_1fr]"
-                key={number}
+                key={id}
               >
                 <p className="text-accent-strong text-sm font-bold tracking-[0.12em]">
-                  {number}
+                  {id}
                 </p>
                 <div>
                   <h3 className="text-ink font-serif text-3xl">{title}</h3>

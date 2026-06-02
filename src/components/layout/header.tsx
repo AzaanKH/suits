@@ -65,6 +65,7 @@ export function Header() {
           </Link>
           <Link
             href="/cart"
+            data-testid="cart-link"
             className="text-ink inline-flex min-h-10 items-center gap-2 px-2 text-sm font-bold tracking-[0.08em] uppercase"
             aria-label={`Cart with ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
           >

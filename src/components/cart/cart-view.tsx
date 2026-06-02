@@ -84,12 +84,19 @@ export function CartView() {
           Taxes and delivery are calculated at checkout. Each order is confirmed
           by our tailoring team before production.
         </p>
-        <button className="button-primary mt-6 w-full" type="button">
-          Continue to checkout
-        </button>
-        <Link className="text-link mt-5 justify-center" href="/shop">
-          Continue shopping
-        </Link>
+        <Button
+          className="button-primary mt-6 w-full rounded-none"
+          type="button"
+          aria-label="Checkout coming soon"
+          disabled
+        >
+          Checkout coming soon
+        </Button>
+        <div className="mt-5 flex justify-center">
+          <Link className="text-link" href="/shop">
+            Continue shopping
+          </Link>
+        </div>
       </aside>
     </div>
   );

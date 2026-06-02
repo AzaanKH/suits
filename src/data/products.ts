@@ -6,6 +6,7 @@ export type Product = {
   description: string;
   image: string;
   imageAlt: string;
+  /** Price in US dollars. */
   price: number;
   badge?: string;
 };
