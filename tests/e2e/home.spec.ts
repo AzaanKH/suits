@@ -22,6 +22,9 @@ test("navigates to the collection and adds a suit to the cart", async ({
     page.getByRole("heading", { name: "Shopping cart" }),
   ).toBeVisible();
   await expect(page.getByText("The House Suit")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Checkout coming soon" }),
+  ).toBeDisabled();
 });
 
 test("filters the collection by product category", async ({ page }) => {

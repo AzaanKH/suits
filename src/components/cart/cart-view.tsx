@@ -87,8 +87,10 @@ export function CartView() {
         <Button
           className="button-primary mt-6 w-full rounded-none"
           type="button"
+          aria-label="Checkout coming soon"
+          disabled
         >
-          Continue to checkout
+          Checkout coming soon
         </Button>
         <div className="mt-5 flex justify-center">
           <Link className="text-link" href="/shop">

@@ -7,21 +7,16 @@ import { cn } from "@/lib/utils";
 
 import { ProductGrid } from "./product-grid";
 
-const filters = [
-  "All suits",
-  "Core Collection",
-  "Seasonal Edit",
-  "Signature Collection",
-  "Evening",
-] as const;
-
 type ShopCatalogProps = {
   products: Product[];
 };
 
 export function ShopCatalog({ products }: ShopCatalogProps) {
-  const [selectedFilter, setSelectedFilter] =
-    useState<(typeof filters)[number]>("All suits");
+  const filters = [
+    "All suits",
+    ...Array.from(new Set(products.map((product) => product.category))),
+  ];
+  const [selectedFilter, setSelectedFilter] = useState("All suits");
   const filteredProducts =
     selectedFilter === "All suits"
       ? products
