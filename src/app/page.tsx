@@ -177,7 +177,7 @@ export default function HomePage() {
                     className="text-accent-strong mt-1 size-5 shrink-0"
                   />
                   <div>
-                    <h3 className="text-ink text-sm font-bold tracking-[0.08em] uppercase">
+                    <h3 className="text-ink text-sm font-bold tracking-[0.08em]">
                       {title}
                     </h3>
                     <p className="text-muted-foreground mt-2 text-sm leading-6">

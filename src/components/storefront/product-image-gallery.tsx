@@ -10,8 +10,16 @@ type ProductImageGalleryProps = {
   images: ProductImage[];
 };
 
+const fallbackGalleryImage = {
+  src: "/images/hero-tailoring.png",
+  alt: "Tailored suit placeholder",
+};
+
 export function ProductImageGallery({ images }: ProductImageGalleryProps) {
-  const [selectedImage, setSelectedImage] = useState(images[0]);
+  const [selectedImage, setSelectedImage] = useState<ProductImage | null>(
+    images[0] ?? null,
+  );
+  const displayImage = selectedImage ?? images[0] ?? fallbackGalleryImage;
 
   return (
     <div className="grid gap-3 sm:grid-cols-[5rem_1fr]">
@@ -21,12 +29,12 @@ export function ProductImageGallery({ images }: ProductImageGalleryProps) {
             type="button"
             className={cn(
               "bg-stone relative aspect-[2/3] w-16 overflow-hidden border sm:w-20",
-              image.src === selectedImage.src
+              image.src === displayImage.src
                 ? "border-ink"
                 : "border-transparent",
             )}
             aria-label={`Show ${image.alt}`}
-            aria-pressed={image.src === selectedImage.src}
+            aria-pressed={image.src === displayImage.src}
             key={`${image.src}-${image.alt}`}
             onClick={() => setSelectedImage(image)}
           >
@@ -45,8 +53,8 @@ export function ProductImageGallery({ images }: ProductImageGalleryProps) {
           fill
           priority
           sizes="(min-width: 1024px) 50vw, 100vw"
-          src={selectedImage.src}
-          alt={selectedImage.alt}
+          src={displayImage.src}
+          alt={displayImage.alt}
           className="object-cover"
         />
       </div>

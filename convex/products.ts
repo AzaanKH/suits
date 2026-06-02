@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 
@@ -22,7 +22,7 @@ export const featured = query({
 
     return await Promise.all(
       products.map((product) => hydrateProduct(ctx, product)),
-    );
+    ).then((results) => results.filter((product) => product !== null));
   },
 });
 
@@ -55,7 +55,7 @@ export const catalog = query({
       filteredProducts
         .sort(getCatalogSorter(sort))
         .map((product) => hydrateProduct(ctx, product)),
-    );
+    ).then((results) => results.filter((product) => product !== null));
   },
 });
 
@@ -98,7 +98,11 @@ export const customizationOptions = query({
           const option = await ctx.db.get(entry.customizationOptionId);
           const group = await ctx.db.get(entry.customizationGroupId);
 
-          if (!option?.active || !group?.active) {
+          if (
+            !option?.active ||
+            !group?.active ||
+            option.customizationGroupId !== group._id
+          ) {
             return null;
           }
 
@@ -139,7 +143,15 @@ async function hydrateProduct(ctx: QueryCtx, product: Doc<"products">) {
       product.availableFabricIds.map((fabricId) => ctx.db.get(fabricId)),
     ),
   ]);
-  const fabrics = availableFabrics.filter((fabric) => fabric !== null);
+  if (!category || !category.active) {
+    return null;
+  }
+
+  const fabrics = availableFabrics.filter(isActiveFabric);
+
+  if (fabrics.length === 0) {
+    return null;
+  }
 
   return {
     id: product._id,
@@ -153,13 +165,11 @@ async function hydrateProduct(ctx: QueryCtx, product: Doc<"products">) {
     featured: product.featured,
     displayOrder: product.displayOrder,
     color: fabrics[0]?.color ?? "Made to order",
-    category: category
-      ? {
-          id: category._id,
-          slug: category.slug,
-          name: category.name,
-        }
-      : null,
+    category: {
+      id: category._id,
+      slug: category.slug,
+      name: category.name,
+    },
     availableFabrics: fabrics.map(
       ({
         _id,
@@ -202,4 +212,10 @@ function getCatalogSorter(
   return (first: Doc<"products">, second: Doc<"products">) =>
     Number(second.featured) - Number(first.featured) ||
     first.displayOrder - second.displayOrder;
+}
+
+function isActiveFabric(
+  fabric: Doc<"fabrics"> | null,
+): fabric is Doc<"fabrics"> & { _id: Id<"fabrics"> } {
+  return fabric !== null && fabric.active;
 }

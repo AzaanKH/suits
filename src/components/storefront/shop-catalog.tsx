@@ -60,9 +60,13 @@ export function ShopCatalog() {
         </label>
       </div>
       <div className="text-muted-foreground mt-6 flex items-center justify-between text-sm">
-        <p>
-          {products?.length ?? 0} {products?.length === 1 ? "suit" : "suits"}
-        </p>
+        {products === undefined ? (
+          <p aria-live="polite">Loading suits...</p>
+        ) : (
+          <p>
+            {products.length} {products.length === 1 ? "suit" : "suits"}
+          </p>
+        )}
         <p className="hidden sm:block">Made to your measurements</p>
       </div>
       {products === undefined ? (

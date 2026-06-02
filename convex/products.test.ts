@@ -71,6 +71,101 @@ describe("storefront product queries", () => {
     expect(options.map((option) => option.code)).not.toContain("full-lined");
   });
 
+  it("hides products whose category or fabrics are inactive", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.seed.seed);
+
+    await t.run(async (ctx) => {
+      const business = await ctx.db
+        .query("categories")
+        .withIndex("by_slug", (q) => q.eq("slug", "business"))
+        .unique();
+
+      if (!business) {
+        throw new Error("Missing business category");
+      }
+
+      await ctx.db.patch(business._id, { active: false });
+    });
+
+    expect(
+      await t.query(api.products.bySlug, {
+        slug: "house-navy-hopsack-suit",
+      }),
+    ).toBeNull();
+    expect(
+      (await t.query(api.products.featured)).map((product) => product.slug),
+    ).toEqual(["weekend-dark-olive-flannel-suit"]);
+
+    await t.run(async (ctx) => {
+      const fabric = await ctx.db
+        .query("fabrics")
+        .withIndex("by_code", (q) => q.eq("code", "stone-wool-linen"))
+        .unique();
+
+      if (!fabric) {
+        throw new Error("Missing stone wool-linen fabric");
+      }
+
+      await ctx.db.patch(fabric._id, { active: false });
+    });
+
+    expect(
+      await t.query(api.products.bySlug, {
+        slug: "summer-stone-wool-linen-suit",
+      }),
+    ).toBeNull();
+  });
+
+  it("does not return customization options under mismatched groups", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.seed.seed);
+
+    await t.run(async (ctx) => {
+      const product = await ctx.db
+        .query("products")
+        .withIndex("by_slug", (q) =>
+          q.eq("slug", "summer-stone-wool-linen-suit"),
+        )
+        .unique();
+      const halfLined = await ctx.db
+        .query("customizationOptions")
+        .withIndex("by_code", (q) => q.eq("code", "half-lined"))
+        .unique();
+      const jacket = await ctx.db
+        .query("customizationGroups")
+        .withIndex("by_code", (q) => q.eq("code", "jacket"))
+        .unique();
+
+      if (!product || !halfLined || !jacket) {
+        throw new Error("Missing seed customization data");
+      }
+
+      const availability = (
+        await ctx.db
+          .query("productCustomizationAvailability")
+          .withIndex("by_product", (q) => q.eq("productId", product._id))
+          .collect()
+      ).find((entry) => entry.customizationOptionId === halfLined._id);
+
+      if (!availability) {
+        throw new Error("Missing half-lined availability");
+      }
+
+      await ctx.db.patch(availability._id, {
+        customizationGroupId: jacket._id,
+      });
+    });
+
+    const options = await t.query(api.products.customizationOptions, {
+      productSlug: "summer-stone-wool-linen-suit",
+    });
+
+    expect(options.map((option) => option.code)).not.toContain("half-lined");
+  });
+
   it("returns empty results for missing catalog data", async () => {
     const t = convexTest(schema, modules);
 

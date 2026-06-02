@@ -19,6 +19,7 @@ export function FeaturedProducts() {
       <EmptyState
         title="The collection is being prepared."
         description="Featured suits will appear here after the local storefront seed has been loaded."
+        headingTag="h3"
         action={{ label: "Explore all suits", href: "/shop" }}
       />
     );

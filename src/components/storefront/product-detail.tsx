@@ -27,6 +27,7 @@ export function ProductDetail({ slug }: { slug: string }) {
         <EmptyState
           title="Suit not found."
           description="This suit is unavailable or is no longer part of the active collection."
+          headingTag="h1"
           action={{ label: "Return to the collection", href: "/shop" }}
         />
       </PageContainer>

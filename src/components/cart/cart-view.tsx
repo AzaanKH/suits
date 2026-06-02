@@ -9,6 +9,11 @@ import { PriceDisplay } from "@/components/storefront/price-display";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 
+const fallbackCartImage = {
+  src: "/images/hero-tailoring.png",
+  alt: "Tailored suit placeholder",
+};
+
 export function CartView() {
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
@@ -22,6 +27,7 @@ export function CartView() {
       <EmptyState
         title="Your cart is empty."
         description="A considered wardrobe starts with one exceptional piece. Explore the collection to begin."
+        headingTag="h1"
         action={{ label: "Explore the collection", href: "/shop" }}
       />
     );
@@ -34,42 +40,46 @@ export function CartView() {
           Shopping cart
         </h1>
         <div className="divide-border border-border mt-9 divide-y border-y">
-          {items.map((item) => (
-            <article className="flex gap-5 py-5 sm:gap-7" key={item.id}>
-              <div className="bg-stone relative aspect-[2/3] w-24 shrink-0 overflow-hidden sm:w-32">
-                <Image
-                  fill
-                  sizes="128px"
-                  src={item.images[0].src}
-                  alt={item.images[0].alt}
-                  className="object-cover"
-                />
-              </div>
-              <div className="flex flex-1 justify-between gap-3">
-                <div>
-                  <h2 className="text-ink font-serif text-3xl leading-none">
-                    {item.name}
-                  </h2>
-                  <p className="text-muted-foreground mt-2 text-sm">
-                    {item.color} / Quantity {item.quantity}
-                  </p>
-                  <PriceDisplay
-                    priceCents={item.basePriceCents * item.quantity}
-                    className="mt-5"
+          {items.map((item) => {
+            const image = item.images[0] ?? fallbackCartImage;
+
+            return (
+              <article className="flex gap-5 py-5 sm:gap-7" key={item.id}>
+                <div className="bg-stone relative aspect-[2/3] w-24 shrink-0 overflow-hidden sm:w-32">
+                  <Image
+                    fill
+                    sizes="128px"
+                    src={image.src}
+                    alt={image.alt}
+                    className="object-cover"
                   />
                 </div>
-                <Button
-                  type="button"
-                  aria-label={`Remove ${item.name} from cart`}
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeItem(item.id)}
-                >
-                  <X aria-hidden="true" className="size-4" />
-                </Button>
-              </div>
-            </article>
-          ))}
+                <div className="flex flex-1 justify-between gap-3">
+                  <div>
+                    <h2 className="text-ink font-serif text-3xl leading-none">
+                      {item.name}
+                    </h2>
+                    <p className="text-muted-foreground mt-2 text-sm">
+                      {item.color} / Quantity {item.quantity}
+                    </p>
+                    <PriceDisplay
+                      priceCents={item.basePriceCents * item.quantity}
+                      className="mt-5"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    aria-label={`Remove ${item.name} from cart`}
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeItem(item.id)}
+                  >
+                    <X aria-hidden="true" className="size-4" />
+                  </Button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
       <aside className="bg-stone h-fit p-6 sm:p-7">
