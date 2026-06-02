@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-manrope);
+  --font-serif: var(--font-cormorant);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ink: var(--ink);
+  --color-ivory: var(--ivory);
+  --color-stone: var(--stone);
+  --color-clay: var(--clay);
+  --color-accent-strong: var(--accent-strong);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+:root {
+  --background: oklch(0.985 0.007 85);
+  --foreground: oklch(0.205 0.018 68);
+  --card: oklch(0.995 0.004 85);
+  --card-foreground: oklch(0.205 0.018 68);
+  --popover: oklch(0.995 0.004 85);
+  --popover-foreground: oklch(0.205 0.018 68);
+  --primary: oklch(0.205 0.018 68);
+  --primary-foreground: oklch(0.985 0.007 85);
+  --secondary: oklch(0.945 0.013 81);
+  --secondary-foreground: oklch(0.205 0.018 68);
+  --muted: oklch(0.945 0.013 81);
+  --muted-foreground: oklch(0.48 0.022 68);
+  --accent: oklch(0.745 0.125 74);
+  --accent-foreground: oklch(0.205 0.018 68);
+  --accent-strong: oklch(0.565 0.12 66);
+  --destructive: oklch(0.52 0.185 28);
+  --border: oklch(0.865 0.017 79);
+  --input: oklch(0.865 0.017 79);
+  --ring: oklch(0.565 0.12 66);
+  --ink: oklch(0.205 0.018 68);
+  --ivory: oklch(0.985 0.007 85);
+  --stone: oklch(0.945 0.013 81);
+  --clay: oklch(0.875 0.028 68);
+  --radius: 0.25rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/60;
+  }
+
+  html {
+    @apply scroll-smooth font-sans;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  a,
+  button,
+  input,
+  select,
+  textarea {
+    @apply focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-4;
+  }
+
+  button,
+  a {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-accent-strong text-sm font-bold tracking-[0.12em] uppercase;
+  }
+
+  .nav-link {
+    @apply text-ink hover:text-accent-strong text-sm font-bold tracking-[0.1em] uppercase transition-colors;
+  }
+
+  .button-primary,
+  .button-secondary,
+  .button-accent {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 border px-5 py-3 text-sm font-bold tracking-[0.08em] uppercase transition-colors;
+  }
+
+  .button-primary {
+    @apply border-ink bg-ink text-ivory hover:border-accent-strong hover:bg-accent-strong;
+  }
+
+  .button-secondary {
+    @apply border-ink text-ink hover:bg-ink hover:text-ivory bg-transparent;
+  }
+
+  .button-accent {
+    @apply border-accent bg-accent text-ink hover:border-ivory hover:bg-ivory;
+  }
+
+  .text-link {
+    @apply text-ink hover:text-accent-strong inline-flex items-center gap-2 text-sm font-bold tracking-[0.08em] uppercase underline-offset-4 transition-colors hover:underline;
+  }
+
+  .form-control {
+    @apply border-input bg-background text-ink placeholder:text-muted-foreground focus:border-ring w-full border px-3 py-3 text-sm font-medium tracking-normal normal-case transition-colors focus:outline-none;
+  }
+}
