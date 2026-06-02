@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-import type { Product } from "@/data/products";
+import type { Product } from "@/types";
 
 export type CartItem = Product & {
   quantity: number;

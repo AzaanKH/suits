@@ -1,5 +1,5 @@
-import type { Product } from "@/data/products";
 import { cn } from "@/lib/utils";
+import type { Product } from "@/types";
 
 import { ProductCard } from "./product-card";
 

@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SectionHeadingProps = {
-  eyebrow?: string;
   title: string;
   description?: string;
   action?: {
@@ -15,7 +14,6 @@ type SectionHeadingProps = {
 };
 
 export function SectionHeading({
-  eyebrow,
   title,
   description,
   action,
@@ -29,13 +27,7 @@ export function SectionHeading({
       )}
     >
       <div>
-        {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
-        <h2
-          className={cn(
-            "text-ink font-serif text-5xl leading-[0.98] tracking-[-0.035em] sm:text-6xl",
-            eyebrow && "mt-4",
-          )}
-        >
+        <h2 className="text-ink font-serif text-5xl leading-[0.98] tracking-[-0.035em] sm:text-6xl">
           {title}
         </h2>
         {description ? (

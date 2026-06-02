@@ -91,10 +91,6 @@
 }
 
 @layer components {
-  .eyebrow {
-    @apply text-accent-strong text-sm font-bold tracking-[0.12em] uppercase;
-  }
-
   .nav-link {
     @apply text-ink hover:text-accent-strong text-sm font-bold tracking-[0.1em] uppercase transition-colors;
   }

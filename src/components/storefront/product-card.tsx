@@ -1,11 +1,8 @@
-"use client";
-
 import Image from "next/image";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import type { Product } from "@/data/products";
-import { useCartStore } from "@/store/cart-store";
+import type { Product } from "@/types";
 
 import { PriceDisplay } from "./price-display";
 
@@ -14,42 +11,48 @@ type ProductCardProps = {
 };
 
 export function ProductCard({ product }: ProductCardProps) {
-  const addItem = useCartStore((state) => state.addItem);
-
   return (
     <article className="group">
-      <div className="bg-stone relative aspect-[2/3] overflow-hidden">
-        <Image
-          fill
-          sizes="(min-width: 1024px) 30vw, (min-width: 640px) 48vw, 100vw"
-          src={product.image}
-          alt={product.imageAlt}
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.025]"
-        />
-        {product.badge ? (
-          <span className="bg-ivory text-ink absolute top-3 left-3 px-3 py-2 text-sm font-bold tracking-[0.08em] uppercase">
-            {product.badge}
-          </span>
-        ) : null}
-      </div>
+      <Link href={`/shop/${product.slug}`} className="block">
+        <div className="bg-stone relative aspect-[2/3] overflow-hidden">
+          <Image
+            fill
+            sizes="(min-width: 1024px) 30vw, (min-width: 640px) 48vw, 100vw"
+            src={product.images[0].src}
+            alt={product.images[0].alt}
+            className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.025]"
+          />
+          {product.badge ? (
+            <span className="bg-ivory text-ink absolute top-3 left-3 px-3 py-2 text-xs font-bold tracking-[0.1em] uppercase">
+              {product.badge}
+            </span>
+          ) : null}
+        </div>
+      </Link>
       <div className="flex items-start justify-between gap-4 pt-4">
         <div>
-          <h3 className="text-ink font-serif text-[1.75rem] leading-none tracking-[-0.02em]">
-            {product.name}
+          <h3>
+            <Link
+              className="text-ink hover:text-accent-strong font-serif text-[1.75rem] leading-none tracking-[-0.02em] transition-colors"
+              href={`/shop/${product.slug}`}
+            >
+              {product.name}
+            </Link>
           </h3>
           <p className="text-muted-foreground mt-1 text-sm">{product.color}</p>
-          <PriceDisplay price={product.price} className="mt-3" />
+          <PriceDisplay
+            price={product.basePrice}
+            prefix="From "
+            className="mt-3"
+          />
         </div>
-        <Button
-          type="button"
-          data-testid={`add-to-cart-${product.id}`}
-          aria-label={`Add ${product.name} in ${product.color} to cart`}
-          className="bg-ink hover:bg-accent hover:text-ink mt-5 size-10 rounded-full"
-          onClick={() => addItem(product)}
-          size="icon"
+        <Link
+          href={`/shop/${product.slug}`}
+          className="border-border text-ink hover:bg-ink hover:text-ivory mt-4 inline-flex size-10 shrink-0 items-center justify-center rounded-full border transition-colors"
+          aria-label={`View ${product.name} in ${product.color}`}
         >
-          <Plus aria-hidden="true" className="size-4" />
-        </Button>
+          <ArrowUpRight aria-hidden="true" className="size-4" />
+        </Link>
       </div>
     </article>
   );

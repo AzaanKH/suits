@@ -6,8 +6,7 @@ export default function AccountPage() {
   return (
     <PageContainer className="py-16 sm:py-20 lg:py-24">
       <section className="mx-auto max-w-xl text-center">
-        <p className="eyebrow">Client account</p>
-        <h1 className="text-ink mt-5 font-serif text-6xl leading-[0.95] tracking-[-0.04em] sm:text-7xl">
+        <h1 className="text-ink font-serif text-6xl leading-[0.95] tracking-[-0.04em] sm:text-7xl">
           Welcome to Arden.
         </h1>
         <p className="text-muted-foreground mx-auto mt-6 max-w-lg text-sm leading-6">

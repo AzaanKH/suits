@@ -5,8 +5,7 @@ export default function ContactPage() {
   return (
     <PageContainer className="grid gap-12 py-16 sm:py-20 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24 lg:py-24">
       <div className="max-w-lg">
-        <p className="eyebrow">Contact the studio</p>
-        <h1 className="text-ink mt-5 font-serif text-6xl leading-[0.94] tracking-[-0.04em] sm:text-7xl">
+        <h1 className="text-ink font-serif text-6xl leading-[0.94] tracking-[-0.04em] sm:text-7xl">
           Let&apos;s begin.
         </h1>
         <p className="text-muted-foreground mt-6 text-base leading-7">

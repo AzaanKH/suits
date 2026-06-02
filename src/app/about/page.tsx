@@ -30,8 +30,7 @@ export default function AboutPage() {
       <section className="bg-stone py-16 sm:py-24">
         <PageContainer className="grid items-end gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-20">
           <div className="max-w-xl pb-3">
-            <p className="eyebrow">The Arden approach</p>
-            <h1 className="text-ink mt-5 font-serif text-6xl leading-[0.94] tracking-[-0.04em] sm:text-7xl lg:text-8xl">
+            <h1 className="text-ink font-serif text-6xl leading-[0.94] tracking-[-0.04em] sm:text-7xl lg:text-8xl">
               A quieter expression of tailoring.
             </h1>
             <p className="text-muted-foreground mt-7 max-w-lg text-base leading-7">
@@ -55,8 +54,7 @@ export default function AboutPage() {
       <section className="py-20 sm:py-28">
         <PageContainer className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24">
           <div>
-            <p className="eyebrow">Our principles</p>
-            <h2 className="text-ink mt-5 font-serif text-5xl leading-[0.98] tracking-[-0.035em] sm:text-6xl">
+            <h2 className="text-ink font-serif text-5xl leading-[0.98] tracking-[-0.035em] sm:text-6xl">
               Built around what matters.
             </h2>
           </div>
