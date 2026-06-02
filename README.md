@@ -19,6 +19,7 @@ No environment variables are required for the current scaffold. Copy `.env.examp
 | ------------------- | -------------------------------------------------- |
 | `pnpm dev`          | Start the local Next.js development server         |
 | `pnpm build`        | Create a production build                          |
+| `pnpm start`        | Start the production Next.js server                |
 | `pnpm lint`         | Run ESLint                                         |
 | `pnpm typecheck`    | Run the TypeScript compiler without emitting files |
 | `pnpm test`         | Run Vitest unit and component tests                |

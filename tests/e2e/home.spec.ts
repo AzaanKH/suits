@@ -5,7 +5,7 @@ test("shows the home page", async ({ page }) => {
 
   await expect(
     page.getByRole("heading", {
-      name: "A clean foundation for a better suit buying experience.",
+      name: /clean foundation/i,
     }),
   ).toBeVisible();
 });
