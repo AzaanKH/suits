@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "convex:dev": "convex dev",
+    "convex:seed": "convex run seed:seed --push",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -37,6 +39,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -46,6 +49,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
+    "convex-test": "^0.0.53",
     "eslint": "^9.39.3",
     "eslint-config-next": "^16.2.6",
     "jsdom": "^28.1.0",

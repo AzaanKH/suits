@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 type EmptyStateProps = {
-  eyebrow: string;
   title: string;
   description: string;
+  headingTag?: "h1" | "h2" | "h3";
   action: {
     label: string;
     href: string;
@@ -11,17 +11,16 @@ type EmptyStateProps = {
 };
 
 export function EmptyState({
-  eyebrow,
   title,
   description,
+  headingTag: Heading = "h2",
   action,
 }: EmptyStateProps) {
   return (
     <section className="mx-auto max-w-xl py-12 text-center">
-      <p className="eyebrow">{eyebrow}</p>
-      <h1 className="text-ink mt-5 font-serif text-6xl leading-[0.95] tracking-[-0.04em]">
+      <Heading className="text-ink font-serif text-6xl leading-[0.95] tracking-[-0.04em]">
         {title}
-      </h1>
+      </Heading>
       <p className="text-muted-foreground mx-auto mt-5 max-w-md text-sm leading-6">
         {description}
       </p>

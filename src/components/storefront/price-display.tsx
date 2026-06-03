@@ -1,20 +1,23 @@
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/product-format";
 
 type PriceDisplayProps = {
-  price: number;
+  priceCents: number;
   className?: string;
+  prefix?: string;
 };
 
-export function PriceDisplay({ price, className }: PriceDisplayProps) {
+export function PriceDisplay({
+  priceCents,
+  className,
+  prefix,
+}: PriceDisplayProps) {
   return (
     <p
       className={cn("text-ink text-sm font-semibold tracking-wide", className)}
     >
-      {new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        maximumFractionDigits: 0,
-      }).format(price)}
+      {prefix}
+      {formatCurrency(priceCents)}
     </p>
   );
 }

@@ -5,33 +5,31 @@ test("shows the home page", async ({ page }) => {
 
   await expect(
     page.getByRole("heading", {
-      name: /clothes that hold their line/i,
+      name: /a custom suit, without the old rules/i,
     }),
   ).toBeVisible();
 });
 
-test("navigates to the collection and adds a suit to the cart", async ({
+test("navigates from the collection to a suit detail page", async ({
   page,
 }) => {
   await page.goto("/shop");
 
-  await page.getByTestId("add-to-cart-house-navy").click();
-  await page.getByTestId("cart-link").click();
+  await page.getByRole("link", { name: "The House Suit", exact: true }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Shopping cart" }),
+    page.getByRole("heading", { name: "The House Suit" }),
   ).toBeVisible();
-  await expect(page.getByText("The House Suit")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Checkout coming soon" }),
-  ).toBeDisabled();
+    page.getByRole("link", { name: "Begin customization" }),
+  ).toBeVisible();
 });
 
 test("filters the collection by product category", async ({ page }) => {
   await page.goto("/shop");
 
-  await page.getByRole("button", { name: "Signature Collection" }).click();
+  await page.getByRole("button", { name: "Occasion" }).click();
 
-  await expect(page.getByText("The Signature DB")).toBeVisible();
+  await expect(page.getByText("The Occasion Suit")).toBeVisible();
   await expect(page.getByText("The House Suit")).not.toBeVisible();
 });

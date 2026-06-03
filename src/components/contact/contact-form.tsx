@@ -33,8 +33,7 @@ export function ContactForm() {
   if (submitted) {
     return (
       <div className="border-border bg-stone border p-8 sm:p-10">
-        <p className="eyebrow">Thank you</p>
-        <h2 className="text-ink mt-4 font-serif text-5xl leading-[0.98] tracking-[-0.035em]">
+        <h2 className="text-ink font-serif text-5xl leading-[0.98] tracking-[-0.035em]">
           We will be in touch.
         </h2>
         <p className="text-muted-foreground mt-5 text-sm leading-6">

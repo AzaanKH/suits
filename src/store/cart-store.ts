@@ -2,15 +2,15 @@
 
 import { create } from "zustand";
 
-import type { Product } from "@/data/products";
+import type { ProductSummary } from "@/types";
 
-export type CartItem = Product & {
+export type CartItem = ProductSummary & {
   quantity: number;
 };
 
 type CartState = {
   items: CartItem[];
-  addItem: (product: Product) => void;
+  addItem: (product: ProductSummary) => void;
   removeItem: (productId: string) => void;
   clearCart: () => void;
 };

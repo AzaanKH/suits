@@ -1,10 +1,10 @@
-import type { Product } from "@/data/products";
 import { cn } from "@/lib/utils";
+import type { ProductSummary } from "@/types";
 
 import { ProductCard } from "./product-card";
 
 type ProductGridProps = {
-  products: Product[];
+  products: ProductSummary[];
   className?: string;
 };
 

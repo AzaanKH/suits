@@ -1,7 +1,6 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/storefront/section-heading";
 import { ShopCatalog } from "@/components/storefront/shop-catalog";
-import { products } from "@/data/products";
 
 export default function ShopPage() {
   return (
@@ -10,7 +9,7 @@ export default function ShopPage() {
         title="Suits, considered."
         description="A focused edit of house signatures, soft tailoring, and occasion pieces. Every style is made to your measurements and finished to your preferences."
       />
-      <ShopCatalog products={products} />
+      <ShopCatalog />
     </PageContainer>
   );
 }
