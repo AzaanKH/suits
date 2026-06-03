@@ -75,6 +75,8 @@ export const seed = internalMutation({
         label: option.label,
         description: option.description,
         priceModifierCents: option.priceModifierCents,
+        imageReference:
+          "imageReference" in option ? { ...option.imageReference } : undefined,
         compatibilityMetadata:
           "compatibilityMetadata" in option
             ? option.compatibilityMetadata
