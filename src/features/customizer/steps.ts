@@ -99,5 +99,11 @@ export function getStepIndex(stepCode: CustomizerStepCode) {
 }
 
 export function getStepByCode(stepCode: CustomizerStepCode) {
-  return CUSTOMIZER_STEPS[getStepIndex(stepCode)];
+  const idx = getStepIndex(stepCode);
+
+  if (idx < 0 || idx >= CUSTOMIZER_STEPS.length) {
+    throw new Error(`Unknown CustomizerStepCode: ${stepCode}`);
+  }
+
+  return CUSTOMIZER_STEPS[idx];
 }

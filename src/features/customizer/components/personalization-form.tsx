@@ -74,6 +74,7 @@ export function PersonalizationForm({
               <FormControl>
                 <textarea
                   {...field}
+                  maxLength={240}
                   className="form-control min-h-28 resize-y rounded-lg"
                   onChange={(event) => {
                     field.onChange(event.target.value);

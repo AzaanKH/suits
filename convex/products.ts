@@ -83,16 +83,10 @@ export const customizer = query({
       .withIndex("by_slug", (q) => q.eq("slug", productSlug))
       .unique();
 
-    if (!product || !product.active) {
-      return {
-        product: null,
-        options: [],
-      };
-    }
+    const hydratedProduct =
+      product && product.active ? await hydrateProduct(ctx, product) : null;
 
-    const hydratedProduct = await hydrateProduct(ctx, product);
-
-    if (!hydratedProduct) {
+    if (!product || !hydratedProduct) {
       return {
         product: null,
         options: [],

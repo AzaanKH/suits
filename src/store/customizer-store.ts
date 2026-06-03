@@ -103,8 +103,14 @@ export const useCustomizerStore = create<CustomizerState>((set) => ({
         return {};
       }
 
+      const newConfig = selectFabric(catalog, state.configuration, fabricCode);
+
+      if (newConfig === state.configuration) {
+        return {};
+      }
+
       return {
-        configuration: selectFabric(catalog, state.configuration, fabricCode),
+        configuration: newConfig,
         dirty: true,
       };
     }),
@@ -114,13 +120,19 @@ export const useCustomizerStore = create<CustomizerState>((set) => ({
         return {};
       }
 
+      const newConfig = selectSingleOption(
+        catalog,
+        state.configuration,
+        groupCode,
+        optionCode,
+      );
+
+      if (newConfig === state.configuration) {
+        return {};
+      }
+
       return {
-        configuration: selectSingleOption(
-          catalog,
-          state.configuration,
-          groupCode,
-          optionCode,
-        ),
+        configuration: newConfig,
         dirty: true,
       };
     }),
@@ -130,13 +142,19 @@ export const useCustomizerStore = create<CustomizerState>((set) => ({
         return {};
       }
 
+      const newConfig = toggleMultipleOption(
+        catalog,
+        state.configuration,
+        groupCode,
+        optionCode,
+      );
+
+      if (newConfig === state.configuration) {
+        return {};
+      }
+
       return {
-        configuration: toggleMultipleOption(
-          catalog,
-          state.configuration,
-          groupCode,
-          optionCode,
-        ),
+        configuration: newConfig,
         dirty: true,
       };
     }),
