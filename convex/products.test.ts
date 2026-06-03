@@ -67,8 +67,10 @@ describe("storefront product queries", () => {
     });
 
     expect(product?.availableFabrics[0].code).toBe("stone-wool-linen");
-    expect(options.map((option) => option.code)).toContain("half-lined");
-    expect(options.map((option) => option.code)).not.toContain("full-lined");
+    expect(options.map((option) => option.code)).toContain("patch-pockets");
+    expect(options.map((option) => option.code)).not.toContain(
+      "double-breasted-six-button",
+    );
   });
 
   it("hides products whose category or fabrics are inactive", async () => {
@@ -130,16 +132,16 @@ describe("storefront product queries", () => {
           q.eq("slug", "summer-stone-wool-linen-suit"),
         )
         .unique();
-      const halfLined = await ctx.db
+      const notchLapel = await ctx.db
         .query("customizationOptions")
-        .withIndex("by_code", (q) => q.eq("code", "half-lined"))
+        .withIndex("by_code", (q) => q.eq("code", "notch-lapel"))
         .unique();
-      const jacket = await ctx.db
+      const buttons = await ctx.db
         .query("customizationGroups")
-        .withIndex("by_code", (q) => q.eq("code", "jacket"))
+        .withIndex("by_code", (q) => q.eq("code", "buttons"))
         .unique();
 
-      if (!product || !halfLined || !jacket) {
+      if (!product || !notchLapel || !buttons) {
         throw new Error("Missing seed customization data");
       }
 
@@ -148,14 +150,14 @@ describe("storefront product queries", () => {
           .query("productCustomizationAvailability")
           .withIndex("by_product", (q) => q.eq("productId", product._id))
           .collect()
-      ).find((entry) => entry.customizationOptionId === halfLined._id);
+      ).find((entry) => entry.customizationOptionId === notchLapel._id);
 
       if (!availability) {
-        throw new Error("Missing half-lined availability");
+        throw new Error("Missing notch lapel availability");
       }
 
       await ctx.db.patch(availability._id, {
-        customizationGroupId: jacket._id,
+        customizationGroupId: buttons._id,
       });
     });
 
@@ -163,7 +165,7 @@ describe("storefront product queries", () => {
       productSlug: "summer-stone-wool-linen-suit",
     });
 
-    expect(options.map((option) => option.code)).not.toContain("half-lined");
+    expect(options.map((option) => option.code)).not.toContain("notch-lapel");
   });
 
   it("returns empty results for missing catalog data", async () => {

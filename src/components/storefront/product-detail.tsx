@@ -96,7 +96,7 @@ export function ProductDetail({ slug }: { slug: string }) {
 
             <Link
               className="button-primary mt-8 w-full sm:w-auto"
-              href="/contact"
+              href={`/customize/${product.slug}`}
             >
               Begin customization
               <ArrowRight aria-hidden="true" className="size-4" />

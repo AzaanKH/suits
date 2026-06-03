@@ -20,6 +20,7 @@ export type Fabric = {
   weight: string;
   seasonality: string;
   description: string;
+  imageReference?: ProductImage;
 };
 
 export type CustomizationGroup = {

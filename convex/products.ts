@@ -75,6 +75,31 @@ export const bySlug = query({
   },
 });
 
+export const customizer = query({
+  args: { productSlug: v.string() },
+  handler: async (ctx, { productSlug }) => {
+    const product = await ctx.db
+      .query("products")
+      .withIndex("by_slug", (q) => q.eq("slug", productSlug))
+      .unique();
+
+    const hydratedProduct =
+      product && product.active ? await hydrateProduct(ctx, product) : null;
+
+    if (!product || !hydratedProduct) {
+      return {
+        product: null,
+        options: [],
+      };
+    }
+
+    return {
+      product: hydratedProduct,
+      options: await getCustomizationOptions(ctx, product),
+    };
+  },
+});
+
 export const customizationOptions = query({
   args: { productSlug: v.string() },
   handler: async (ctx, { productSlug }) => {
@@ -87,54 +112,61 @@ export const customizationOptions = query({
       return [];
     }
 
-    const availability = await ctx.db
-      .query("productCustomizationAvailability")
-      .withIndex("by_product", (q) => q.eq("productId", product._id))
-      .collect();
-    const options = await Promise.all(
-      availability
-        .filter((entry) => entry.active)
-        .map(async (entry) => {
-          const option = await ctx.db.get(entry.customizationOptionId);
-          const group = await ctx.db.get(entry.customizationGroupId);
-
-          if (
-            !option?.active ||
-            !group?.active ||
-            option.customizationGroupId !== group._id
-          ) {
-            return null;
-          }
-
-          return {
-            id: option._id,
-            code: option.code,
-            label: option.label,
-            description: option.description,
-            priceModifierCents: option.priceModifierCents,
-            imageReference: option.imageReference,
-            compatibilityMetadata: option.compatibilityMetadata,
-            displayOrder: option.displayOrder,
-            group: {
-              id: group._id,
-              code: group.code,
-              label: group.label,
-              description: group.description,
-              displayOrder: group.displayOrder,
-            },
-          };
-        }),
-    );
-
-    return options
-      .filter((option) => option !== null)
-      .sort(
-        (first, second) =>
-          first.group.displayOrder - second.group.displayOrder ||
-          first.displayOrder - second.displayOrder,
-      );
+    return await getCustomizationOptions(ctx, product);
   },
 });
+
+async function getCustomizationOptions(
+  ctx: QueryCtx,
+  product: Doc<"products">,
+) {
+  const availability = await ctx.db
+    .query("productCustomizationAvailability")
+    .withIndex("by_product", (q) => q.eq("productId", product._id))
+    .collect();
+  const options = await Promise.all(
+    availability
+      .filter((entry) => entry.active)
+      .map(async (entry) => {
+        const option = await ctx.db.get(entry.customizationOptionId);
+        const group = await ctx.db.get(entry.customizationGroupId);
+
+        if (
+          !option?.active ||
+          !group?.active ||
+          option.customizationGroupId !== group._id
+        ) {
+          return null;
+        }
+
+        return {
+          id: option._id,
+          code: option.code,
+          label: option.label,
+          description: option.description,
+          priceModifierCents: option.priceModifierCents,
+          imageReference: option.imageReference,
+          compatibilityMetadata: option.compatibilityMetadata,
+          displayOrder: option.displayOrder,
+          group: {
+            id: group._id,
+            code: group.code,
+            label: group.label,
+            description: group.description,
+            displayOrder: group.displayOrder,
+          },
+        };
+      }),
+  );
+
+  return options
+    .filter((option) => option !== null)
+    .sort(
+      (first, second) =>
+        first.group.displayOrder - second.group.displayOrder ||
+        first.displayOrder - second.displayOrder,
+    );
+}
 
 async function hydrateProduct(ctx: QueryCtx, product: Doc<"products">) {
   const [category, availableFabrics] = await Promise.all([
@@ -181,6 +213,7 @@ async function hydrateProduct(ctx: QueryCtx, product: Doc<"products">) {
         weight,
         seasonality,
         description,
+        imageReference,
       }) => ({
         id: _id,
         code,
@@ -191,6 +224,7 @@ async function hydrateProduct(ctx: QueryCtx, product: Doc<"products">) {
         weight,
         seasonality,
         description,
+        imageReference,
       }),
     ),
   };

@@ -30,6 +30,10 @@ export const fabricSeeds = [
     seasonality: "Four season",
     description:
       "An open-weave Italian wool with a clean drape, subtle texture, and natural breathability.",
+    imageReference: {
+      src: "/images/suit-navy.png",
+      alt: "Midnight navy hopsack suit fabric preview",
+    },
     displayOrder: 10,
   },
   {
@@ -42,6 +46,10 @@ export const fabricSeeds = [
     seasonality: "Four season",
     description:
       "A resilient high-twist wool designed to recover its shape and travel with ease.",
+    imageReference: {
+      src: "/images/suit-grey.png",
+      alt: "Slate grey traveller wool suit fabric preview",
+    },
     displayOrder: 20,
   },
   {
@@ -54,6 +62,10 @@ export const fabricSeeds = [
     seasonality: "Autumn and winter",
     description:
       "A softly brushed British flannel with depth of color and an easy, tactile finish.",
+    imageReference: {
+      src: "/images/suit-olive.png",
+      alt: "Dark olive brushed flannel suit fabric preview",
+    },
     displayOrder: 30,
   },
   {
@@ -66,6 +78,10 @@ export const fabricSeeds = [
     seasonality: "Four season",
     description:
       "A finely woven pick-and-pick cloth with a quiet lustre and a polished formal character.",
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "Charcoal pick-and-pick suit fabric preview",
+    },
     displayOrder: 40,
   },
   {
@@ -78,6 +94,10 @@ export const fabricSeeds = [
     seasonality: "Evening",
     description:
       "A deep midnight barathea with a refined grain that reads elegantly under evening light.",
+    imageReference: {
+      src: "/images/suit-navy.png",
+      alt: "Midnight barathea evening suit fabric preview",
+    },
     displayOrder: 50,
   },
   {
@@ -90,117 +110,411 @@ export const fabricSeeds = [
     seasonality: "Spring and summer",
     description:
       "A breathable wool-linen blend with a relaxed surface and enough body to hold its line.",
+    imageReference: {
+      src: "/images/suit-grey.png",
+      alt: "Stone wool-linen summer suit fabric preview",
+    },
     displayOrder: 60,
   },
 ] as const;
 
 export const customizationGroupSeeds = [
   {
-    code: "jacket",
-    label: "Jacket",
-    description: "Shape the jacket silhouette and front.",
+    code: "jacket-style",
+    label: "Jacket style",
+    description: "Choose the jacket silhouette and closure.",
     displayOrder: 10,
   },
   {
-    code: "trouser",
-    label: "Trouser",
-    description: "Choose a considered trouser finish.",
+    code: "lapel",
+    label: "Lapel",
+    description: "Set the lapel shape and level of formality.",
     displayOrder: 20,
   },
   {
-    code: "lining",
-    label: "Lining",
-    description: "Select the interior finish of the jacket.",
+    code: "buttons",
+    label: "Buttons",
+    description: "Select the button material and finish.",
     displayOrder: 30,
   },
   {
-    code: "finishing",
-    label: "Finishing",
-    description: "Add personal finishing details.",
+    code: "pockets",
+    label: "Pockets",
+    description: "Choose the jacket pocket treatment.",
     displayOrder: 40,
+  },
+  {
+    code: "trousers",
+    label: "Trousers",
+    description: "Choose the trouser waistband and front.",
+    displayOrder: 50,
+  },
+  {
+    code: "extras",
+    label: "Vest & extras",
+    description: "Add optional pieces and hand-finished details.",
+    displayOrder: 60,
   },
 ] as const;
 
 export const customizationOptionSeeds = [
   {
-    code: "notch-lapel",
-    groupCode: "jacket",
-    label: "Notch lapel",
-    description: "A balanced 3.5 inch lapel with a clean everyday line.",
+    code: "single-breasted-two-button",
+    groupCode: "jacket-style",
+    label: "Two-button single-breasted",
+    description: "The house cut with a clean front and versatile stance.",
     priceModifierCents: 0,
-    compatibilityMetadata: { silhouettes: ["single-breasted"] },
+    imageReference: {
+      src: "/images/suit-navy.png",
+      alt: "Two-button single-breasted suit jacket preview",
+    },
     displayOrder: 10,
   },
   {
-    code: "peak-lapel",
-    groupCode: "jacket",
-    label: "Peak lapel",
-    description: "A sharper, more expressive jacket profile.",
-    priceModifierCents: 7500,
-    compatibilityMetadata: {
-      silhouettes: ["single-breasted", "double-breasted"],
+    code: "single-breasted-one-button",
+    groupCode: "jacket-style",
+    label: "One-button evening",
+    description: "A lower, sharper front for formal or occasion tailoring.",
+    priceModifierCents: 4500,
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "One-button evening jacket preview",
     },
     displayOrder: 20,
   },
   {
+    code: "double-breasted-six-button",
+    groupCode: "jacket-style",
+    label: "Six-button double-breasted",
+    description: "A composed wrap front with broader presence.",
+    priceModifierCents: 15000,
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "Six-button double-breasted suit jacket preview",
+    },
+    displayOrder: 30,
+  },
+  {
+    code: "notch-lapel",
+    groupCode: "lapel",
+    label: "Notch lapel",
+    description: "A balanced 3.5 inch lapel with a clean everyday line.",
+    priceModifierCents: 0,
+    imageReference: {
+      src: "/images/suit-navy.png",
+      alt: "Notch lapel suit detail preview",
+    },
+    compatibilityMetadata: {
+      rules: [
+        {
+          type: "requires",
+          groupCode: "jacket-style",
+          optionCodes: [
+            "single-breasted-two-button",
+            "single-breasted-one-button",
+          ],
+          reason: "Notch lapels are available on single-breasted jackets only.",
+        },
+      ],
+    },
+    displayOrder: 10,
+  },
+  {
+    code: "peak-lapel",
+    groupCode: "lapel",
+    label: "Peak lapel",
+    description: "A sharper, more expressive jacket profile.",
+    priceModifierCents: 7500,
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "Peak lapel suit detail preview",
+    },
+    displayOrder: 20,
+  },
+  {
+    code: "shawl-lapel",
+    groupCode: "lapel",
+    label: "Shawl lapel",
+    description: "A continuous formal roll for evening tailoring.",
+    priceModifierCents: 12500,
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "Shawl lapel evening jacket detail preview",
+    },
+    compatibilityMetadata: {
+      rules: [
+        {
+          type: "requires",
+          groupCode: "jacket-style",
+          optionCodes: ["single-breasted-one-button"],
+          reason: "Shawl lapels are reserved for one-button evening jackets.",
+        },
+      ],
+    },
+    displayOrder: 30,
+  },
+  {
+    code: "horn-buttons",
+    groupCode: "buttons",
+    label: "Dark horn",
+    description: "Natural horn buttons with a quiet polished surface.",
+    priceModifierCents: 0,
+    imageReference: {
+      src: "/images/suit-navy.png",
+      alt: "Dark horn buttons on a suit jacket preview",
+    },
+    displayOrder: 10,
+  },
+  {
+    code: "smoked-pearl-buttons",
+    groupCode: "buttons",
+    label: "Smoked pearl",
+    description: "A subtle pearlescent finish for depth and contrast.",
+    priceModifierCents: 4500,
+    imageReference: {
+      src: "/images/suit-grey.png",
+      alt: "Smoked pearl suit buttons preview",
+    },
+    displayOrder: 20,
+  },
+  {
+    code: "covered-buttons",
+    groupCode: "buttons",
+    label: "Self-covered",
+    description: "Cloth-covered buttons for a formal evening finish.",
+    priceModifierCents: 6500,
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "Self-covered evening suit buttons preview",
+    },
+    compatibilityMetadata: {
+      rules: [
+        {
+          type: "requires",
+          groupCode: "lapel",
+          optionCodes: ["peak-lapel", "shawl-lapel"],
+          reason: "Covered buttons are reserved for peak or shawl lapels.",
+        },
+      ],
+    },
+    displayOrder: 30,
+  },
+  {
+    code: "straight-flap-pockets",
+    groupCode: "pockets",
+    label: "Straight flap",
+    description: "Classic flap pockets with a clean horizontal line.",
+    priceModifierCents: 0,
+    imageReference: {
+      src: "/images/suit-grey.png",
+      alt: "Straight flap suit pocket preview",
+    },
+    displayOrder: 10,
+  },
+  {
+    code: "slanted-flap-pockets",
+    groupCode: "pockets",
+    label: "Slanted flap",
+    description: "A slightly sportier angle that lengthens the jacket line.",
+    priceModifierCents: 3500,
+    imageReference: {
+      src: "/images/suit-navy.png",
+      alt: "Slanted flap suit pocket preview",
+    },
+    displayOrder: 20,
+  },
+  {
+    code: "patch-pockets",
+    groupCode: "pockets",
+    label: "Patch pockets",
+    description: "A softer pocket for relaxed tailoring and separates.",
+    priceModifierCents: 0,
+    imageReference: {
+      src: "/images/suit-olive.png",
+      alt: "Patch pocket suit jacket preview",
+    },
+    compatibilityMetadata: {
+      rules: [
+        {
+          type: "excludes",
+          groupCode: "jacket-style",
+          optionCodes: ["double-breasted-six-button"],
+          reason: "Patch pockets are not offered on double-breasted jackets.",
+        },
+      ],
+    },
+    displayOrder: 30,
+  },
+  {
+    code: "jetted-pockets",
+    groupCode: "pockets",
+    label: "Jetted pockets",
+    description: "A clean formal pocket without flaps.",
+    priceModifierCents: 4500,
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "Jetted formal suit pocket preview",
+    },
+    compatibilityMetadata: {
+      rules: [
+        {
+          type: "requires",
+          groupCode: "lapel",
+          optionCodes: ["peak-lapel", "shawl-lapel"],
+          reason: "Jetted pockets are reserved for formal lapel choices.",
+        },
+      ],
+    },
+    displayOrder: 40,
+  },
+  {
     code: "side-adjusters",
-    groupCode: "trouser",
+    groupCode: "trousers",
     label: "Side adjusters",
     description: "A streamlined waistband without belt loops.",
     priceModifierCents: 0,
+    imageReference: {
+      src: "/images/suit-navy.png",
+      alt: "Side adjuster trouser waistband preview",
+    },
     displayOrder: 10,
   },
   {
     code: "belt-loops",
-    groupCode: "trouser",
+    groupCode: "trousers",
     label: "Belt loops",
     description: "A familiar trouser finish for daily wear.",
     priceModifierCents: 0,
+    imageReference: {
+      src: "/images/suit-grey.png",
+      alt: "Belt loop trouser waistband preview",
+    },
     displayOrder: 20,
   },
   {
-    code: "half-lined",
-    groupCode: "lining",
-    label: "Half lined",
-    description: "Reduced lining for a lighter, more breathable jacket.",
-    priceModifierCents: 0,
-    compatibilityMetadata: { seasons: ["spring", "summer"] },
+    code: "single-pleat-trousers",
+    groupCode: "trousers",
+    label: "Single pleat",
+    description: "A little extra room through the front with a tailored line.",
+    priceModifierCents: 3500,
+    imageReference: {
+      src: "/images/suit-olive.png",
+      alt: "Single pleat suit trousers preview",
+    },
+    displayOrder: 30,
+  },
+  {
+    code: "brace-buttons",
+    groupCode: "trousers",
+    label: "Brace buttons",
+    description: "Interior buttons for braces with no exterior interruption.",
+    priceModifierCents: 2500,
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "Brace button trouser detail preview",
+    },
+    displayOrder: 40,
+  },
+  {
+    code: "matching-waistcoat",
+    groupCode: "extras",
+    label: "Matching waistcoat",
+    description: "Add a five-button vest cut from the same cloth.",
+    priceModifierCents: 22500,
+    imageReference: {
+      src: "/images/suit-navy.png",
+      alt: "Matching waistcoat suit preview",
+    },
+    compatibilityMetadata: {
+      rules: [
+        {
+          type: "excludes",
+          groupCode: "jacket-style",
+          optionCodes: ["double-breasted-six-button"],
+          reason: "Waistcoats are only offered with single-breasted jackets.",
+        },
+      ],
+    },
     displayOrder: 10,
-  },
-  {
-    code: "full-lined",
-    groupCode: "lining",
-    label: "Full lined",
-    description: "A traditional full lining for a smooth, structured finish.",
-    priceModifierCents: 0,
-    displayOrder: 20,
   },
   {
     code: "personal-monogram",
-    groupCode: "finishing",
+    groupCode: "extras",
     label: "Personal monogram",
     description: "Up to three initials hand-finished inside the jacket.",
     priceModifierCents: 3500,
-    displayOrder: 10,
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "Personal monogram inside a tailored jacket preview",
+    },
+    displayOrder: 20,
   },
   {
     code: "working-cuffs",
-    groupCode: "finishing",
+    groupCode: "extras",
     label: "Working cuffs",
     description: "Functional buttonholes finished at the sleeve.",
     priceModifierCents: 9500,
-    displayOrder: 20,
+    imageReference: {
+      src: "/images/suit-grey.png",
+      alt: "Working cuff buttonholes preview",
+    },
+    displayOrder: 30,
+  },
+  {
+    code: "full-canvas-upgrade",
+    groupCode: "extras",
+    label: "Full canvas upgrade",
+    description: "A fully canvassed jacket front for maximum longevity.",
+    priceModifierCents: 18500,
+    imageReference: {
+      src: "/images/hero-tailoring.png",
+      alt: "Full canvas tailoring construction preview",
+    },
+    displayOrder: 40,
   },
 ] as const;
 
 const houseOptionCodes = [
+  "single-breasted-two-button",
+  "single-breasted-one-button",
+  "double-breasted-six-button",
   "notch-lapel",
   "peak-lapel",
+  "shawl-lapel",
+  "horn-buttons",
+  "smoked-pearl-buttons",
+  "covered-buttons",
+  "straight-flap-pockets",
+  "slanted-flap-pockets",
+  "patch-pockets",
+  "jetted-pockets",
   "side-adjusters",
   "belt-loops",
-  "full-lined",
+  "single-pleat-trousers",
+  "brace-buttons",
+  "matching-waistcoat",
   "personal-monogram",
   "working-cuffs",
+  "full-canvas-upgrade",
+];
+
+const doubleBreastedOptionCodes = [
+  "double-breasted-six-button",
+  "peak-lapel",
+  "horn-buttons",
+  "smoked-pearl-buttons",
+  "covered-buttons",
+  "straight-flap-pockets",
+  "slanted-flap-pockets",
+  "jetted-pockets",
+  "side-adjusters",
+  "belt-loops",
+  "single-pleat-trousers",
+  "brace-buttons",
+  "personal-monogram",
+  "working-cuffs",
+  "full-canvas-upgrade",
 ];
 
 export const productSeeds = [
@@ -301,9 +615,7 @@ export const productSeeds = [
     featured: false,
     displayOrder: 40,
     fabricCodes: ["charcoal-pick-and-pick", "navy-hopsack"],
-    customizationOptionCodes: houseOptionCodes.filter(
-      (code) => code !== "notch-lapel",
-    ),
+    customizationOptionCodes: doubleBreastedOptionCodes,
   },
   {
     slug: "occasion-midnight-blue-suit",
@@ -352,14 +664,8 @@ export const productSeeds = [
     featured: false,
     displayOrder: 60,
     fabricCodes: ["stone-wool-linen"],
-    customizationOptionCodes: [
-      "notch-lapel",
-      "peak-lapel",
-      "side-adjusters",
-      "belt-loops",
-      "half-lined",
-      "personal-monogram",
-      "working-cuffs",
-    ],
+    customizationOptionCodes: houseOptionCodes.filter(
+      (code) => code !== "double-breasted-six-button",
+    ),
   },
 ] as const;
