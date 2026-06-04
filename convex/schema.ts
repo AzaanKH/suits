@@ -21,6 +21,7 @@ const configurationSelection = v.object({
 
 const savedConfiguration = v.object({
   version: v.literal(1),
+  productId: v.id("products"),
   productSlug: v.string(),
   fabricCode: v.string(),
   selectedOptionCodes: v.record(v.string(), v.array(v.string())),
@@ -122,17 +123,23 @@ export default defineSchema({
     .index("by_product_group", ["productId", "customizationGroupId"]),
 
   savedDesigns: defineTable({
-    clerkUserId: v.string(),
+    ownerClerkUserId: v.string(),
+    productId: v.id("products"),
     productSlug: v.string(),
     productName: v.string(),
-    totalPriceCents: v.number(),
-    selectionSignature: v.string(),
+    name: v.string(),
+    priceCents: v.number(),
+    previewImageReference: v.optional(imageReference),
     configuration: savedConfiguration,
     selections: v.array(configurationSelection),
     personalization,
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_user_updated_at", ["clerkUserId", "updatedAt"])
-    .index("by_user_signature", ["clerkUserId", "selectionSignature"]),
+    .index("by_owner_updated_at", ["ownerClerkUserId", "updatedAt"])
+    .index("by_owner_product_updated_at", [
+      "ownerClerkUserId",
+      "productId",
+      "updatedAt",
+    ]),
 });

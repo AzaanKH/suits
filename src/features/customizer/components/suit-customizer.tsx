@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 import { api } from "../../../../convex/_generated/api";
 import { EmptyState } from "@/components/storefront/empty-state";
@@ -57,12 +60,26 @@ type SuitCustomizerProps = {
 };
 
 export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
+  const searchParams = useSearchParams();
+  const designId = searchParams.get("designId");
+  const { isAuthenticated } = useConvexAuth();
   const customizerData = useQuery(api.products.customizer, { productSlug });
+  const savedDesign = useQuery(
+    api.savedDesigns.get,
+    designId && isAuthenticated
+      ? { designId: designId as Id<"savedDesigns"> }
+      : "skip",
+  );
+  const loadedDesignId = useRef<string | null>(null);
+  const rejectedDesignId = useRef<string | null>(null);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const configuration = useCustomizerStore((state) => state.configuration);
   const currentStepCode = useCustomizerStore((state) => state.currentStepCode);
   const dirty = useCustomizerStore((state) => state.dirty);
   const initialize = useCustomizerStore((state) => state.initialize);
+  const loadConfiguration = useCustomizerStore(
+    (state) => state.loadConfiguration,
+  );
   const setStep = useCustomizerStore((state) => state.setStep);
   const goBack = useCustomizerStore((state) => state.goBack);
   const goNext = useCustomizerStore((state) => state.goNext);
@@ -84,6 +101,35 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
       initialize(catalog);
     }
   }, [catalog, initialize]);
+
+  useEffect(() => {
+    if (!catalog || !designId || savedDesign === undefined) {
+      return;
+    }
+
+    if (
+      savedDesign === null ||
+      savedDesign.productSlug !== catalog.product.slug
+    ) {
+      if (rejectedDesignId.current !== designId) {
+        toast.error("Saved design could not be loaded for this suit.");
+        rejectedDesignId.current = designId;
+      }
+      return;
+    }
+
+    if (loadedDesignId.current === designId) {
+      return;
+    }
+
+    loadConfiguration(catalog, {
+      ...savedDesign.configuration,
+      selectedOptionCodes:
+        savedDesign.configuration
+          .selectedOptionCodes as CustomizerConfiguration["selectedOptionCodes"],
+    });
+    loadedDesignId.current = designId;
+  }, [catalog, designId, loadConfiguration, savedDesign]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });

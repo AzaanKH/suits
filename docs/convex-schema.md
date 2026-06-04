@@ -10,7 +10,7 @@ The storefront uses seven tables:
 | `customizationGroups`              | Ordered configurator sections such as jacket, trouser, lining, and finishing.                                         |
 | `customizationOptions`             | Stable option codes, price modifiers in integer cents, presentation data, and open-ended compatibility metadata.      |
 | `productCustomizationAvailability` | Explicit product-to-option join rows. Each row also stores the option's group ID for efficient product/group lookups. |
-| `savedDesigns`                     | Authenticated saved configurations keyed by Clerk user id and selection signature.                                     |
+| `savedDesigns`                     | Authenticated saved configurations keyed by owner Clerk user id with product IDs, names, server-priced snapshots, and previews. |
 
 ## Decisions
 
@@ -20,7 +20,8 @@ The storefront uses seven tables:
 - Image references are structured `{ src, alt }` values. They currently point at local assets and can later point at managed storage without changing UI contracts.
 - Stable slugs and option codes have indexes for storefront routing, seed references, and future configurator state.
 - Active flags preserve catalog history without deleting records. Display order fields make merchandising deterministic.
-- Saved designs store `clerkUserId` for ownership checks plus configuration details. They do not duplicate Clerk profile data or store passwords.
+- Saved designs store `ownerClerkUserId` for ownership checks, `productId` for product integrity, a human-readable `name`, the serialized configuration snapshot, server-derived `priceCents`, optional `previewImageReference`, and created/updated timestamps. They do not duplicate Clerk profile data or store passwords.
+- Saved-design mutations validate configuration snapshots against active products, active fabrics, product option availability, compatibility metadata, and personalization limits. Prices are recalculated in Convex rather than accepted from clients.
 - Convex authentication uses Clerk's Frontend API URL through `convex/auth.config.ts`; set `CLERK_FRONTEND_API_URL` in the Convex dashboard before deploying authenticated functions.
 
 ## Seed workflow

@@ -28,6 +28,7 @@ export function getDefaultConfiguration(
 ): CustomizerConfiguration {
   return normalizeConfiguration(catalog, {
     version: 1,
+    productId: catalog.product.id,
     productSlug: catalog.product.slug,
     fabricCode: catalog.fabricOptions[0]?.code ?? "",
     selectedOptionCodes: createEmptySelectedOptionCodes(),
@@ -46,6 +47,7 @@ export function normalizeConfiguration(
     ) ?? catalog.fabricOptions[0];
   const next: CustomizerConfiguration = {
     version: 1,
+    productId: catalog.product.id,
     productSlug: catalog.product.slug,
     fabricCode: validFabric?.code ?? "",
     selectedOptionCodes,

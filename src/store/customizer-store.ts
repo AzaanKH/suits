@@ -28,6 +28,10 @@ type CustomizerState = {
   configuration: CustomizerConfiguration | null;
   dirty: boolean;
   initialize: (catalog: CustomizerCatalog) => void;
+  loadConfiguration: (
+    catalog: CustomizerCatalog,
+    configuration: CustomizerConfiguration,
+  ) => void;
   setStep: (stepCode: CustomizerStepCode) => void;
   goBack: () => void;
   goNext: () => void;
@@ -72,6 +76,13 @@ export const useCustomizerStore = create<CustomizerState>((set) => ({
         dirty: false,
       };
     }),
+  loadConfiguration: (catalog, configuration) =>
+    set(() => ({
+      activeProductSlug: catalog.product.slug,
+      currentStepCode: "fabric",
+      configuration: normalizeConfiguration(catalog, configuration),
+      dirty: false,
+    })),
   setStep: (stepCode) =>
     set(() => ({
       currentStepCode: isCustomizerStepCode(stepCode) ? stepCode : "fabric",
