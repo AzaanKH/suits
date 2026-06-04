@@ -1,15 +1,9 @@
-import { auth } from "@clerk/nextjs/server";
-
 import { PageContainer } from "@/components/layout/page-container";
 import { isClerkConfigured } from "@/lib/clerk-config";
 import { SavedDesignsList } from "@/features/saved-designs/components/saved-designs-list";
 
 export default async function SavedDesignsPage() {
   const clerkConfigured = isClerkConfigured();
-
-  if (clerkConfigured) {
-    await auth.protect();
-  }
 
   return (
     <PageContainer className="py-12 sm:py-16 lg:py-20">

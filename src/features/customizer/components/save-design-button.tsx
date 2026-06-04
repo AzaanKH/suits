@@ -105,7 +105,7 @@ function ClerkSaveDesignButton({
     const submittedConfiguration = configuration;
 
     try {
-      await saveDesign({
+      const savedDesignId = await saveDesign({
         name: values.name,
         configuration: {
           ...configuration,
@@ -118,7 +118,12 @@ function ClerkSaveDesignButton({
         markClean();
       }
       setOpen(false);
-      toast.success("Design saved to your account.");
+      toast.success("Design saved to your account.", {
+        action: {
+          label: "View design",
+          onClick: () => router.push(`/account/designs/${savedDesignId}`),
+        },
+      });
     } catch {
       toast.error("Unable to save this design.");
     }

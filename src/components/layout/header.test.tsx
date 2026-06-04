@@ -65,6 +65,10 @@ describe("Header auth states", () => {
     expect(screen.getAllByRole("link", { name: /account/i })).not.toHaveLength(
       0,
     );
+    expect(screen.getByRole("link", { name: "Designs" })).toHaveAttribute(
+      "href",
+      "/account/designs",
+    );
     expect(
       screen.getByRole("button", { name: "User menu" }),
     ).toBeInTheDocument();
@@ -82,5 +86,8 @@ describe("Header auth states", () => {
     expect(
       mobileNav.queryByRole("link", { name: /create account/i }),
     ).not.toBeInTheDocument();
+    expect(
+      mobileNav.getByRole("link", { name: /saved designs/i }),
+    ).toHaveAttribute("href", "/account/designs");
   });
 });

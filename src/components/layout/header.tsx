@@ -79,6 +79,14 @@ export function Header({ checkoutEnabled }: { checkoutEnabled: boolean }) {
             ))}
             <Link
               className="border-border mt-4 border-t pt-5 text-sm font-bold tracking-[0.12em] uppercase"
+              href="/account/designs"
+              onClick={() => setMenuOpen(false)}
+              prefetch={false}
+            >
+              Saved designs
+            </Link>
+            <Link
+              className="text-sm font-bold tracking-[0.12em] uppercase"
               href="/account"
               onClick={() => setMenuOpen(false)}
               prefetch={false}
@@ -138,6 +146,13 @@ function AuthHeaderControls() {
         </Link>
       </Show>
       <Show when="signed-in">
+        <Link
+          href="/account/designs"
+          className="text-ink hidden min-h-10 items-center px-2 text-sm font-bold tracking-[0.08em] uppercase sm:inline-flex"
+          prefetch={false}
+        >
+          Designs
+        </Link>
         <Link
           href="/account"
           className="text-ink hidden min-h-10 items-center px-2 text-sm font-bold tracking-[0.08em] uppercase sm:inline-flex"
