@@ -21,6 +21,9 @@ const configuration = v.object({
 
 const saveName = v.string();
 
+// TODO: Keep singleSelectionGroupCodes, multipleSelectionGroupCodes, and
+// knownGroupCodes in sync with customizationGroups; derive them from the DB to
+// avoid missed validation coverage when new groups are added.
 const singleSelectionGroupCodes = new Set([
   "jacket-style",
   "lapel",
@@ -159,7 +162,7 @@ export const duplicate = mutation({
       productId: validated.product._id,
       productSlug: validated.product.slug,
       productName: validated.product.name,
-      name: `${source.name} copy`,
+      name: normalizeName(`${source.name} copy`),
       priceCents: validated.priceCents,
       previewImageReference: validated.previewImageReference,
       configuration: validated.configuration,

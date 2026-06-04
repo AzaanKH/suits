@@ -64,6 +64,8 @@ export function SavedDesignDetail({
   const duplicateDesign = useMutation(api.savedDesigns.duplicate);
   const deleteDesign = useMutation(api.savedDesigns.remove);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const form = useForm<RenameFormValues>({
     resolver: zodResolver(renameSchema),
     defaultValues: {
@@ -114,22 +116,38 @@ export function SavedDesignDetail({
   }
 
   async function handleDuplicate() {
+    if (isDuplicating) {
+      return;
+    }
+
+    setIsDuplicating(true);
+
     try {
       const newDesignId = await duplicateDesign({ designId: convexDesignId });
       toast.success("Design duplicated.");
       router.push(`/account/designs/${newDesignId}`);
     } catch {
       toast.error("Unable to duplicate this design.");
+    } finally {
+      setIsDuplicating(false);
     }
   }
 
   async function handleDelete() {
+    if (isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+
     try {
       await deleteDesign({ designId: convexDesignId });
       toast.success("Design deleted.");
       router.push("/account/designs");
     } catch {
       toast.error("Unable to delete this design.");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -206,17 +224,23 @@ export function SavedDesignDetail({
                 <PencilRuler aria-hidden="true" />
                 Resume customization
               </Link>
-              <Button variant="outline" size="lg" onClick={handleDuplicate}>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleDuplicate}
+                disabled={isDuplicating}
+              >
                 <Copy aria-hidden="true" />
-                Duplicate
+                {isDuplicating ? "Duplicating" : "Duplicate"}
               </Button>
               <Button
                 variant="destructive"
                 size="lg"
                 onClick={() => setDeleteOpen(true)}
+                disabled={isDeleting}
               >
                 <Trash2 aria-hidden="true" />
-                Delete
+                {isDeleting ? "Deleting" : "Delete"}
               </Button>
             </CardFooter>
           </Card>
@@ -290,11 +314,19 @@ export function SavedDesignDetail({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={isDeleting}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete design
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting" : "Delete design"}
             </Button>
           </DialogFooter>
         </DialogContent>
