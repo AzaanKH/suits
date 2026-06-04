@@ -3,7 +3,11 @@ import type { NextFetchEvent } from "next/server";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-const isProtectedRoute = createRouteMatcher(["/account(.*)", "/api/checkout"]);
+const isProtectedRoute = createRouteMatcher([
+  "/account(.*)",
+  "/checkout(.*)",
+  "/api/checkout",
+]);
 const clerkConfigured = Boolean(
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY,
 );

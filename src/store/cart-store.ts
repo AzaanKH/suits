@@ -28,6 +28,9 @@ export type CartLineItem = {
   personalization: CustomizerPersonalization;
   unitPriceCents: number;
   quantity: number;
+  measurementProfileId?: string;
+  measurementProfileName?: string;
+  measurementAppointmentRequired?: boolean;
   createdAt: number;
   updatedAt: number;
 };
@@ -37,6 +40,14 @@ type CartState = {
   addItem: (item: CartLineItem) => void;
   updateItem: (lineId: string, item: CartLineItem) => void;
   updateQuantity: (lineId: string, quantity: number) => void;
+  setMeasurementChoice: (
+    lineId: string,
+    choice: {
+      measurementProfileId?: string;
+      measurementProfileName?: string;
+      measurementAppointmentRequired?: boolean;
+    },
+  ) => void;
   removeItem: (lineId: string) => void;
   clearCart: () => void;
 };
@@ -67,6 +78,25 @@ export const useCartStore = create<CartState>()(
                 }
               : item,
           ),
+        })),
+      setMeasurementChoice: (lineId, choice) =>
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.lineId !== lineId) {
+              return item;
+            }
+
+            const remainingItem = { ...item };
+            delete remainingItem.measurementProfileId;
+            delete remainingItem.measurementProfileName;
+            delete remainingItem.measurementAppointmentRequired;
+
+            return {
+              ...remainingItem,
+              ...choice,
+              updatedAt: Date.now(),
+            };
+          }),
         })),
       removeItem: (lineId) =>
         set((state) => ({
@@ -110,6 +140,9 @@ export function isCartLineItem(value: unknown): value is CartLineItem {
     isPersonalization(value.personalization) &&
     Number.isInteger(value.unitPriceCents) &&
     Number.isInteger(value.quantity) &&
+    optionalString(value.measurementProfileId) &&
+    optionalString(value.measurementProfileName) &&
+    optionalBoolean(value.measurementAppointmentRequired) &&
     Number.isInteger(value.createdAt) &&
     Number.isInteger(value.updatedAt)
   );
@@ -190,4 +223,12 @@ function isPersonalization(value: unknown): value is CustomizerPersonalization {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function optionalString(value: unknown) {
+  return value === undefined || typeof value === "string";
+}
+
+function optionalBoolean(value: unknown) {
+  return value === undefined || typeof value === "boolean";
 }

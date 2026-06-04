@@ -11,11 +11,13 @@ import {
   type ValidatedConfiguration,
   validateConfigurationSnapshot,
 } from "./cartValidation";
+import { requireOwnedProfile } from "./measurementProfiles";
 
 const quantityValidator = v.number();
 const guestCartItemValidator = v.object({
   configuration: configurationValidator,
   quantity: quantityValidator,
+  measurementAppointmentRequired: v.optional(v.boolean()),
 });
 
 type CartLineItem = {
@@ -32,6 +34,9 @@ type CartLineItem = {
   personalization: CartConfiguration["personalization"];
   unitPriceCents: number;
   quantity: number;
+  measurementProfileId?: Id<"measurementProfiles">;
+  measurementProfileName?: string;
+  measurementAppointmentRequired?: boolean;
   createdAt: number;
   updatedAt: number;
 };
@@ -60,8 +65,10 @@ export const mine = query({
 });
 
 export const forCheckout = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    requireMeasurements: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { requireMeasurements }) => {
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const cart = await getCart(ctx, ownerClerkUserId);
 
@@ -75,13 +82,24 @@ export const forCheckout = query({
           ctx,
           lineItem.configuration,
         );
+        const measurementChoice = await validateMeasurementChoice(
+          ctx,
+          lineItem,
+          ownerClerkUserId,
+          Boolean(requireMeasurements),
+        );
 
-        return await buildLineItem(
+        const canonicalLine = await buildLineItem(
           validated,
           normalizeQuantity(lineItem.quantity),
           lineItem.createdAt,
           lineItem.updatedAt,
         );
+
+        return {
+          ...canonicalLine,
+          ...measurementChoice,
+        };
       }),
     );
 
@@ -134,13 +152,29 @@ export const updateLine = mutation({
       existingLine.createdAt,
       now,
     );
+    const nextLineWithMeasurement = {
+      ...nextLine,
+      ...(existingLine.measurementProfileId
+        ? {
+            measurementProfileId: existingLine.measurementProfileId,
+            measurementProfileName: existingLine.measurementProfileName,
+          }
+        : {}),
+      ...(existingLine.measurementAppointmentRequired
+        ? { measurementAppointmentRequired: true }
+        : {}),
+    };
     const remainingLines = cart.lineItems.filter(
       (item) => item.lineId !== lineId,
     );
 
-    await patchCartLines(ctx, cart, mergeLineItems(remainingLines, nextLine));
+    await patchCartLines(
+      ctx,
+      cart,
+      mergeLineItems(remainingLines, nextLineWithMeasurement),
+    );
 
-    return nextLine;
+    return nextLineWithMeasurement;
   },
 });
 
@@ -164,6 +198,69 @@ export const updateQuantity = mutation({
       return {
         ...item,
         quantity: normalizedQuantity,
+        updatedAt: now,
+      };
+    });
+
+    if (!found) {
+      throw new ConvexError("Cart item not found.");
+    }
+
+    await patchCartLines(ctx, cart, lineItems);
+  },
+});
+
+export const setLineMeasurementChoice = mutation({
+  args: {
+    lineId: v.string(),
+    measurementProfileId: v.optional(v.id("measurementProfiles")),
+    measurementAppointmentRequired: v.optional(v.boolean()),
+  },
+  handler: async (
+    ctx,
+    { lineId, measurementProfileId, measurementAppointmentRequired },
+  ) => {
+    const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
+    const cart = await requireCart(ctx, ownerClerkUserId);
+    const now = Date.now();
+    let found = false;
+    let profileName: string | undefined;
+
+    if (measurementProfileId && measurementAppointmentRequired) {
+      throw new ConvexError(
+        "Choose a measurement profile or request an appointment, not both.",
+      );
+    }
+
+    if (measurementProfileId) {
+      const profile = await requireOwnedProfile(
+        ctx,
+        measurementProfileId,
+        ownerClerkUserId,
+      );
+      profileName = profile.name;
+    }
+
+    const lineItems = cart.lineItems.map((item) => {
+      if (item.lineId !== lineId) {
+        return item;
+      }
+
+      found = true;
+
+      const remainingItem = { ...item };
+      delete remainingItem.measurementProfileId;
+      delete remainingItem.measurementProfileName;
+      delete remainingItem.measurementAppointmentRequired;
+
+      return {
+        ...remainingItem,
+        ...(measurementProfileId
+          ? { measurementProfileId, measurementProfileName: profileName }
+          : {}),
+        ...(measurementAppointmentRequired
+          ? { measurementAppointmentRequired: true }
+          : {}),
         updatedAt: now,
       };
     });
@@ -201,13 +298,16 @@ export const mergeGuestCart = mutation({
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const now = Date.now();
     const validatedLines = await Promise.all(
-      items.map(async (item) =>
-        buildLineItem(
-          await validateConfigurationSnapshot(ctx, item.configuration),
-          normalizeQuantity(item.quantity),
-          now,
-        ),
-      ),
+      items.map(async (item) => ({
+          ...(await buildLineItem(
+            await validateConfigurationSnapshot(ctx, item.configuration),
+            normalizeQuantity(item.quantity),
+            now,
+          )),
+          ...(item.measurementAppointmentRequired
+            ? { measurementAppointmentRequired: true }
+            : {}),
+        })),
     );
     const cart = await getOrCreateCart(ctx, ownerClerkUserId, now);
     const lineItems = validatedLines.reduce(
@@ -313,6 +413,44 @@ async function buildLineItem(
     createdAt,
     updatedAt,
   };
+}
+
+async function validateMeasurementChoice(
+  ctx: QueryCtx,
+  lineItem: CartLineItem,
+  ownerClerkUserId: string,
+  required: boolean,
+) {
+  if (lineItem.measurementAppointmentRequired) {
+    return {
+      measurementAppointmentRequired: true,
+    };
+  }
+
+  if (lineItem.measurementProfileId) {
+    const profile = await ctx.db.get(lineItem.measurementProfileId);
+
+    if (profile?.ownerClerkUserId === ownerClerkUserId) {
+      return {
+        measurementProfileId: profile._id,
+        measurementProfileName: profile.name,
+      };
+    }
+
+    if (required) {
+      throw new ConvexError(
+        `${lineItem.productName} needs a valid measurement profile.`,
+      );
+    }
+  }
+
+  if (required) {
+    throw new ConvexError(
+      `${lineItem.productName} needs a measurement profile or appointment request.`,
+    );
+  }
+
+  return {};
 }
 
 function mergeLineItems(

@@ -39,6 +39,9 @@ const cartLineItem = v.object({
   personalization,
   unitPriceCents: v.number(),
   quantity: v.number(),
+  measurementProfileId: v.optional(v.id("measurementProfiles")),
+  measurementProfileName: v.optional(v.string()),
+  measurementAppointmentRequired: v.optional(v.boolean()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -157,6 +160,49 @@ export default defineSchema({
       "productId",
       "updatedAt",
     ]),
+
+  measurementProfiles: defineTable({
+    ownerClerkUserId: v.string(),
+    name: v.string(),
+    units: v.union(v.literal("in"), v.literal("cm")),
+    bodyMeasurementsInches: v.object({
+      chest: v.number(),
+      waist: v.number(),
+      hips: v.number(),
+      shoulderWidth: v.number(),
+      sleeveLength: v.number(),
+      jacketLength: v.number(),
+      trouserWaist: v.number(),
+      inseam: v.number(),
+      outseam: v.number(),
+    }),
+    fitPreferences: v.object({
+      jacketFit: v.union(
+        v.literal("slim"),
+        v.literal("classic"),
+        v.literal("relaxed"),
+      ),
+      trouserFit: v.union(
+        v.literal("tapered"),
+        v.literal("straight"),
+        v.literal("relaxed"),
+      ),
+      shoulderPreference: v.union(
+        v.literal("natural"),
+        v.literal("structured"),
+        v.literal("soft"),
+      ),
+      trouserBreak: v.union(
+        v.literal("none"),
+        v.literal("slight"),
+        v.literal("medium"),
+        v.literal("full"),
+      ),
+    }),
+    notes: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_owner_updated_at", ["ownerClerkUserId", "updatedAt"]),
 
   carts: defineTable({
     ownerClerkUserId: v.string(),

@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as cartValidation from "../cartValidation.js";
 import type * as carts from "../carts.js";
 import type * as categories from "../categories.js";
+import type * as measurementProfiles from "../measurementProfiles.js";
 import type * as products from "../products.js";
 import type * as savedDesigns from "../savedDesigns.js";
 import type * as seed from "../seed.js";
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   cartValidation: typeof cartValidation;
   carts: typeof carts;
   categories: typeof categories;
+  measurementProfiles: typeof measurementProfiles;
   products: typeof products;
   savedDesigns: typeof savedDesigns;
   seed: typeof seed;

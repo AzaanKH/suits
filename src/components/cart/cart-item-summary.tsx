@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Minus, Pencil, Plus, Ruler, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { PriceDisplay } from "@/components/storefront/price-display";
 import type { CartLineItem } from "@/store/cart-store";
 import { formatPriceModifier } from "@/lib/product-format";
@@ -104,6 +104,19 @@ export function CartItemSummary({
           </p>
         ) : null}
 
+        {item.measurementProfileName || item.measurementAppointmentRequired ? (
+          <p className="text-muted-foreground mt-4 inline-flex items-center gap-2 text-sm">
+            {item.measurementAppointmentRequired ? (
+              <CalendarClock aria-hidden="true" className="size-4" />
+            ) : (
+              <Ruler aria-hidden="true" className="size-4" />
+            )}
+            {item.measurementAppointmentRequired
+              ? "Measurement appointment required"
+              : `Measurements: ${item.measurementProfileName}`}
+          </p>
+        ) : null}
+
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <div className="border-border inline-flex h-9 items-center border">
             <Button
@@ -131,10 +144,13 @@ export function CartItemSummary({
           </div>
 
           <div className="flex items-center gap-1">
-            <Button render={<Link href={editHref} />} variant="ghost">
+            <Link
+              className={buttonVariants({ variant: "ghost" })}
+              href={editHref}
+            >
               <Pencil aria-hidden="true" />
               Edit
-            </Button>
+            </Link>
             <Button
               type="button"
               variant="ghost"
