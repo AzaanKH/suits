@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 
+import { CartSyncProvider } from "@/components/cart/cart-sync-provider";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Toaster } from "@/components/ui/sonner";
@@ -34,9 +35,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const checkoutEnabled = Boolean(
+    process.env.STRIPE_SECRET_KEY &&
+      process.env.NEXT_PUBLIC_APP_URL &&
+      process.env.NEXT_PUBLIC_CONVEX_URL,
+  );
   const content = (
     <ConvexClientProvider>
-      <Header />
+      <Header checkoutEnabled={checkoutEnabled} />
+      <CartSyncProvider />
       <main className="flex-1">{children}</main>
       <Footer />
       <Toaster />

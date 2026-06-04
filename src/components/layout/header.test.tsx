@@ -13,9 +13,12 @@ async function renderHeader(authState: AuthState) {
       when === authState ? <>{children}</> : null,
     UserButton: () => <button type="button">User menu</button>,
   }));
+  vi.doMock("@/components/cart/cart-sheet", () => ({
+    CartSheet: () => <button type="button">Cart (0)</button>,
+  }));
 
   const { Header } = await import("./header");
-  render(<Header />);
+  render(<Header checkoutEnabled={true} />);
 }
 
 describe("Header auth states", () => {

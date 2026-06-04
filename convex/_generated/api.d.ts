@@ -9,6 +9,8 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as cartValidation from "../cartValidation.js";
+import type * as carts from "../carts.js";
 import type * as categories from "../categories.js";
 import type * as products from "../products.js";
 import type * as savedDesigns from "../savedDesigns.js";
@@ -23,6 +25,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  cartValidation: typeof cartValidation;
+  carts: typeof carts;
   categories: typeof categories;
   products: typeof products;
   savedDesigns: typeof savedDesigns;

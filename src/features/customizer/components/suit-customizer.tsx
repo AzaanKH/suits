@@ -30,6 +30,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  CartActionButton,
+  type CartEditContext,
+} from "@/components/cart/cart-action-button";
+import {
   buildCustomizerCatalog,
   getUnavailableReason,
 } from "@/features/customizer/compatibility";
@@ -53,6 +57,7 @@ import { PersonalizationForm } from "./personalization-form";
 import { SaveDesignButton } from "./save-design-button";
 import { StepNavigation } from "./step-navigation";
 import { formatCurrency, formatPriceModifier } from "@/lib/product-format";
+import { isCartLineItem, useCartStore } from "@/store/cart-store";
 import { useCustomizerStore } from "@/store/customizer-store";
 
 type SuitCustomizerProps = {
@@ -62,6 +67,11 @@ type SuitCustomizerProps = {
 export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
   const searchParams = useSearchParams();
   const designId = searchParams.get("designId");
+  const cartLineId = searchParams.get("cartLineId");
+  const cartSource =
+    searchParams.get("cartSource") === "authenticated"
+      ? "authenticated"
+      : "guest";
   const { isAuthenticated } = useConvexAuth();
   const customizerData = useQuery(api.products.customizer, { productSlug });
   const savedDesign = useQuery(
@@ -70,8 +80,21 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
       ? { designId: designId as Id<"savedDesigns"> }
       : "skip",
   );
+  const authenticatedCart = useQuery(
+    api.carts.mine,
+    cartLineId && cartSource === "authenticated" && isAuthenticated
+      ? {}
+      : "skip",
+  );
+  const localCartLine = useCartStore((state) =>
+    cartLineId && cartSource === "guest"
+      ? (state.items.find((item) => item.lineId === cartLineId) ?? null)
+      : null,
+  );
   const loadedDesignId = useRef<string | null>(null);
   const rejectedDesignId = useRef<string | null>(null);
+  const loadedCartLineId = useRef<string | null>(null);
+  const rejectedCartLineId = useRef<string | null>(null);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const configuration = useCustomizerStore((state) => state.configuration);
   const currentStepCode = useCustomizerStore((state) => state.currentStepCode);
@@ -132,6 +155,49 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
   }, [catalog, designId, loadConfiguration, savedDesign]);
 
   useEffect(() => {
+    if (!catalog || !cartLineId || designId) {
+      return;
+    }
+
+    if (cartSource === "authenticated" && authenticatedCart === undefined) {
+      return;
+    }
+
+    const cartLine =
+      cartSource === "authenticated"
+        ? getAuthenticatedCartLine(authenticatedCart, cartLineId)
+        : localCartLine;
+
+    if (!cartLine || cartLine.productSlug !== catalog.product.slug) {
+      if (rejectedCartLineId.current !== cartLineId) {
+        toast.error("Cart item could not be loaded for this suit.");
+        rejectedCartLineId.current = cartLineId;
+      }
+      return;
+    }
+
+    if (loadedCartLineId.current === cartLineId) {
+      return;
+    }
+
+    loadConfiguration(catalog, {
+      ...cartLine.configuration,
+      selectedOptionCodes:
+        cartLine.configuration
+          .selectedOptionCodes as CustomizerConfiguration["selectedOptionCodes"],
+    });
+    loadedCartLineId.current = cartLineId;
+  }, [
+    authenticatedCart,
+    cartLineId,
+    cartSource,
+    catalog,
+    designId,
+    loadConfiguration,
+    localCartLine,
+  ]);
+
+  useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [currentStepCode]);
 
@@ -176,6 +242,18 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === CUSTOMIZER_STEPS.length - 1;
   const price = calculateConfigurationPrice(catalog, configuration);
+  const activeCartLine =
+    cartSource === "authenticated"
+      ? getAuthenticatedCartLine(authenticatedCart, cartLineId)
+      : localCartLine;
+  const cartEditContext: CartEditContext | null =
+    cartLineId && activeCartLine?.productSlug === catalog.product.slug
+      ? {
+          lineId: cartLineId,
+          source: cartSource,
+          quantity: activeCartLine.quantity,
+        }
+      : null;
 
   return (
     <>
@@ -240,6 +318,7 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
               catalog={catalog}
               configuration={configuration}
               currentStepCode={currentStep.code}
+              cartEditContext={cartEditContext}
             />
 
             <div className="bg-background/95 sticky bottom-0 z-10 mt-8 border-t py-4 backdrop-blur">
@@ -301,23 +380,55 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
   );
 }
 
+function getAuthenticatedCartLine(
+  cart:
+    | {
+        lineItems: unknown[];
+      }
+    | null
+    | undefined,
+  cartLineId: string | null,
+) {
+  if (!cartLineId) {
+    return null;
+  }
+
+  const line = cart?.lineItems.find((item) => {
+    if (!isCartLineItem(item)) {
+      return false;
+    }
+
+    return item.lineId === cartLineId;
+  });
+
+  return isCartLineItem(line) ? line : null;
+}
+
 type StepContentProps = {
   catalog: CustomizerCatalog;
   configuration: CustomizerConfiguration;
   currentStepCode: (typeof CUSTOMIZER_STEPS)[number]["code"];
+  cartEditContext: CartEditContext | null;
 };
 
 function StepContent({
   catalog,
   configuration,
   currentStepCode,
+  cartEditContext,
 }: StepContentProps) {
   if (currentStepCode === "fabric") {
     return <FabricStep catalog={catalog} configuration={configuration} />;
   }
 
   if (currentStepCode === "review") {
-    return <ReviewStep catalog={catalog} configuration={configuration} />;
+    return (
+      <ReviewStep
+        catalog={catalog}
+        configuration={configuration}
+        cartEditContext={cartEditContext}
+      />
+    );
   }
 
   const group = catalog.groupsByCode[currentStepCode as CustomizerGroupCode];
@@ -439,9 +550,11 @@ function OptionGroupStep({
 function ReviewStep({
   catalog,
   configuration,
+  cartEditContext,
 }: {
   catalog: CustomizerCatalog;
   configuration: CustomizerConfiguration;
+  cartEditContext: CartEditContext | null;
 }) {
   const updatePersonalization = useCustomizerStore(
     (state) => state.updatePersonalization,
@@ -504,8 +617,12 @@ function ReviewStep({
         </CardFooter>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex flex-col justify-end gap-3 sm:flex-row">
         <SaveDesignButton configuration={configuration} summary={summary} />
+        <CartActionButton
+          configuration={configuration}
+          editContext={cartEditContext}
+        />
       </div>
 
       <Separator />

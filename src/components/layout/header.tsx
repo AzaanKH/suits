@@ -2,11 +2,11 @@
 
 import { Show, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { Menu, ShoppingBag, UserRound, X } from "lucide-react";
+import { Menu, UserRound, X } from "lucide-react";
 import { useState } from "react";
 
+import { CartSheet } from "@/components/cart/cart-sheet";
 import { PageContainer } from "@/components/layout/page-container";
-import { useCartStore } from "@/store/cart-store";
 
 const navigation = [
   { label: "Shop", href: "/shop" },
@@ -15,11 +15,8 @@ const navigation = [
 ];
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
-export function Header() {
+export function Header({ checkoutEnabled }: { checkoutEnabled: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const itemCount = useCartStore((state) =>
-    state.items.reduce((total, item) => total + item.quantity, 0),
-  );
 
   return (
     <header className="border-border/80 bg-background/95 sticky top-0 z-50 border-b backdrop-blur">
@@ -59,16 +56,7 @@ export function Header() {
 
         <div className="flex items-center gap-1 sm:gap-3">
           <AuthHeaderControls />
-          <Link
-            href="/cart"
-            data-testid="cart-link"
-            className="text-ink inline-flex min-h-10 items-center gap-2 px-2 text-sm font-bold tracking-[0.08em] uppercase"
-            aria-label={`Cart with ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
-          >
-            <ShoppingBag aria-hidden="true" className="size-[1.1rem]" />
-            <span className="hidden sm:inline">Cart</span>
-            <span aria-hidden="true">({itemCount})</span>
-          </Link>
+          <CartSheet checkoutEnabled={checkoutEnabled} />
         </div>
       </PageContainer>
 

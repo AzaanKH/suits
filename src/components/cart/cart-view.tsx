@@ -1,33 +1,33 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { X } from "lucide-react";
 
+import { CartItemSummary } from "@/components/cart/cart-item-summary";
 import { CheckoutButton } from "@/components/cart/checkout-button";
 import { EmptyState } from "@/components/storefront/empty-state";
 import { PriceDisplay } from "@/components/storefront/price-display";
-import { Button } from "@/components/ui/button";
-import { useCartStore } from "@/store/cart-store";
-
-const fallbackCartImage = {
-  src: "/images/hero-tailoring.png",
-  alt: "Tailored suit placeholder",
-};
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCartController } from "./use-cart-controller";
 
 export function CartView({ checkoutEnabled }: { checkoutEnabled: boolean }) {
-  const items = useCartStore((state) => state.items);
-  const removeItem = useCartStore((state) => state.removeItem);
-  const subtotal = items.reduce(
-    (total, item) => total + item.basePriceCents * item.quantity,
-    0,
-  );
+  const {
+    items,
+    source,
+    subtotalCents,
+    loading,
+    updateQuantity,
+    removeItem,
+  } = useCartController();
+
+  if (loading) {
+    return <CartSkeleton />;
+  }
 
   if (items.length === 0) {
     return (
       <EmptyState
         title="Your cart is empty."
-        description="A considered wardrobe starts with one exceptional piece. Explore the collection to begin."
+        description="A considered wardrobe starts with one complete configuration. Explore the collection to begin."
         headingTag="h1"
         action={{ label: "Explore the collection", href: "/shop" }}
       />
@@ -35,71 +35,56 @@ export function CartView({ checkoutEnabled }: { checkoutEnabled: boolean }) {
   }
 
   return (
-    <div className="grid gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
+    <div className="grid gap-10 lg:grid-cols-[1fr_22rem] lg:gap-16">
       <div>
-        <h1 className="text-ink font-serif text-6xl leading-[0.95] tracking-[-0.04em]">
+        <h1 className="text-ink font-serif text-5xl leading-none tracking-[-0.03em] sm:text-6xl">
           Shopping cart
         </h1>
-        <div className="divide-border border-border mt-9 divide-y border-y">
-          {items.map((item) => {
-            const image = item.images[0] ?? fallbackCartImage;
-
-            return (
-              <article className="flex gap-5 py-5 sm:gap-7" key={item.id}>
-                <div className="bg-stone relative aspect-[2/3] w-24 shrink-0 overflow-hidden sm:w-32">
-                  <Image
-                    fill
-                    sizes="128px"
-                    src={image.src}
-                    alt={image.alt}
-                    className="object-cover"
-                  />
-                </div>
-                <div className="flex flex-1 justify-between gap-3">
-                  <div>
-                    <h2 className="text-ink font-serif text-3xl leading-none">
-                      {item.name}
-                    </h2>
-                    <p className="text-muted-foreground mt-2 text-sm">
-                      {item.color} / Quantity {item.quantity}
-                    </p>
-                    <PriceDisplay
-                      priceCents={item.basePriceCents * item.quantity}
-                      className="mt-5"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    aria-label={`Remove ${item.name} from cart`}
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeItem(item.id)}
-                  >
-                    <X aria-hidden="true" className="size-4" />
-                  </Button>
-                </div>
-              </article>
-            );
-          })}
+        <div className="divide-border border-border mt-8 divide-y border-y">
+          {items.map((item) => (
+            <CartItemSummary
+              key={item.lineId}
+              item={item}
+              source={source}
+              onQuantityChange={updateQuantity}
+              onRemove={removeItem}
+            />
+          ))}
         </div>
       </div>
       <aside className="bg-stone h-fit p-6 sm:p-7">
         <h2 className="text-ink font-serif text-3xl">Order summary</h2>
         <div className="border-border mt-7 flex justify-between border-t pt-5 text-sm">
           <span>Subtotal</span>
-          <PriceDisplay priceCents={subtotal} />
+          <PriceDisplay priceCents={subtotalCents} />
         </div>
         <p className="text-muted-foreground mt-3 text-sm leading-6">
-          Taxes and delivery are calculated at checkout. Each order is confirmed
-          by our tailoring team before production.
+          Estimated total excludes taxes and delivery, which are calculated
+          during Stripe Checkout. Each order is confirmed by our tailoring team
+          before production.
         </p>
-        <CheckoutButton checkoutEnabled={checkoutEnabled} items={items} />
+        <CheckoutButton checkoutEnabled={checkoutEnabled} />
         <div className="mt-5 flex justify-center">
           <Link className="text-link" href="/shop">
             Continue shopping
           </Link>
         </div>
       </aside>
+    </div>
+  );
+}
+
+function CartSkeleton() {
+  return (
+    <div className="grid gap-10 lg:grid-cols-[1fr_22rem] lg:gap-16">
+      <div>
+        <Skeleton className="h-16 w-72 rounded-none" />
+        <div className="mt-8 space-y-5">
+          <Skeleton className="h-48 rounded-none" />
+          <Skeleton className="h-48 rounded-none" />
+        </div>
+      </div>
+      <Skeleton className="h-72 rounded-none" />
     </div>
   );
 }
