@@ -54,6 +54,7 @@ export type CustomizerPersonalization = {
 
 export type CustomizerConfiguration = {
   version: 1;
+  productId: string;
   productSlug: string;
   fabricCode: string;
   selectedOptionCodes: SelectedOptionCodes;

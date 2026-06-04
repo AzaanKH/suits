@@ -54,6 +54,9 @@ export default async function AccountPage() {
             <AccountDetail label="Signed in as" value={displayName} />
           </dl>
           <div className="mt-7 flex flex-wrap gap-3">
+            <Link className="button-primary" href="/account/designs">
+              Saved designs
+            </Link>
             <Link className="button-primary" href="/shop">
               Browse suits
             </Link>
