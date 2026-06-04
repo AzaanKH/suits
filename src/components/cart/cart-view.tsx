@@ -15,7 +15,7 @@ const fallbackCartImage = {
   alt: "Tailored suit placeholder",
 };
 
-export function CartView() {
+export function CartView({ checkoutEnabled }: { checkoutEnabled: boolean }) {
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
   const subtotal = items.reduce(
@@ -93,7 +93,7 @@ export function CartView() {
           Taxes and delivery are calculated at checkout. Each order is confirmed
           by our tailoring team before production.
         </p>
-        <CheckoutButton items={items} />
+        <CheckoutButton checkoutEnabled={checkoutEnabled} items={items} />
         <div className="mt-5 flex justify-center">
           <Link className="text-link" href="/shop">
             Continue shopping

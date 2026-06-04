@@ -12,12 +12,18 @@ import type { CartItem } from "@/store/cart-store";
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
-export function CheckoutButton({ items }: { items: CartItem[] }) {
-  if (!clerkConfigured) {
+export function CheckoutButton({
+  checkoutEnabled,
+  items,
+}: {
+  checkoutEnabled: boolean;
+  items: CartItem[];
+}) {
+  if (!clerkConfigured || !checkoutEnabled) {
     return (
       <Button className="mt-6 w-full" type="button" disabled>
         <CreditCard aria-hidden="true" />
-        Checkout setup required
+        {checkoutEnabled ? "Sign in to checkout" : "Checkout setup required"}
       </Button>
     );
   }

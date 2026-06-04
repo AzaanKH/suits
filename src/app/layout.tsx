@@ -5,6 +5,7 @@ import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Toaster } from "@/components/ui/sonner";
+import { isClerkConfigured } from "@/lib/clerk-config";
 
 import { ConvexClientProvider } from "./convex-client-provider";
 import "./globals.css";
@@ -45,7 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable}`}>
       <body className="flex min-h-screen flex-col">
-        {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
+        {isClerkConfigured() ? (
           <ClerkProvider
             signInUrl="/sign-in"
             signUpUrl="/sign-up"

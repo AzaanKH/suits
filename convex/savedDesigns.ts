@@ -37,6 +37,8 @@ export const save = mutation({
   handler: async (ctx, args) => {
     const clerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const now = Date.now();
+    const productSlug = args.configuration.productSlug;
+    const personalization = args.configuration.personalization;
 
     const existing = await ctx.db
       .query("savedDesigns")
@@ -49,11 +51,12 @@ export const save = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
+        productSlug,
         productName: args.productName,
         totalPriceCents: args.totalPriceCents,
         configuration: args.configuration,
         selections: args.selections,
-        personalization: args.personalization,
+        personalization,
         updatedAt: now,
       });
 
@@ -62,13 +65,13 @@ export const save = mutation({
 
     return await ctx.db.insert("savedDesigns", {
       clerkUserId,
-      productSlug: args.productSlug,
+      productSlug,
       productName: args.productName,
       totalPriceCents: args.totalPriceCents,
       selectionSignature: args.selectionSignature,
       configuration: args.configuration,
       selections: args.selections,
-      personalization: args.personalization,
+      personalization,
       createdAt: now,
       updatedAt: now,
     });

@@ -97,7 +97,9 @@ export function Header() {
             >
               My account
             </Link>
-            <SignedOutHeaderLink onClick={() => setMenuOpen(false)} />
+            <Show when="signed-out">
+              <SignedOutHeaderLink onClick={() => setMenuOpen(false)} />
+            </Show>
           </div>
         </nav>
       ) : null}

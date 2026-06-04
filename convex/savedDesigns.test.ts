@@ -52,12 +52,36 @@ describe("saved designs", () => {
       subject: "user_test123",
       issuer: "https://example.clerk.accounts.dev",
     });
+    const modifiedDesign = {
+      ...design,
+      productSlug: "ignored-top-level-product-slug",
+      productName: "The Travel Suit",
+      totalPriceCents: 149500,
+      configuration: {
+        ...design.configuration,
+        productSlug: "travel-slate-grey-suit",
+        personalization: {
+          monogramText: "AK",
+          notes: "Updated tailoring notes.",
+        },
+      },
+      personalization: {
+        monogramText: "ZZ",
+        notes: "Ignored top-level notes.",
+      },
+    };
 
     await t.mutation(api.savedDesigns.save, design);
+    await t.mutation(api.savedDesigns.save, modifiedDesign);
     const savedDesigns = await t.query(api.savedDesigns.mine);
 
     expect(savedDesigns).toHaveLength(1);
     expect(savedDesigns[0].clerkUserId).toBe("user_test123");
-    expect(savedDesigns[0].productSlug).toBe("house-navy-hopsack-suit");
+    expect(savedDesigns[0].productSlug).toBe("travel-slate-grey-suit");
+    expect(savedDesigns[0].productName).toBe("The Travel Suit");
+    expect(savedDesigns[0].personalization).toEqual({
+      monogramText: "AK",
+      notes: "Updated tailoring notes.",
+    });
   });
 });

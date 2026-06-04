@@ -73,6 +73,7 @@ function ClerkSaveDesignButton({
     setSaving(true);
 
     try {
+      const submittedConfiguration = configuration;
       await saveDesign({
         productSlug: summary.productSlug,
         productName: summary.productName,
@@ -82,7 +83,9 @@ function ClerkSaveDesignButton({
         selections: summary.selections,
         personalization: summary.personalization,
       });
-      markClean();
+      if (useCustomizerStore.getState().configuration === submittedConfiguration) {
+        markClean();
+      }
       toast.success("Design saved to your account.");
     } catch {
       toast.error("Unable to save this design.");

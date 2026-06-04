@@ -2,13 +2,10 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 
 import { PageContainer } from "@/components/layout/page-container";
-
-const clerkConfigured = Boolean(
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY,
-);
+import { isClerkConfigured } from "@/lib/clerk-config";
 
 export default async function AccountPage() {
-  if (!clerkConfigured) {
+  if (!isClerkConfigured()) {
     return (
       <PageContainer className="py-16 sm:py-20 lg:py-24">
         <section className="mx-auto max-w-xl text-center">
@@ -37,10 +34,7 @@ export default async function AccountPage() {
     <PageContainer className="py-16 sm:py-20 lg:py-24">
       <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
         <section>
-          <p className="text-muted-foreground text-xs font-bold tracking-[0.1em] uppercase">
-            Account
-          </p>
-          <h1 className="text-ink mt-3 font-serif text-6xl leading-[0.95] tracking-[-0.04em] sm:text-7xl">
+          <h1 className="text-ink font-serif text-6xl leading-[0.95] tracking-[-0.04em] sm:text-7xl">
             Welcome, {displayName}.
           </h1>
           <p className="text-muted-foreground mt-6 max-w-lg text-sm leading-6">
