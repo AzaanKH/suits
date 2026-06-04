@@ -1,5 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
-
 import { PageContainer } from "@/components/layout/page-container";
 import { SavedDesignDetail } from "@/features/saved-designs/components/saved-design-detail";
 import { isClerkConfigured } from "@/lib/clerk-config";
@@ -14,10 +12,6 @@ export default async function SavedDesignDetailPage({
   params,
 }: SavedDesignDetailPageProps) {
   const clerkConfigured = isClerkConfigured();
-
-  if (clerkConfigured) {
-    await auth.protect();
-  }
 
   const { designId } = await params;
 

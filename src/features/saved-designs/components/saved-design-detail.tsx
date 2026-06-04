@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { ArrowLeft, Copy, PencilRuler, Save, Trash2 } from "lucide-react";
 import Image from "next/image";
@@ -55,10 +55,13 @@ export function SavedDesignDetail({
   designId,
 }: SavedDesignDetailProps) {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useConvexAuth();
   const convexDesignId = designId as Id<"savedDesigns">;
   const design = useQuery(
     api.savedDesigns.get,
-    clerkConfigured ? { designId: convexDesignId } : "skip",
+    clerkConfigured && isAuthenticated
+      ? { designId: convexDesignId }
+      : "skip",
   );
   const renameDesign = useMutation(api.savedDesigns.rename);
   const duplicateDesign = useMutation(api.savedDesigns.duplicate);
@@ -85,6 +88,25 @@ export function SavedDesignDetail({
         title="Account setup required."
         description="Add Clerk keys to .env.local to enable saved designs."
         action={{ label: "Return to shop", href: "/shop" }}
+      />
+    );
+  }
+
+  if (isLoading) {
+    return <Skeleton className="h-[40rem] rounded-lg" />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <EmptyState
+        title="Sign in to view this saved design."
+        description="Saved suit configurations are tied to your account."
+        action={{
+          label: "Sign in",
+          href: `/sign-in?redirect_url=${encodeURIComponent(
+            `/account/designs/${designId}`,
+          )}`,
+        }}
       />
     );
   }

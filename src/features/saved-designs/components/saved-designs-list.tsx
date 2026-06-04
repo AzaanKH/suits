@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Copy, Eye, PencilRuler, Trash2 } from "lucide-react";
 import Image from "next/image";
@@ -34,9 +34,10 @@ type SavedDesignsListProps = {
 };
 
 export function SavedDesignsList({ clerkConfigured }: SavedDesignsListProps) {
+  const { isAuthenticated, isLoading } = useConvexAuth();
   const designs = useQuery(
     api.savedDesigns.mine,
-    clerkConfigured ? {} : "skip",
+    clerkConfigured && isAuthenticated ? {} : "skip",
   );
   const duplicateDesign = useMutation(api.savedDesigns.duplicate);
   const deleteDesign = useMutation(api.savedDesigns.remove);
@@ -54,14 +55,25 @@ export function SavedDesignsList({ clerkConfigured }: SavedDesignsListProps) {
     );
   }
 
-  if (designs === undefined) {
+  if (isLoading) {
+    return <SavedDesignsSkeleton />;
+  }
+
+  if (!isAuthenticated) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <Skeleton className="h-96 rounded-lg" key={index} />
-        ))}
-      </div>
+      <EmptyState
+        title="Sign in to view saved designs."
+        description="Saved suit configurations are tied to your account."
+        action={{
+          label: "Sign in",
+          href: "/sign-in?redirect_url=%2Faccount%2Fdesigns",
+        }}
+      />
     );
+  }
+
+  if (designs === undefined) {
+    return <SavedDesignsSkeleton />;
   }
 
   if (designs.length === 0) {
@@ -204,6 +216,16 @@ export function SavedDesignsList({ clerkConfigured }: SavedDesignsListProps) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function SavedDesignsSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Skeleton className="h-96 rounded-lg" key={index} />
+      ))}
+    </div>
   );
 }
 
