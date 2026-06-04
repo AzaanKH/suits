@@ -38,6 +38,8 @@ export function CartSyncProvider() {
           items: localItems.map((item) => ({
             configuration: toConvexConfiguration(item.configuration),
             quantity: item.quantity,
+            measurementAppointmentRequired:
+              item.measurementAppointmentRequired,
           })),
         });
 

@@ -57,6 +57,9 @@ export default async function AccountPage() {
             <Link className="button-primary" href="/account/designs">
               Saved designs
             </Link>
+            <Link className="button-primary" href="/account/measurements">
+              Measurements
+            </Link>
             <Link className="button-primary" href="/shop">
               Browse suits
             </Link>

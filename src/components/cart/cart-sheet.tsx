@@ -6,7 +6,7 @@ import { ShoppingBag } from "lucide-react";
 import { CartItemSummary } from "@/components/cart/cart-item-summary";
 import { CheckoutButton } from "@/components/cart/checkout-button";
 import { PriceDisplay } from "@/components/storefront/price-display";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -66,9 +66,12 @@ export function CartSheet({ checkoutEnabled }: CartSheetProps) {
             <p className="text-muted-foreground mt-4 text-sm leading-6">
               Start with a suit and customize the details before adding it here.
             </p>
-            <Button className="mt-6" render={<Link href="/shop" />}>
+            <Link
+              className={buttonVariants({ className: "mt-6" })}
+              href="/shop"
+            >
               Explore suits
-            </Button>
+            </Link>
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto px-5">
@@ -97,9 +100,12 @@ export function CartSheet({ checkoutEnabled }: CartSheetProps) {
               Estimated total excludes taxes and delivery.
             </p>
             <CheckoutButton checkoutEnabled={checkoutEnabled} />
-            <Button variant="outline" render={<Link href="/cart" />}>
+            <Link
+              className={buttonVariants({ variant: "outline" })}
+              href="/cart"
+            >
               View cart
-            </Button>
+            </Link>
           </SheetFooter>
         ) : null}
       </SheetContent>
