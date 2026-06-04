@@ -8,16 +8,13 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { getSignInRedirectHref } from "@/lib/auth-redirect";
-import type { CartItem } from "@/store/cart-store";
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 export function CheckoutButton({
   checkoutEnabled,
-  items,
 }: {
   checkoutEnabled: boolean;
-  items: CartItem[];
 }) {
   if (!clerkConfigured || !checkoutEnabled) {
     return (
@@ -28,10 +25,10 @@ export function CheckoutButton({
     );
   }
 
-  return <ClerkCheckoutButton items={items} />;
+  return <ClerkCheckoutButton />;
 }
 
-function ClerkCheckoutButton({ items }: { items: CartItem[] }) {
+function ClerkCheckoutButton() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -57,15 +54,6 @@ function ClerkCheckoutButton({ items }: { items: CartItem[] }) {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            id: item.id,
-            slug: item.slug,
-            name: item.name,
-            quantity: item.quantity,
-            basePriceCents: item.basePriceCents,
-          })),
-        }),
       });
 
       const data = (await response.json()) as { url?: string; error?: string };

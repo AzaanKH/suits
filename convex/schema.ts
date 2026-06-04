@@ -28,6 +28,21 @@ const savedConfiguration = v.object({
   personalization,
 });
 
+const cartLineItem = v.object({
+  lineId: v.string(),
+  productId: v.id("products"),
+  productSlug: v.string(),
+  productName: v.string(),
+  previewImageReference: v.optional(imageReference),
+  configuration: savedConfiguration,
+  selections: v.array(configurationSelection),
+  personalization,
+  unitPriceCents: v.number(),
+  quantity: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
 export default defineSchema({
   categories: defineTable({
     slug: v.string(),
@@ -142,4 +157,11 @@ export default defineSchema({
       "productId",
       "updatedAt",
     ]),
+
+  carts: defineTable({
+    ownerClerkUserId: v.string(),
+    lineItems: v.array(cartLineItem),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_owner", ["ownerClerkUserId"]),
 });
