@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { X } from "lucide-react";
 
+import { CheckoutButton } from "@/components/cart/checkout-button";
 import { EmptyState } from "@/components/storefront/empty-state";
 import { PriceDisplay } from "@/components/storefront/price-display";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ const fallbackCartImage = {
   alt: "Tailored suit placeholder",
 };
 
-export function CartView() {
+export function CartView({ checkoutEnabled }: { checkoutEnabled: boolean }) {
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
   const subtotal = items.reduce(
@@ -92,14 +93,7 @@ export function CartView() {
           Taxes and delivery are calculated at checkout. Each order is confirmed
           by our tailoring team before production.
         </p>
-        <Button
-          className="button-primary mt-6 w-full rounded-none"
-          type="button"
-          aria-label="Checkout coming soon"
-          disabled
-        >
-          Checkout coming soon
-        </Button>
+        <CheckoutButton checkoutEnabled={checkoutEnabled} items={items} />
         <div className="mt-5 flex justify-center">
           <Link className="text-link" href="/shop">
             Continue shopping

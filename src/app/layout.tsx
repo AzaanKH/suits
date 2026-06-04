@@ -1,9 +1,11 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Toaster } from "@/components/ui/sonner";
+import { isClerkConfigured } from "@/lib/clerk-config";
 
 import { ConvexClientProvider } from "./convex-client-provider";
 import "./globals.css";
@@ -32,15 +34,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const content = (
+    <ConvexClientProvider>
+      <Header />
+      <main className="flex-1">{children}</main>
+      <Footer />
+      <Toaster />
+    </ConvexClientProvider>
+  );
+
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable}`}>
       <body className="flex min-h-screen flex-col">
-        <ConvexClientProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <Toaster />
-        </ConvexClientProvider>
+        {isClerkConfigured() ? (
+          <ClerkProvider
+            signInUrl="/sign-in"
+            signUpUrl="/sign-up"
+            signInFallbackRedirectUrl="/account"
+            signUpFallbackRedirectUrl="/account"
+          >
+            {content}
+          </ClerkProvider>
+        ) : (
+          content
+        )}
       </body>
     </html>
   );
