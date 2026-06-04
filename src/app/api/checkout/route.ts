@@ -21,15 +21,27 @@ export async function POST() {
   const convex = new ConvexHttpClient(convexUrl);
   const convexToken = await getToken({ template: "convex" });
 
-  if (convexToken) {
-    convex.setAuth(convexToken);
+  if (!convexToken) {
+    return NextResponse.json(
+      { error: "Authentication is not configured for checkout." },
+      { status: 401 },
+    );
   }
+
+  convex.setAuth(convexToken);
 
   let cart;
 
   try {
     cart = await convex.query(api.carts.forCheckout, {});
-  } catch {
+  } catch (error) {
+    if (isAuthenticationError(error)) {
+      return NextResponse.json(
+        { error: "Authentication is required for checkout." },
+        { status: 401 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Unable to validate cart for checkout." },
       { status: 400 },
@@ -78,4 +90,11 @@ function summarizeSelections(
     .map((selection) => `${selection.groupLabel}: ${selection.optionLabel}`)
     .join(" / ")
     .slice(0, 500);
+}
+
+function isAuthenticationError(error: unknown) {
+  return (
+    error instanceof Error &&
+    /authentication|unauthorized|auth/i.test(error.message)
+  );
 }

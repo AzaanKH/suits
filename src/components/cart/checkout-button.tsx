@@ -20,7 +20,7 @@ export function CheckoutButton({
     return (
       <Button className="mt-6 w-full" type="button" disabled>
         <CreditCard aria-hidden="true" />
-        {checkoutEnabled ? "Sign in to checkout" : "Checkout setup required"}
+        {clerkConfigured ? "Sign in to checkout" : "Checkout setup required"}
       </Button>
     );
   }

@@ -57,8 +57,7 @@ import { PersonalizationForm } from "./personalization-form";
 import { SaveDesignButton } from "./save-design-button";
 import { StepNavigation } from "./step-navigation";
 import { formatCurrency, formatPriceModifier } from "@/lib/product-format";
-import type { CartLineItem } from "@/store/cart-store";
-import { useCartStore } from "@/store/cart-store";
+import { isCartLineItem, useCartStore } from "@/store/cart-store";
 import { useCustomizerStore } from "@/store/customizer-store";
 
 type SuitCustomizerProps = {
@@ -166,9 +165,7 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
 
     const cartLine =
       cartSource === "authenticated"
-        ? ((authenticatedCart?.lineItems.find(
-            (item) => item.lineId === cartLineId,
-          ) ?? null) as CartLineItem | null)
+        ? getAuthenticatedCartLine(authenticatedCart, cartLineId)
         : localCartLine;
 
     if (!cartLine || cartLine.productSlug !== catalog.product.slug) {
@@ -247,9 +244,7 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
   const price = calculateConfigurationPrice(catalog, configuration);
   const activeCartLine =
     cartSource === "authenticated"
-      ? ((authenticatedCart?.lineItems.find(
-          (item) => item.lineId === cartLineId,
-        ) ?? null) as CartLineItem | null)
+      ? getAuthenticatedCartLine(authenticatedCart, cartLineId)
       : localCartLine;
   const cartEditContext: CartEditContext | null =
     cartLineId && activeCartLine?.productSlug === catalog.product.slug
@@ -383,6 +378,30 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
       </Dialog>
     </>
   );
+}
+
+function getAuthenticatedCartLine(
+  cart:
+    | {
+        lineItems: unknown[];
+      }
+    | null
+    | undefined,
+  cartLineId: string | null,
+) {
+  if (!cartLineId) {
+    return null;
+  }
+
+  const line = cart?.lineItems.find((item) => {
+    if (!isCartLineItem(item)) {
+      return false;
+    }
+
+    return item.lineId === cartLineId;
+  });
+
+  return isCartLineItem(line) ? line : null;
 }
 
 type StepContentProps = {

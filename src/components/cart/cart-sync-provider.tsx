@@ -16,13 +16,7 @@ export function CartSyncProvider() {
   const clearCart = useCartStore((state) => state.clearCart);
   const mergeGuestCart = useMutation(api.carts.mergeGuestCart);
   const inFlightMergeKey = useRef<string | null>(null);
-  const mergeKey = useMemo(
-    () =>
-      localItems
-        .map((item) => `${item.lineId}:${item.quantity}:${item.updatedAt}`)
-        .join("|"),
-    [localItems],
-  );
+  const mergeKey = useMemo(() => createMergeKey(localItems), [localItems]);
 
   useEffect(() => {
     if (
@@ -31,31 +25,33 @@ export function CartSyncProvider() {
       isLoading ||
       localItems.length === 0 ||
       !mergeKey ||
-      inFlightMergeKey.current === mergeKey
+      inFlightMergeKey.current !== null
     ) {
       return;
     }
 
     inFlightMergeKey.current = mergeKey;
 
-    void mergeGuestCart({
-      items: localItems.map((item) => ({
-        configuration: toConvexConfiguration(item.configuration),
-        quantity: item.quantity,
-      })),
-    })
-      .then(() => {
-        if (inFlightMergeKey.current === mergeKey) {
+    void (async () => {
+      try {
+        await mergeGuestCart({
+          items: localItems.map((item) => ({
+            configuration: toConvexConfiguration(item.configuration),
+            quantity: item.quantity,
+          })),
+        });
+
+        if (createMergeKey(useCartStore.getState().items) === mergeKey) {
           clearCart();
-          inFlightMergeKey.current = null;
         }
-      })
-      .catch(() => {
-        inFlightMergeKey.current = null;
+      } catch {
         toast.error(
           "Unable to merge your guest cart. Your local cart was kept.",
         );
-      });
+      } finally {
+        inFlightMergeKey.current = null;
+      }
+    })();
   }, [
     clearCart,
     isAuthenticated,
@@ -66,4 +62,10 @@ export function CartSyncProvider() {
   ]);
 
   return null;
+}
+
+function createMergeKey(items: ReturnType<typeof useCartStore.getState>["items"]) {
+  return items
+    .map((item) => `${item.lineId}:${item.quantity}:${item.updatedAt}`)
+    .join("|");
 }

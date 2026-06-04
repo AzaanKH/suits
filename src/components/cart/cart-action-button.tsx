@@ -5,13 +5,14 @@ import { useConvexAuth, useMutation } from "convex/react";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { ShoppingBag } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import type { CustomizerConfiguration } from "@/features/customizer/types";
 import { useCustomizerStore } from "@/store/customizer-store";
-import { useCartStore, type CartLineItem } from "@/store/cart-store";
+import { isCartLineItem, useCartStore } from "@/store/cart-store";
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -60,17 +61,20 @@ function ClerkCartActionButton({
   const updateLocalLine = useCartStore((state) => state.updateItem);
   const markClean = useCustomizerStore((state) => state.markClean);
   const router = useRouter();
+  const [pending, setPending] = useState(false);
   const authReady = isLoaded && !isLoading;
   const signedIn = isSignedIn && isAuthenticated;
   const label = editContext ? "Update cart" : "Add to cart";
 
   async function handleCartAction() {
-    if (!authReady) {
+    if (!authReady || pending) {
       return;
     }
 
     const quantity = editContext?.quantity ?? 1;
     const submittedConfiguration = configuration;
+
+    setPending(true);
 
     try {
       if (signedIn && editContext?.source === "authenticated") {
@@ -91,13 +95,17 @@ function ClerkCartActionButton({
           quantity,
         });
       } else {
-        const line = (await previewLine({
+        const line = await previewLine({
           configuration: {
             ...configuration,
             productId: configuration.productId as Id<"products">,
           },
           quantity,
-        })) as unknown as CartLineItem;
+        });
+
+        if (!isCartLineItem(line)) {
+          throw new Error("Invalid cart line response.");
+        }
 
         if (editContext?.source === "guest") {
           updateLocalLine(editContext.lineId, line);
@@ -113,11 +121,13 @@ function ClerkCartActionButton({
       router.push("/cart");
     } catch {
       toast.error("Unable to update the cart.");
+    } finally {
+      setPending(false);
     }
   }
 
   return (
-    <Button size="lg" onClick={handleCartAction} disabled={!authReady}>
+    <Button size="lg" onClick={handleCartAction} disabled={!authReady || pending}>
       <ShoppingBag aria-hidden="true" />
       {label}
     </Button>
@@ -133,20 +143,31 @@ function LocalCartActionButton({
   const updateLocalLine = useCartStore((state) => state.updateItem);
   const markClean = useCustomizerStore((state) => state.markClean);
   const router = useRouter();
+  const [pending, setPending] = useState(false);
   const label = editContext ? "Update cart" : "Add to cart";
 
   async function handleCartAction() {
+    if (pending) {
+      return;
+    }
+
     const quantity = editContext?.quantity ?? 1;
     const submittedConfiguration = configuration;
 
+    setPending(true);
+
     try {
-      const line = (await previewLine({
+      const line = await previewLine({
         configuration: {
           ...configuration,
           productId: configuration.productId as Id<"products">,
         },
         quantity,
-      })) as unknown as CartLineItem;
+      });
+
+      if (!isCartLineItem(line)) {
+        throw new Error("Invalid cart line response.");
+      }
 
       if (editContext?.source === "guest") {
         updateLocalLine(editContext.lineId, line);
@@ -161,11 +182,13 @@ function LocalCartActionButton({
       router.push("/cart");
     } catch {
       toast.error("Unable to update the cart.");
+    } finally {
+      setPending(false);
     }
   }
 
   return (
-    <Button size="lg" onClick={handleCartAction}>
+    <Button size="lg" onClick={handleCartAction} disabled={pending}>
       <ShoppingBag aria-hidden="true" />
       {label}
     </Button>

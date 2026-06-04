@@ -36,7 +36,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const checkoutEnabled = Boolean(
-    process.env.STRIPE_SECRET_KEY && process.env.NEXT_PUBLIC_APP_URL,
+    process.env.STRIPE_SECRET_KEY &&
+      process.env.NEXT_PUBLIC_APP_URL &&
+      process.env.NEXT_PUBLIC_CONVEX_URL,
   );
   const content = (
     <ConvexClientProvider>

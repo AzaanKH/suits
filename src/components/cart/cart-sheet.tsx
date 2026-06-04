@@ -28,6 +28,7 @@ export function CartSheet({ checkoutEnabled }: CartSheetProps) {
     itemCount,
     source,
     subtotalCents,
+    loading,
     updateQuantity,
     removeItem,
   } = useCartController();
@@ -53,7 +54,11 @@ export function CartSheet({ checkoutEnabled }: CartSheetProps) {
           </SheetDescription>
         </SheetHeader>
 
-        {items.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center p-5">
+            <p className="text-muted-foreground text-sm">Loading cart.</p>
+          </div>
+        ) : items.length === 0 ? (
           <div className="flex flex-1 flex-col justify-center p-5">
             <h2 className="text-ink font-serif text-4xl leading-none">
               Your cart is empty.
@@ -82,7 +87,7 @@ export function CartSheet({ checkoutEnabled }: CartSheetProps) {
           </div>
         )}
 
-        {items.length > 0 ? (
+        {!loading && items.length > 0 ? (
           <SheetFooter className="border-border border-t p-5">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">Subtotal</span>

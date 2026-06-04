@@ -93,6 +93,32 @@ export function getCartItemCount(items: CartLineItem[]) {
   return items.reduce((total, item) => total + item.quantity, 0);
 }
 
+export function isCartLineItem(value: unknown): value is CartLineItem {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const configuration = value.configuration;
+
+  return (
+    typeof value.lineId === "string" &&
+    typeof value.productId === "string" &&
+    typeof value.productSlug === "string" &&
+    typeof value.productName === "string" &&
+    isConfigurationSnapshot(configuration) &&
+    Array.isArray(value.selections) &&
+    isPersonalization(value.personalization) &&
+    Number.isInteger(value.unitPriceCents) &&
+    Number.isInteger(value.quantity) &&
+    Number.isInteger(value.createdAt) &&
+    Number.isInteger(value.updatedAt)
+  );
+}
+
+export function getCartLineItems(values: readonly unknown[]) {
+  return values.filter(isCartLineItem);
+}
+
 function mergeLineItems(
   items: CartLineItem[],
   nextItem: CartLineItem,
@@ -100,14 +126,20 @@ function mergeLineItems(
   const existingItem = items.find((item) => item.lineId === nextItem.lineId);
 
   if (!existingItem) {
-    return [...items, nextItem];
+    return [
+      ...items,
+      {
+        ...nextItem,
+        quantity: normalizeQuantity(nextItem.quantity),
+      },
+    ];
   }
 
   return items.map((item) =>
     item.lineId === nextItem.lineId
       ? {
           ...nextItem,
-          quantity: existingItem.quantity + nextItem.quantity,
+          quantity: normalizeQuantity(existingItem.quantity + nextItem.quantity),
           createdAt: existingItem.createdAt,
           updatedAt: nextItem.updatedAt,
         }
@@ -125,4 +157,37 @@ function normalizeQuantity(quantity: number) {
 
 function cloneCartLineItem(item: CartLineItem): CartLineItem {
   return JSON.parse(JSON.stringify(item)) as CartLineItem;
+}
+
+function isConfigurationSnapshot(
+  value: unknown,
+): value is CartConfigurationSnapshot {
+  if (!isRecord(value) || !isRecord(value.selectedOptionCodes)) {
+    return false;
+  }
+
+  return (
+    value.version === 1 &&
+    typeof value.productId === "string" &&
+    typeof value.productSlug === "string" &&
+    typeof value.fabricCode === "string" &&
+    Object.values(value.selectedOptionCodes).every(
+      (codes) =>
+        Array.isArray(codes) &&
+        codes.every((code) => typeof code === "string"),
+    ) &&
+    isPersonalization(value.personalization)
+  );
+}
+
+function isPersonalization(value: unknown): value is CustomizerPersonalization {
+  return (
+    isRecord(value) &&
+    typeof value.monogramText === "string" &&
+    typeof value.notes === "string"
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

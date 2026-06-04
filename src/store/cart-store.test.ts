@@ -125,4 +125,18 @@ describe("cart store", () => {
 
     expect(useCartStore.getState().items).toEqual([]);
   });
+
+  it("caps merged line quantities at 99", () => {
+    for (let index = 0; index < 25; index += 1) {
+      useCartStore.getState().addItem({ ...baseLineItem, quantity: 5 });
+    }
+
+    expect(useCartStore.getState().items).toEqual([
+      expect.objectContaining({
+        lineId: baseLineItem.lineId,
+        quantity: 99,
+      }),
+    ]);
+    expect(getCartItemCount(useCartStore.getState().items)).toBe(99);
+  });
 });

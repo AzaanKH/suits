@@ -6,6 +6,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import {
   getCartItemCount,
+  getCartLineItems,
   getCartSubtotal,
   type CartLineItem,
   useCartStore,
@@ -26,9 +27,9 @@ export function useCartController() {
   const removeRemoteLine = useMutation(api.carts.removeLine);
   const source: "authenticated" | "guest" =
     clerkConfigured && isAuthenticated ? "authenticated" : "guest";
-  const items =
+  const items: CartLineItem[] =
     source === "authenticated"
-      ? ((remoteCart?.lineItems ?? []) as unknown as CartLineItem[])
+      ? getCartLineItems(remoteCart?.lineItems ?? [])
       : localItems;
   const subtotalCents =
     source === "authenticated"
@@ -62,7 +63,8 @@ export function useCartController() {
     items,
     itemCount,
     subtotalCents,
-    loading: source === "authenticated" && (isLoading || remoteCart === undefined),
+    loading:
+      source === "authenticated" && (isLoading || remoteCart === undefined),
     updateQuantity,
     removeItem,
   };

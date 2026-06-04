@@ -45,7 +45,7 @@ export const previewLine = mutation({
     const validated = await validateConfigurationSnapshot(ctx, configuration);
     const now = Date.now();
 
-    return buildLineItem(validated, normalizeQuantity(quantity), now);
+    return await buildLineItem(validated, normalizeQuantity(quantity), now);
   },
 });
 
@@ -76,7 +76,7 @@ export const forCheckout = query({
           lineItem.configuration,
         );
 
-        return buildLineItem(
+        return await buildLineItem(
           validated,
           normalizeQuantity(lineItem.quantity),
           lineItem.createdAt,
@@ -98,7 +98,11 @@ export const addLine = mutation({
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const validated = await validateConfigurationSnapshot(ctx, configuration);
     const now = Date.now();
-    const nextLine = buildLineItem(validated, normalizeQuantity(quantity), now);
+    const nextLine = await buildLineItem(
+      validated,
+      normalizeQuantity(quantity),
+      now,
+    );
     const cart = await getOrCreateCart(ctx, ownerClerkUserId, now);
 
     await patchCartLines(ctx, cart, mergeLineItems(cart.lineItems, nextLine));
@@ -124,7 +128,7 @@ export const updateLine = mutation({
 
     const validated = await validateConfigurationSnapshot(ctx, configuration);
     const now = Date.now();
-    const nextLine = buildLineItem(
+    const nextLine = await buildLineItem(
       validated,
       normalizeQuantity(quantity),
       existingLine.createdAt,
@@ -289,14 +293,14 @@ async function patchCartLines(
   });
 }
 
-function buildLineItem(
+async function buildLineItem(
   validated: ValidatedConfiguration,
   quantity: number,
   createdAt: number,
   updatedAt = createdAt,
-): CartLineItem {
+): Promise<CartLineItem> {
   return {
-    lineId: createCartLineId(validated.selectionSignature),
+    lineId: await createCartLineId(validated.selectionSignature),
     productId: validated.product._id,
     productSlug: validated.product.slug,
     productName: validated.product.name,
@@ -320,14 +324,20 @@ function mergeLineItems(
   );
 
   if (!existingLine) {
-    return [...lineItems, nextLine];
+    return [
+      ...lineItems,
+      {
+        ...nextLine,
+        quantity: normalizeQuantity(nextLine.quantity),
+      },
+    ];
   }
 
   return lineItems.map((lineItem) =>
     lineItem.lineId === nextLine.lineId
       ? {
           ...nextLine,
-          quantity: existingLine.quantity + nextLine.quantity,
+          quantity: normalizeQuantity(existingLine.quantity + nextLine.quantity),
           createdAt: existingLine.createdAt,
           updatedAt: nextLine.updatedAt,
         }

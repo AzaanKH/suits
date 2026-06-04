@@ -95,6 +95,32 @@ describe("carts", () => {
     expect(cart.lineItems).toHaveLength(2);
     expect(cart.lineItems.map((item) => item.quantity).sort()).toEqual([1, 3]);
   });
+
+  it("rejects guest cart merges that would exceed the quantity limit", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_overflow",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      quantity: 60,
+    });
+
+    await expect(
+      user.mutation(api.carts.mergeGuestCart, {
+        items: [
+          {
+            configuration,
+            quantity: 50,
+          },
+        ],
+      }),
+    ).rejects.toThrow("Quantity must be between 1 and 99.");
+  });
 });
 
 async function buildValidConfiguration(

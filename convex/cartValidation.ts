@@ -83,8 +83,10 @@ export async function validateConfigurationSnapshot(
     throw new ConvexError("Invalid product for configuration.");
   }
 
-  const fabric = await getSelectedFabric(ctx, product, configuration.fabricCode);
-  const availableGroups = await getAvailableCustomizationGroups(ctx, product);
+  const [fabric, availableGroups] = await Promise.all([
+    getSelectedFabric(ctx, product, configuration.fabricCode),
+    getAvailableCustomizationGroups(ctx, product),
+  ]);
   const selectedGroupCodes = Object.keys(configuration.selectedOptionCodes);
   const unknownGroupCode = selectedGroupCodes.find(
     (groupCode) => !knownGroupCodes.has(groupCode),
@@ -183,14 +185,16 @@ export async function validateConfigurationSnapshot(
   };
 }
 
-export function createCartLineId(selectionSignature: string) {
-  let hash = 0;
+export async function createCartLineId(selectionSignature: string) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(selectionSignature),
+  );
+  const hash = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 
-  for (let index = 0; index < selectionSignature.length; index += 1) {
-    hash = (hash * 31 + selectionSignature.charCodeAt(index)) | 0;
-  }
-
-  return `line_${Math.abs(hash).toString(36)}`;
+  return `line_${hash}`;
 }
 
 function createConfigurationSignature(
