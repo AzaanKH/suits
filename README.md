@@ -1,6 +1,6 @@
 # Arden Tailoring
 
-The application is a Next.js App Router storefront for a custom suit ecommerce brand. Product, category, fabric, and customization data are served by Convex. The previous frontend prototype remains available in Git history.
+The application is a Next.js App Router storefront for a custom suit ecommerce brand. Product, category, fabric, customization data, and saved designs are served by Convex. Clerk provides authentication and Stripe Checkout handles authenticated one-time purchases. The previous frontend prototype remains available in Git history.
 
 ## Setup
 
@@ -21,21 +21,45 @@ pnpm dev
 
 `pnpm convex:dev` creates or updates the required Convex values in `.env.local`. See [`docs/convex-schema.md`](docs/convex-schema.md) for schema decisions and seed behavior.
 
-## Environment variables
+## Clerk setup
 
-Required now:
-
-- `NEXT_PUBLIC_CONVEX_URL`
-- `CONVEX_DEPLOYMENT`
-
-Reserved for later authentication and checkout work:
+Create a Clerk application, then add the following values to `.env.local`:
 
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `CLERK_SECRET_KEY`
-- `STRIPE_SECRET_KEY`
-- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/account`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/account`
 
-Clerk authentication, cart persistence, Stripe Checkout, and 3D configuration are intentionally not wired yet.
+In the Clerk Dashboard, activate the Convex integration and copy the Frontend API URL. Add that value as `CLERK_FRONTEND_API_URL` in the Convex dashboard for each Convex deployment. Development URLs look like `https://verb-noun-00.clerk.accounts.dev`; production URLs use the configured Clerk domain.
+
+After setting the Convex environment variable, run:
+
+```bash
+pnpm exec convex codegen
+pnpm convex:dev
+```
+
+The app keeps browsing, product detail, customization, and cart review public. Clerk is required for `/account`, saving a configured design, and starting checkout.
+
+## Environment variables
+
+Required:
+
+- `NEXT_PUBLIC_CONVEX_URL`
+- `CONVEX_DEPLOYMENT`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL`
+- `CLERK_FRONTEND_API_URL` (set in Convex dashboard)
+- `NEXT_PUBLIC_APP_URL`
+- `STRIPE_SECRET_KEY`
+
+Do not store passwords in Convex. Saved design documents store the Clerk user id for ownership checks and design details only; Clerk profile fields remain in Clerk.
 
 ## Scripts
 

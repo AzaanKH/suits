@@ -6,6 +6,27 @@ const imageReference = v.object({
   alt: v.string(),
 });
 
+const personalization = v.object({
+  monogramText: v.string(),
+  notes: v.string(),
+});
+
+const configurationSelection = v.object({
+  stepCode: v.string(),
+  groupLabel: v.string(),
+  optionCode: v.string(),
+  optionLabel: v.string(),
+  priceModifierCents: v.number(),
+});
+
+const savedConfiguration = v.object({
+  version: v.literal(1),
+  productSlug: v.string(),
+  fabricCode: v.string(),
+  selectedOptionCodes: v.record(v.string(), v.array(v.string())),
+  personalization,
+});
+
 export default defineSchema({
   categories: defineTable({
     slug: v.string(),
@@ -99,4 +120,19 @@ export default defineSchema({
   })
     .index("by_product", ["productId"])
     .index("by_product_group", ["productId", "customizationGroupId"]),
+
+  savedDesigns: defineTable({
+    clerkUserId: v.string(),
+    productSlug: v.string(),
+    productName: v.string(),
+    totalPriceCents: v.number(),
+    selectionSignature: v.string(),
+    configuration: savedConfiguration,
+    selections: v.array(configurationSelection),
+    personalization,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_updated_at", ["clerkUserId", "updatedAt"])
+    .index("by_user_signature", ["clerkUserId", "selectionSignature"]),
 });

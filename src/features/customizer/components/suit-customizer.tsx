@@ -47,6 +47,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { CustomizerPreview } from "./customizer-preview";
 import { OptionCard } from "./option-card";
 import { PersonalizationForm } from "./personalization-form";
+import { SaveDesignButton } from "./save-design-button";
 import { StepNavigation } from "./step-navigation";
 import { formatCurrency, formatPriceModifier } from "@/lib/product-format";
 import { useCustomizerStore } from "@/store/customizer-store";
@@ -456,6 +457,10 @@ function ReviewStep({
           </div>
         </CardFooter>
       </Card>
+
+      <div className="flex justify-end">
+        <SaveDesignButton configuration={configuration} summary={summary} />
+      </div>
 
       <Separator />
 

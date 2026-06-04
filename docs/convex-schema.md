@@ -1,6 +1,6 @@
 # Convex storefront schema
 
-The storefront uses six tables:
+The storefront uses seven tables:
 
 | Table                              | Purpose                                                                                                               |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -10,6 +10,7 @@ The storefront uses six tables:
 | `customizationGroups`              | Ordered configurator sections such as jacket, trouser, lining, and finishing.                                         |
 | `customizationOptions`             | Stable option codes, price modifiers in integer cents, presentation data, and open-ended compatibility metadata.      |
 | `productCustomizationAvailability` | Explicit product-to-option join rows. Each row also stores the option's group ID for efficient product/group lookups. |
+| `savedDesigns`                     | Authenticated saved configurations keyed by Clerk user id and selection signature.                                     |
 
 ## Decisions
 
@@ -19,6 +20,8 @@ The storefront uses six tables:
 - Image references are structured `{ src, alt }` values. They currently point at local assets and can later point at managed storage without changing UI contracts.
 - Stable slugs and option codes have indexes for storefront routing, seed references, and future configurator state.
 - Active flags preserve catalog history without deleting records. Display order fields make merchandising deterministic.
+- Saved designs store `clerkUserId` for ownership checks plus configuration details. They do not duplicate Clerk profile data or store passwords.
+- Convex authentication uses Clerk's Frontend API URL through `convex/auth.config.ts`; set `CLERK_FRONTEND_API_URL` in the Convex dashboard before deploying authenticated functions.
 
 ## Seed workflow
 
@@ -27,4 +30,4 @@ The storefront uses six tables:
 3. In another terminal, run `pnpm convex:seed`.
 4. Run `pnpm dev`.
 
-The seed mutation is internal and idempotent for local development: it clears the six storefront tables and recreates the realistic sample catalog. Do not run it against production data.
+The seed mutation is internal and idempotent for local development: it clears the six storefront catalog tables and recreates the realistic sample catalog. It does not clear saved user designs. Do not run it against production data.
