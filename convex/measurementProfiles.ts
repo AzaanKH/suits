@@ -48,6 +48,18 @@ const profileInputValidator = {
   fitPreferences: fitPreferencesValidator,
   notes: v.string(),
 };
+const defaultMeasurementBounds = { min: 8, max: 90 };
+const measurementBounds: Record<string, { min: number; max: number }> = {
+  Chest: { min: 24, max: 70 },
+  Waist: { min: 20, max: 70 },
+  Hips: { min: 24, max: 75 },
+  "Shoulder width": { min: 12, max: 30 },
+  "Sleeve length": { min: 15, max: 40 },
+  "Jacket length": { min: 20, max: 45 },
+  "Trouser waist": { min: 20, max: 70 },
+  Inseam: { min: 20, max: 45 },
+  Outseam: { min: 25, max: 55 },
+};
 
 export const mine = query({
   args: {},
@@ -226,9 +238,12 @@ function normalizeMeasurement(label: string, value: number, units: "in" | "cm") 
 
   const inches = units === "cm" ? value / 2.54 : value;
   const rounded = Math.round(inches * 100) / 100;
+  const bounds = measurementBounds[label] ?? defaultMeasurementBounds;
 
-  if (rounded < 8 || rounded > 90) {
-    throw new ConvexError(`${label} must be a realistic body measurement.`);
+  if (rounded < bounds.min || rounded > bounds.max) {
+    throw new ConvexError(
+      `${label} must be between ${bounds.min} and ${bounds.max} inches.`,
+    );
   }
 
   return rounded;

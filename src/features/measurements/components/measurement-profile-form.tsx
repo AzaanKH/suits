@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -45,10 +45,42 @@ export function MeasurementProfileForm({
     mode: "onBlur",
   });
   const units = useWatch({ control: form.control, name: "units" });
+  const previousUnitsRef = useRef<MeasurementProfileFormValues["units"]>(
+    defaultValues.units,
+  );
+  const skipNextUnitConversionRef = useRef(false);
 
   useEffect(() => {
     form.reset(defaultValues);
+    previousUnitsRef.current = defaultValues.units;
+    skipNextUnitConversionRef.current = true;
   }, [defaultValues, form]);
+
+  useEffect(() => {
+    const previousUnits = previousUnitsRef.current;
+
+    if (skipNextUnitConversionRef.current) {
+      skipNextUnitConversionRef.current = false;
+      return;
+    }
+
+    if (!units || units === previousUnits) {
+      return;
+    }
+
+    const currentValues = form.getValues();
+
+    form.reset({
+      ...currentValues,
+      units,
+      bodyMeasurements: mapMeasurements(
+        currentValues.bodyMeasurements,
+        previousUnits,
+        units,
+      ),
+    });
+    previousUnitsRef.current = units;
+  }, [form, units]);
 
   async function handleSubmit(values: MeasurementProfileFormValues) {
     await onSubmit(values);
@@ -248,4 +280,32 @@ function formatOption(value: string) {
   return value.replaceAll("-", " ").replace(/^\w/, (letter) =>
     letter.toUpperCase(),
   );
+}
+
+function mapMeasurements(
+  measurements: MeasurementProfileFormValues["bodyMeasurements"],
+  fromUnit: MeasurementProfileFormValues["units"],
+  toUnit: MeasurementProfileFormValues["units"],
+) {
+  return Object.fromEntries(
+    measurementFields.map((field) => [
+      field.name,
+      convertMeasurement(measurements[field.name], fromUnit, toUnit),
+    ]),
+  ) as MeasurementProfileFormValues["bodyMeasurements"];
+}
+
+function convertMeasurement(
+  value: number,
+  fromUnit: MeasurementProfileFormValues["units"],
+  toUnit: MeasurementProfileFormValues["units"],
+) {
+  if (!Number.isFinite(value) || fromUnit === toUnit) {
+    return value;
+  }
+
+  const inches = fromUnit === "cm" ? value / 2.54 : value;
+  const converted = toUnit === "cm" ? inches * 2.54 : inches;
+
+  return Math.round(converted * 10) / 10;
 }

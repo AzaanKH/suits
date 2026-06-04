@@ -54,6 +54,22 @@ export const measurementFields = [
   },
 ] as const;
 
+const defaultMeasurementBoundsInches = { min: 8, max: 90 };
+const measurementBoundsInches: Record<
+  (typeof measurementFields)[number]["name"],
+  { min: number; max: number }
+> = {
+  chest: { min: 24, max: 70 },
+  waist: { min: 20, max: 70 },
+  hips: { min: 24, max: 75 },
+  shoulderWidth: { min: 12, max: 30 },
+  sleeveLength: { min: 15, max: 40 },
+  jacketLength: { min: 20, max: 45 },
+  trouserWaist: { min: 20, max: 70 },
+  inseam: { min: 20, max: 45 },
+  outseam: { min: 25, max: 55 },
+};
+
 const numericMeasurement = z
   .number({ error: "Enter a measurement." })
   .finite("Enter a measurement.")
@@ -81,17 +97,18 @@ export const measurementProfileSchema = z
     notes: z.string().max(500, "Notes must be 500 characters or fewer."),
   })
   .superRefine((value, ctx) => {
-    const maximum = value.units === "cm" ? 230 : 90;
-    const minimum = value.units === "cm" ? 20 : 8;
-
     for (const field of measurementFields) {
       const measurement = value.bodyMeasurements[field.name];
+      const measurementInches =
+        value.units === "cm" ? measurement / 2.54 : measurement;
+      const bounds =
+        measurementBoundsInches[field.name] ?? defaultMeasurementBoundsInches;
 
-      if (measurement < minimum || measurement > maximum) {
+      if (measurementInches < bounds.min || measurementInches > bounds.max) {
         ctx.addIssue({
           code: "custom",
           path: ["bodyMeasurements", field.name],
-          message: `Enter a realistic ${field.label.toLowerCase()} measurement.`,
+          message: `Enter a ${field.label.toLowerCase()} between ${bounds.min} and ${bounds.max} inches.`,
         });
       }
     }

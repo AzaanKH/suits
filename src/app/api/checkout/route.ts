@@ -72,50 +72,69 @@ export async function POST(request: Request) {
   }
 
   const stripe = new Stripe(stripeSecretKey);
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    client_reference_id: userId,
-    customer_email: checkoutPreparation.shippingAddress.email,
-    customer_creation: "if_required",
-    phone_number_collection: {
-      enabled: true,
-    },
-    line_items: cart.lineItems.map((item) => ({
-      quantity: item.quantity,
-      price_data: {
-        currency: "usd",
-        unit_amount: item.unitPriceCents,
-        product_data: {
-          name: item.productName,
-          description: summarizeSelections(item.selections),
-          metadata: {
-            productId: item.productId,
-            slug: item.productSlug,
-            cartLineId: item.lineId,
-            measurementProfileId: item.measurementProfileId ?? "",
-            measurementAppointmentRequired: item.measurementAppointmentRequired
-              ? "true"
-              : "false",
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      client_reference_id: userId,
+      customer_email: checkoutPreparation.shippingAddress.email,
+      customer_creation: "if_required",
+      phone_number_collection: {
+        enabled: true,
+      },
+      line_items: cart.lineItems.map((item) => ({
+        quantity: item.quantity,
+        price_data: {
+          currency: "usd",
+          unit_amount: item.unitPriceCents,
+          product_data: {
+            name: item.productName,
+            description: summarizeSelections(item.selections),
+            metadata: {
+              productId: item.productId,
+              slug: item.productSlug,
+              cartLineId: item.lineId,
+              measurementProfileId: item.measurementProfileId ?? "",
+              measurementAppointmentRequired: item.measurementAppointmentRequired
+                ? "true"
+                : "false",
+            },
           },
         },
+      })),
+      metadata: {
+        clerkUserId: userId,
+        shippingName: checkoutPreparation.shippingAddress.fullName,
+        shippingLine1: checkoutPreparation.shippingAddress.line1,
+        shippingLine2: checkoutPreparation.shippingAddress.line2 ?? "",
+        shippingCity: checkoutPreparation.shippingAddress.city,
+        shippingState: checkoutPreparation.shippingAddress.state,
+        shippingPostalCode: checkoutPreparation.shippingAddress.postalCode,
+        shippingCountry: checkoutPreparation.shippingAddress.country,
+        shippingPhone: checkoutPreparation.shippingAddress.phone,
       },
-    })),
-    metadata: {
-      clerkUserId: userId,
-      shippingName: checkoutPreparation.shippingAddress.fullName,
-      shippingLine1: checkoutPreparation.shippingAddress.line1,
-      shippingLine2: checkoutPreparation.shippingAddress.line2 ?? "",
-      shippingCity: checkoutPreparation.shippingAddress.city,
-      shippingState: checkoutPreparation.shippingAddress.state,
-      shippingPostalCode: checkoutPreparation.shippingAddress.postalCode,
-      shippingCountry: checkoutPreparation.shippingAddress.country,
-      shippingPhone: checkoutPreparation.shippingAddress.phone,
-    },
-    success_url: `${appUrl}/account?checkout=success`,
-    cancel_url: `${appUrl}/checkout`,
-  });
+      success_url: `${appUrl}/account?checkout=success`,
+      cancel_url: `${appUrl}/checkout`,
+    });
 
-  return NextResponse.json({ url: session.url });
+    if (!session.url) {
+      console.error("Stripe Checkout Session did not include a URL.", session);
+
+      return NextResponse.json(
+        { error: "Unable to start payment." },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json({ url: session.url });
+  } catch (error) {
+    console.error("Unable to create Stripe Checkout Session.", error);
+
+    return NextResponse.json(
+      { error: "Unable to start payment." },
+      { status: 502 },
+    );
+  }
 }
 
 function summarizeSelections(

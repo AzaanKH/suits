@@ -64,6 +64,46 @@ describe("MeasurementProfileForm", () => {
     });
   });
 
+  it("converts body measurements when units change", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    render(
+      <MeasurementProfileForm
+        defaultValues={{
+          ...defaultMeasurementProfileValues,
+          name: "Everyday suit",
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText("Units"), "cm");
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Chest")).toHaveValue(101.6);
+    });
+
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalled();
+    });
+
+    const submitted = onSubmit.mock.calls[0]?.[0];
+
+    expect(submitted).toEqual(
+      expect.objectContaining({
+        units: "cm",
+        bodyMeasurements: expect.objectContaining({
+          chest: 101.6,
+          waist: 86.4,
+          shoulderWidth: 45.7,
+        }),
+      }),
+    );
+  });
+
   it("rejects an inseam that is not shorter than the outseam", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
