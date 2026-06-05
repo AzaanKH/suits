@@ -56,10 +56,7 @@ export function CheckoutPreparation({
   clerkConfigured,
   checkoutEnabled,
 }: CheckoutPreparationProps) {
-  const cart = useQuery(
-    api.carts.forCheckout,
-    clerkConfigured ? {} : "skip",
-  );
+  const cart = useQuery(api.carts.forCheckout, clerkConfigured ? {} : "skip");
   const profiles = useQuery(
     api.measurementProfiles.mine,
     clerkConfigured ? {} : "skip",
@@ -364,8 +361,8 @@ export function CheckoutPreparation({
         {incompleteFitLines.length > 0 ? (
           <p className="text-destructive mt-4 text-sm font-medium">
             {incompleteFitLines.length} suit
-            {incompleteFitLines.length === 1 ? " needs" : "s need"} complete
-            fit details.
+            {incompleteFitLines.length === 1 ? " needs" : "s need"} complete fit
+            details.
           </p>
         ) : null}
       </aside>
@@ -414,8 +411,8 @@ function isReady(item: CheckoutLineItem) {
   if (item.fitMethod === "standard") {
     return Boolean(
       item.jacketSize &&
-        item.fitPreference &&
-        (item.trouserSize || (item.trouserWaist && item.trouserInseam)),
+      item.fitPreference &&
+      (item.trouserSize || (item.trouserWaist && item.trouserInseam)),
     );
   }
 
@@ -438,6 +435,14 @@ function measurementValue(item: CheckoutLineItem) {
 
 function readinessLabel(item: CheckoutLineItem) {
   if (item.fitMethod === "standard") {
+    if (
+      !item.jacketSize ||
+      !item.fitPreference ||
+      (!item.trouserSize && (!item.trouserWaist || !item.trouserInseam))
+    ) {
+      return "Standard Fit: Pending";
+    }
+
     const trouser = item.trouserSize
       ? `Trouser ${item.trouserSize}`
       : `Waist ${item.trouserWaist} / Inseam ${item.trouserInseam}`;

@@ -67,6 +67,7 @@ import { StepNavigation } from "./step-navigation";
 import { formatCurrency, formatPriceModifier } from "@/lib/product-format";
 import {
   type CartFitSelection,
+  type CartLineItem,
   createDefaultStandardFitSelection,
   getCartLineFitSelection,
   isCartLineItem,
@@ -170,9 +171,8 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
 
     loadConfiguration(catalog, {
       ...savedDesign.configuration,
-      selectedOptionCodes:
-        savedDesign.configuration
-          .selectedOptionCodes as CustomizerConfiguration["selectedOptionCodes"],
+      selectedOptionCodes: savedDesign.configuration
+        .selectedOptionCodes as CustomizerConfiguration["selectedOptionCodes"],
     });
     setFitSelection(createDefaultStandardFitSelection());
     loadedDesignId.current = designId;
@@ -206,11 +206,12 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
 
     loadConfiguration(catalog, {
       ...cartLine.configuration,
-      selectedOptionCodes:
-        cartLine.configuration
-          .selectedOptionCodes as CustomizerConfiguration["selectedOptionCodes"],
+      selectedOptionCodes: cartLine.configuration
+        .selectedOptionCodes as CustomizerConfiguration["selectedOptionCodes"],
     });
-    setFitSelection(getCartLineFitSelection(cartLine));
+    const nextFitSelection = getSafeCartLineFitSelection(cartLine);
+
+    queueMicrotask(() => setFitSelection(nextFitSelection));
     loadedCartLineId.current = cartLineId;
   }, [
     authenticatedCart,
@@ -434,6 +435,14 @@ function getAuthenticatedCartLine(
   });
 
   return isCartLineItem(line) ? line : null;
+}
+
+function getSafeCartLineFitSelection(cartLine: CartLineItem): CartFitSelection {
+  try {
+    return getCartLineFitSelection(cartLine);
+  } catch {
+    return createDefaultStandardFitSelection();
+  }
 }
 
 type StepContentProps = {
@@ -780,9 +789,7 @@ function FitMethodStep({
     );
   }
 
-  function updateStandard(
-    updates: Partial<typeof standardSelection>,
-  ) {
+  function updateStandard(updates: Partial<typeof standardSelection>) {
     onFitSelectionChange({
       ...standardSelection,
       ...updates,
@@ -927,9 +934,7 @@ function FitMethodStep({
             </div>
 
             <div className="mt-5">
-              <p className="text-sm leading-none font-medium">
-                Fit preference
-              </p>
+              <p className="text-sm leading-none font-medium">Fit preference</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {STANDARD_FIT_PREFERENCES.map((preference) => (
                   <Button
@@ -1117,16 +1122,16 @@ function isFitSelectionReady(
   if (fitSelection.fitMethod === "standard") {
     return Boolean(
       fitSelection.jacketSize &&
-        fitSelection.fitPreference &&
-        (fitSelection.trouserSize ||
-          (fitSelection.trouserWaist && fitSelection.trouserInseam)),
+      fitSelection.fitPreference &&
+      (fitSelection.trouserSize ||
+        (fitSelection.trouserWaist && fitSelection.trouserInseam)),
     );
   }
 
   return Boolean(
     isAuthenticated &&
-      (fitSelection.measurementProfileId ||
-        fitSelection.measurementAppointmentRequired),
+    (fitSelection.measurementProfileId ||
+      fitSelection.measurementAppointmentRequired),
   );
 }
 

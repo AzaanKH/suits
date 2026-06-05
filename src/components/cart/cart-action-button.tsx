@@ -17,6 +17,7 @@ import {
   isCartLineItem,
   useCartStore,
 } from "@/store/cart-store";
+import { toConvexFitSelection } from "./cart-fit-selection";
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -138,7 +139,9 @@ function ClerkCartActionButton({
         }
       }
 
-      if (useCustomizerStore.getState().configuration === submittedConfiguration) {
+      if (
+        useCustomizerStore.getState().configuration === submittedConfiguration
+      ) {
         markClean();
       }
       toast.success(editContext ? "Cart item updated." : "Added to cart.");
@@ -212,7 +215,9 @@ function LocalCartActionButton({
         addLocalLine(line);
       }
 
-      if (useCustomizerStore.getState().configuration === submittedConfiguration) {
+      if (
+        useCustomizerStore.getState().configuration === submittedConfiguration
+      ) {
         markClean();
       }
       toast.success(editContext ? "Cart item updated." : "Added to cart.");
@@ -233,16 +238,3 @@ function LocalCartActionButton({
 }
 
 export type { CartEditContext };
-
-function toConvexFitSelection(fitSelection: CartFitSelection) {
-  if (fitSelection.fitMethod === "made-to-measure") {
-    return {
-      ...fitSelection,
-      measurementProfileId: fitSelection.measurementProfileId as
-        | Id<"measurementProfiles">
-        | undefined,
-    };
-  }
-
-  return fitSelection;
-}

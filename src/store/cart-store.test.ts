@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+  getCartLineFitSelection,
   getCartItemCount,
   getCartSubtotal,
+  migratePersistedCartState,
   type CartLineItem,
   useCartStore,
 } from "@/store/cart-store";
@@ -118,7 +120,9 @@ describe("cart store", () => {
     expect(useCartStore.getState().items).toEqual([
       expect.objectContaining({
         lineId: editedLine.lineId,
-        configuration: expect.objectContaining({ fabricCode: "grey-traveller" }),
+        configuration: expect.objectContaining({
+          fabricCode: "grey-traveller",
+        }),
       }),
     ]);
   });
@@ -143,5 +147,41 @@ describe("cart store", () => {
       }),
     ]);
     expect(getCartItemCount(useCartStore.getState().items)).toBe(99);
+  });
+
+  it("migrates version 1 cart lines to default Standard Fit details", () => {
+    const oldLine = { ...baseLineItem } as Partial<CartLineItem>;
+    delete oldLine.fitMethod;
+    delete oldLine.jacketSize;
+    delete oldLine.trouserWaist;
+    delete oldLine.trouserInseam;
+    delete oldLine.fitPreference;
+
+    const migrated = migratePersistedCartState({
+      items: [oldLine],
+    });
+
+    expect(migrated).toEqual({
+      items: [
+        expect.objectContaining({
+          lineId: baseLineItem.lineId,
+          quantity: baseLineItem.quantity,
+          fitMethod: "standard",
+          jacketSize: "40R",
+          trouserWaist: "32",
+          trouserInseam: "32",
+          fitPreference: "classic",
+        }),
+      ],
+    });
+  });
+
+  it("does not produce an invalid Standard Fit selection for incomplete lines", () => {
+    expect(() =>
+      getCartLineFitSelection({
+        ...baseLineItem,
+        jacketSize: undefined,
+      }),
+    ).toThrow("Cart line is missing Standard Fit sizing.");
   });
 });

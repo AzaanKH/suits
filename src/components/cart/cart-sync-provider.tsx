@@ -6,9 +6,8 @@ import { toast } from "sonner";
 
 import { api } from "../../../convex/_generated/api";
 import { useCartStore } from "@/store/cart-store";
-import {
-  toConvexConfiguration,
-} from "./use-cart-controller";
+import { toConvexConfiguration } from "./use-cart-controller";
+import { toConvexStandardFitSelection } from "./cart-fit-selection";
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -36,28 +35,31 @@ export function CartSyncProvider() {
 
     void (async () => {
       try {
+        const standardItems = localItems.filter(
+          (item) => item.fitMethod === "standard",
+        );
+        const remainingLocalItems = localItems.filter(
+          (item) => item.fitMethod !== "standard",
+        );
+
+        if (standardItems.length === 0) {
+          return;
+        }
+
         await mergeGuestCart({
-          items: localItems
-            .filter((item) => item.fitMethod === "standard")
-            .map((item) => ({
-              configuration: toConvexConfiguration(item.configuration),
-              fitSelection: {
-                fitMethod: "standard",
-                jacketSize: item.jacketSize ?? "",
-                ...(item.trouserSize
-                  ? { trouserSize: item.trouserSize }
-                  : {
-                      trouserWaist: item.trouserWaist,
-                      trouserInseam: item.trouserInseam,
-                    }),
-                fitPreference: item.fitPreference ?? "classic",
-              },
-              quantity: item.quantity,
-            })),
+          items: standardItems.map((item) => ({
+            configuration: toConvexConfiguration(item.configuration),
+            fitSelection: toConvexStandardFitSelection(item),
+            quantity: item.quantity,
+          })),
         });
 
         if (createMergeKey(useCartStore.getState().items) === mergeKey) {
-          clearCart();
+          if (remainingLocalItems.length === 0) {
+            clearCart();
+          } else {
+            useCartStore.setState({ items: remainingLocalItems });
+          }
         }
       } catch {
         toast.error(
@@ -79,7 +81,9 @@ export function CartSyncProvider() {
   return null;
 }
 
-function createMergeKey(items: ReturnType<typeof useCartStore.getState>["items"]) {
+function createMergeKey(
+  items: ReturnType<typeof useCartStore.getState>["items"],
+) {
   return items
     .map((item) => `${item.lineId}:${item.quantity}:${item.updatedAt}`)
     .join("|");

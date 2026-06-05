@@ -10,11 +10,7 @@ import type {
 } from "@/features/customizer/types";
 import type { ProductImage } from "@/types";
 
-export const STANDARD_FIT_PREFERENCES = [
-  "slim",
-  "classic",
-  "relaxed",
-] as const;
+export const STANDARD_FIT_PREFERENCES = ["slim", "classic", "relaxed"] as const;
 
 export type StandardFitPreference = (typeof STANDARD_FIT_PREFERENCES)[number];
 
@@ -34,9 +30,7 @@ export type MadeToMeasureFitSelection = {
   measurementAppointmentRequired?: boolean;
 };
 
-export type CartFitSelection =
-  | StandardFitSelection
-  | MadeToMeasureFitSelection;
+export type CartFitSelection = StandardFitSelection | MadeToMeasureFitSelection;
 
 export type CartConfigurationSnapshot = Omit<
   CustomizerConfiguration,
@@ -97,7 +91,9 @@ export const useCartStore = create<CartState>()(
       updateItem: (lineId, item) =>
         set((state) => ({
           items: mergeLineItems(
-            state.items.filter((existingItem) => existingItem.lineId !== lineId),
+            state.items.filter(
+              (existingItem) => existingItem.lineId !== lineId,
+            ),
             cloneCartLineItem(item),
           ),
         })),
@@ -142,7 +138,7 @@ export const useCartStore = create<CartState>()(
       name: "arden-configured-cart",
       storage: createJSONStorage(() => localStorage),
       version: 2,
-      migrate: () => [],
+      migrate: migratePersistedCartState,
     },
   ),
 );
@@ -157,9 +153,7 @@ export function createDefaultStandardFitSelection(): StandardFitSelection {
   };
 }
 
-export function getCartLineFitSelection(
-  item: CartLineItem,
-): CartFitSelection {
+export function getCartLineFitSelection(item: CartLineItem): CartFitSelection {
   if (item.fitMethod === "made-to-measure") {
     return {
       fitMethod: "made-to-measure",
@@ -175,13 +169,34 @@ export function getCartLineFitSelection(
     };
   }
 
+  if (!hasCompleteStandardFit(item)) {
+    throw new Error("Cart line is missing Standard Fit sizing.");
+  }
+
   return {
     fitMethod: "standard",
-    jacketSize: item.jacketSize ?? "",
+    jacketSize: item.jacketSize,
     ...(item.trouserSize ? { trouserSize: item.trouserSize } : {}),
     ...(item.trouserWaist ? { trouserWaist: item.trouserWaist } : {}),
     ...(item.trouserInseam ? { trouserInseam: item.trouserInseam } : {}),
-    fitPreference: item.fitPreference ?? "classic",
+    fitPreference: item.fitPreference,
+  };
+}
+
+export function migratePersistedCartState(persistedState: unknown) {
+  if (!isRecord(persistedState)) {
+    return { items: [] };
+  }
+
+  const items = Array.isArray(persistedState.items)
+    ? persistedState.items
+        .map((item) => migratePersistedCartLineItem(item))
+        .filter(isCartLineItem)
+    : [];
+
+  return {
+    ...persistedState,
+    items,
   };
 }
 
@@ -243,7 +258,9 @@ function mergeLineItems(
     item.lineId === nextItem.lineId
       ? {
           ...nextItem,
-          quantity: normalizeQuantity(existingItem.quantity + nextItem.quantity),
+          quantity: normalizeQuantity(
+            existingItem.quantity + nextItem.quantity,
+          ),
           createdAt: existingItem.createdAt,
           updatedAt: nextItem.updatedAt,
         }
@@ -277,8 +294,7 @@ function isConfigurationSnapshot(
     typeof value.fabricCode === "string" &&
     Object.values(value.selectedOptionCodes).every(
       (codes) =>
-        Array.isArray(codes) &&
-        codes.every((code) => typeof code === "string"),
+        Array.isArray(codes) && codes.every((code) => typeof code === "string"),
     ) &&
     isPersonalization(value.personalization)
   );
@@ -329,11 +345,39 @@ function isCartFitSelection(value: Record<string, unknown>) {
       optionalString(value.measurementProfileId) &&
       optionalString(value.measurementProfileName) &&
       optionalBoolean(value.measurementAppointmentRequired) &&
-      Boolean(value.measurementProfileId || value.measurementAppointmentRequired)
+      Boolean(
+        value.measurementProfileId || value.measurementAppointmentRequired,
+      )
     );
   }
 
   return false;
+}
+
+function migratePersistedCartLineItem(value: unknown) {
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  if (value.fitMethod === "standard" || value.fitMethod === "made-to-measure") {
+    return value;
+  }
+
+  return {
+    ...value,
+    ...createDefaultStandardFitSelection(),
+  };
+}
+
+function hasCompleteStandardFit(
+  item: CartLineItem,
+): item is CartLineItem &
+  Required<Pick<CartLineItem, "jacketSize" | "fitPreference">> {
+  return Boolean(
+    item.jacketSize &&
+    item.fitPreference &&
+    (item.trouserSize || (item.trouserWaist && item.trouserInseam)),
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
