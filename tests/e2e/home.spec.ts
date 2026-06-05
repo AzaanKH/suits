@@ -68,8 +68,11 @@ test("completes the two-dimensional customization flow", async ({ page }) => {
   await page.getByLabel("Monogram initials").fill("AK");
   await page.getByLabel("Tailoring notes").fill("Cleaner trouser break.");
   await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next" }).click();
 
-  await expect(page.getByText("Slate grey traveller wool").first()).toBeVisible();
+  await expect(
+    page.getByText("Slate grey traveller wool").first(),
+  ).toBeVisible();
   await expect(page.getByText("Six-button double-breasted")).toBeVisible();
   await expect(page.getByText("Self-covered")).toBeVisible();
   await expect(page.getByText("The House Suit / $1,695.00")).toBeVisible();
@@ -88,7 +91,7 @@ test("completes the two-dimensional customization flow", async ({ page }) => {
     page.getByRole("heading", { name: "Customize The House Suit" }),
   ).toBeVisible();
   await page.getByRole("button", { name: /Midnight navy hopsack/ }).click();
-  for (let step = 0; step < 7; step += 1) {
+  for (let step = 0; step < 8; step += 1) {
     await page.getByRole("button", { name: "Next" }).click();
   }
   await page.getByRole("button", { name: "Update cart" }).click();

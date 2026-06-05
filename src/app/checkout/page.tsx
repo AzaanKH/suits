@@ -18,8 +18,10 @@ export default async function CheckoutPage() {
 
   const checkoutEnabled = Boolean(
     process.env.STRIPE_SECRET_KEY &&
-      process.env.NEXT_PUBLIC_APP_URL &&
-      process.env.NEXT_PUBLIC_CONVEX_URL,
+    process.env.STRIPE_WEBHOOK_SECRET &&
+    process.env.STRIPE_WEBHOOK_PROCESSING_SECRET &&
+    process.env.NEXT_PUBLIC_APP_URL &&
+    process.env.NEXT_PUBLIC_CONVEX_URL,
   );
 
   return (
@@ -28,10 +30,6 @@ export default async function CheckoutPage() {
         <h1 className="text-ink font-serif text-6xl leading-[0.95] tracking-[-0.04em] sm:text-7xl">
           Prepare checkout
         </h1>
-        <p className="text-muted-foreground mt-4 max-w-2xl text-sm leading-6">
-          Confirm fit details and shipping before moving to Stripe Checkout.
-          Arden never collects raw card numbers in this application.
-        </p>
       </div>
       <CheckoutPreparation
         clerkConfigured={clerkConfigured}

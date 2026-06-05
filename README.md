@@ -43,6 +43,33 @@ pnpm convex:dev
 
 The app keeps browsing, product detail, customization, and cart review public. Clerk is required for `/account`, saving a configured design, and starting checkout.
 
+## Stripe Checkout setup
+
+This storefront uses Stripe Checkout for one-time ecommerce orders. Do not enable Clerk Billing for suit purchases; orders are stored in Convex and Stripe is used only for payment collection.
+
+Create a Stripe account, use test mode locally, and add:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_WEBHOOK_PROCESSING_SECRET`
+- `NEXT_PUBLIC_APP_URL=http://localhost:3000`
+
+`STRIPE_WEBHOOK_PROCESSING_SECRET` is a shared server-side secret between the Next.js webhook route and Convex. Set the same value in `.env.local` and in the Convex dashboard:
+
+```bash
+pnpm exec convex env set STRIPE_WEBHOOK_PROCESSING_SECRET "replace-with-a-long-random-value"
+```
+
+Forward local webhooks with the Stripe CLI:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+Copy the printed `whsec_...` value into `STRIPE_WEBHOOK_SECRET`. Then run the app, sign in with Clerk, add a configured suit to the cart, complete Checkout with Stripe test card `4242 4242 4242 4242`, any future expiry date, any CVC, and any postal code.
+
+Successful payment redirects to `/checkout/success?session_id=...`. The cart is cleared only after `/api/stripe/webhook` verifies the Stripe signature and Convex records a paid order. Cancelled or abandoned Checkout Sessions keep the cart available.
+
 ## Environment variables
 
 Required:
@@ -58,6 +85,8 @@ Required:
 - `CLERK_FRONTEND_API_URL` (set in Convex dashboard)
 - `NEXT_PUBLIC_APP_URL`
 - `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_WEBHOOK_PROCESSING_SECRET` (also set in Convex)
 
 Do not store passwords in Convex. Saved design documents store the Clerk user id for ownership checks and design details only; Clerk profile fields remain in Clerk.
 

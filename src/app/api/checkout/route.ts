@@ -10,6 +10,9 @@ import { checkoutPreparationSchema } from "@/features/checkout/schema";
 export async function POST(request: Request) {
   const { getToken, userId } = await auth.protect();
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const stripeWebhookProcessingSecret =
+    process.env.STRIPE_WEBHOOK_PROCESSING_SECRET;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
   let checkoutPreparation;
@@ -28,7 +31,13 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!stripeSecretKey || !appUrl || !convexUrl) {
+  if (
+    !stripeSecretKey ||
+    !stripeWebhookSecret ||
+    !stripeWebhookProcessingSecret ||
+    !appUrl ||
+    !convexUrl
+  ) {
     return NextResponse.json(
       { error: "Stripe checkout is not configured." },
       { status: 503 },
@@ -47,11 +56,12 @@ export async function POST(request: Request) {
 
   convex.setAuth(convexToken);
 
-  let cart;
+  let pendingOrder;
 
   try {
-    cart = await convex.query(api.carts.forCheckout, {
-      requireMeasurements: true,
+    pendingOrder = await convex.mutation(api.orders.createPendingFromCart, {
+      shippingAddress: checkoutPreparation.shippingAddress,
+      currency: "usd",
     });
   } catch (error) {
     if (isAuthenticationError(error)) {
@@ -67,70 +77,81 @@ export async function POST(request: Request) {
     );
   }
 
-  if (cart.lineItems.length === 0) {
-    return NextResponse.json({ error: "Cart is empty." }, { status: 400 });
-  }
-
   const stripe = new Stripe(stripeSecretKey);
 
   try {
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      client_reference_id: userId,
-      customer_email: checkoutPreparation.shippingAddress.email,
-      customer_creation: "if_required",
-      phone_number_collection: {
-        enabled: true,
-      },
-      line_items: cart.lineItems.map((item) => ({
-        quantity: item.quantity,
-        price_data: {
-          currency: "usd",
-          unit_amount: item.unitPriceCents,
-          product_data: {
-            name: item.productName,
-            description: summarizeSelections(item.selections),
-            metadata: {
-              productId: item.productId,
-              slug: item.productSlug,
-              cartLineId: item.lineId,
-              fitMethod: item.fitMethod,
-              jacketSize: item.jacketSize ?? "",
-              trouserSize: item.trouserSize ?? "",
-              trouserWaist: item.trouserWaist ?? "",
-              trouserInseam: item.trouserInseam ?? "",
-              fitPreference: item.fitPreference ?? "",
-              measurementProfileId: item.measurementProfileId ?? "",
-              measurementAppointmentRequired: item.measurementAppointmentRequired
-                ? "true"
-                : "false",
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        client_reference_id: userId,
+        customer_email: checkoutPreparation.shippingAddress.email,
+        customer_creation: "if_required",
+        phone_number_collection: {
+          enabled: true,
+        },
+        line_items: pendingOrder.lineItems.map((item) => ({
+          quantity: item.quantity,
+          price_data: {
+            currency: pendingOrder.currency,
+            unit_amount: item.unitPriceCents,
+            product_data: {
+              name: item.productName,
+              description: summarizeSelections(item.selections),
+              metadata: {
+                orderId: pendingOrder.orderId,
+                productId: item.productId,
+                slug: item.productSlug,
+                cartLineId: item.lineId,
+                fitMethod: item.fitMethod,
+                jacketSize: item.jacketSize ?? "",
+                trouserSize: item.trouserSize ?? "",
+                trouserWaist: item.trouserWaist ?? "",
+                trouserInseam: item.trouserInseam ?? "",
+                fitPreference: item.fitPreference ?? "",
+                measurementProfileId: item.measurementProfileId ?? "",
+                measurementAppointmentRequired:
+                  item.measurementAppointmentRequired ? "true" : "false",
+              },
             },
           },
+        })),
+        metadata: {
+          orderId: pendingOrder.orderId,
+          clerkUserId: userId,
+          subtotalCents: String(pendingOrder.subtotalCents),
+          currency: pendingOrder.currency,
         },
-      })),
-      metadata: {
-        clerkUserId: userId,
-        shippingName: checkoutPreparation.shippingAddress.fullName,
-        shippingLine1: checkoutPreparation.shippingAddress.line1,
-        shippingLine2: checkoutPreparation.shippingAddress.line2 ?? "",
-        shippingCity: checkoutPreparation.shippingAddress.city,
-        shippingState: checkoutPreparation.shippingAddress.state,
-        shippingPostalCode: checkoutPreparation.shippingAddress.postalCode,
-        shippingCountry: checkoutPreparation.shippingAddress.country,
-        shippingPhone: checkoutPreparation.shippingAddress.phone,
+        payment_intent_data: {
+          metadata: {
+            orderId: pendingOrder.orderId,
+            clerkUserId: userId,
+          },
+        },
+        success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${appUrl}/checkout/cancel?order_id=${pendingOrder.orderId}`,
       },
-      success_url: `${appUrl}/account?checkout=success`,
-      cancel_url: `${appUrl}/checkout`,
-    });
+      {
+        idempotencyKey: `checkout_${pendingOrder.orderId}`,
+      },
+    );
 
     if (!session.url) {
-      console.error("Stripe Checkout Session did not include a URL.", session);
+      console.error("Stripe Checkout Session did not include a URL.");
 
       return NextResponse.json(
         { error: "Unable to start payment." },
         { status: 502 },
       );
     }
+
+    await convex.mutation(api.orders.attachCheckoutSession, {
+      orderId: pendingOrder.orderId,
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId:
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : undefined,
+    });
 
     return NextResponse.json({ url: session.url });
   } catch (error) {

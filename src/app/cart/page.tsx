@@ -4,8 +4,10 @@ import { PageContainer } from "@/components/layout/page-container";
 export default function CartPage() {
   const checkoutEnabled = Boolean(
     process.env.STRIPE_SECRET_KEY &&
-      process.env.NEXT_PUBLIC_APP_URL &&
-      process.env.NEXT_PUBLIC_CONVEX_URL,
+    process.env.STRIPE_WEBHOOK_SECRET &&
+    process.env.STRIPE_WEBHOOK_PROCESSING_SECRET &&
+    process.env.NEXT_PUBLIC_APP_URL &&
+    process.env.NEXT_PUBLIC_CONVEX_URL,
   );
 
   return (
