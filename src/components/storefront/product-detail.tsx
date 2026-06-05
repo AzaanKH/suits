@@ -72,9 +72,9 @@ export function ProductDetail({ slug }: { slug: string }) {
                   className="text-accent-strong mt-0.5 size-5 shrink-0"
                 />
                 <div>
-                  <p className="text-ink text-sm font-bold">Made for you</p>
+                  <p className="text-ink text-sm font-bold">Fit your way</p>
                   <p className="text-muted-foreground mt-1 text-sm leading-5">
-                    Cut to your measurements and preferences.
+                    Order standard sizing or made to measure.
                   </p>
                 </div>
               </div>
@@ -85,10 +85,10 @@ export function ProductDetail({ slug }: { slug: string }) {
                 />
                 <div>
                   <p className="text-ink text-sm font-bold">
-                    Delivered in 4-6 weeks
+              Delivered in 4-6 weeks
                   </p>
                   <p className="text-muted-foreground mt-1 text-sm leading-5">
-                    Timing is confirmed after your fitting.
+                    Timing is confirmed after fit review.
                   </p>
                 </div>
               </div>
@@ -102,7 +102,8 @@ export function ProductDetail({ slug }: { slug: string }) {
               <ArrowRight aria-hidden="true" className="size-4" />
             </Link>
             <p className="text-muted-foreground mt-3 text-xs leading-5">
-              Customize details online with a stylist-guided fitting to follow.
+              Customize details online, then choose Standard Fit or Made to
+              Measure before adding to cart.
             </p>
           </div>
         </div>

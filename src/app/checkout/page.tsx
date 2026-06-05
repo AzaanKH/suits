@@ -29,7 +29,7 @@ export default async function CheckoutPage() {
           Prepare checkout
         </h1>
         <p className="text-muted-foreground mt-4 max-w-2xl text-sm leading-6">
-          Confirm measurements and shipping before moving to Stripe Checkout.
+          Confirm fit details and shipping before moving to Stripe Checkout.
           Arden never collects raw card numbers in this application.
         </p>
       </div>

@@ -67,7 +67,7 @@ export function ShopCatalog() {
             {products.length} {products.length === 1 ? "suit" : "suits"}
           </p>
         )}
-        <p className="hidden sm:block">Made to your measurements</p>
+        <p className="hidden sm:block">Standard fit or made to measure</p>
       </div>
       {products === undefined ? (
         <ProductGridSkeleton className="mt-7" />

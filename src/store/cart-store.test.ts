@@ -49,6 +49,11 @@ const baseLineItem: CartLineItem = {
   },
   unitPriceCents: 119500,
   quantity: 1,
+  fitMethod: "standard",
+  jacketSize: "40R",
+  trouserWaist: "32",
+  trouserInseam: "32",
+  fitPreference: "classic",
   createdAt: 1,
   updatedAt: 1,
 };

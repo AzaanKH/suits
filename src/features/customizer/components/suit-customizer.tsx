@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarClock,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Ruler,
+  RotateCcw,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -57,7 +65,15 @@ import { PersonalizationForm } from "./personalization-form";
 import { SaveDesignButton } from "./save-design-button";
 import { StepNavigation } from "./step-navigation";
 import { formatCurrency, formatPriceModifier } from "@/lib/product-format";
-import { isCartLineItem, useCartStore } from "@/store/cart-store";
+import {
+  type CartFitSelection,
+  createDefaultStandardFitSelection,
+  getCartLineFitSelection,
+  isCartLineItem,
+  STANDARD_FIT_PREFERENCES,
+  type StandardFitPreference,
+  useCartStore,
+} from "@/store/cart-store";
 import { useCustomizerStore } from "@/store/customizer-store";
 
 type SuitCustomizerProps = {
@@ -86,6 +102,10 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
       ? {}
       : "skip",
   );
+  const measurementProfiles = useQuery(
+    api.measurementProfiles.mine,
+    isAuthenticated ? {} : "skip",
+  );
   const localCartLine = useCartStore((state) =>
     cartLineId && cartSource === "guest"
       ? (state.items.find((item) => item.lineId === cartLineId) ?? null)
@@ -96,6 +116,9 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
   const loadedCartLineId = useRef<string | null>(null);
   const rejectedCartLineId = useRef<string | null>(null);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const [fitSelection, setFitSelection] = useState<CartFitSelection>(() =>
+    createDefaultStandardFitSelection(),
+  );
   const configuration = useCustomizerStore((state) => state.configuration);
   const currentStepCode = useCustomizerStore((state) => state.currentStepCode);
   const dirty = useCustomizerStore((state) => state.dirty);
@@ -151,6 +174,7 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
         savedDesign.configuration
           .selectedOptionCodes as CustomizerConfiguration["selectedOptionCodes"],
     });
+    setFitSelection(createDefaultStandardFitSelection());
     loadedDesignId.current = designId;
   }, [catalog, designId, loadConfiguration, savedDesign]);
 
@@ -186,6 +210,7 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
         cartLine.configuration
           .selectedOptionCodes as CustomizerConfiguration["selectedOptionCodes"],
     });
+    setFitSelection(getCartLineFitSelection(cartLine));
     loadedCartLineId.current = cartLineId;
   }, [
     authenticatedCart,
@@ -319,6 +344,13 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
               configuration={configuration}
               currentStepCode={currentStep.code}
               cartEditContext={cartEditContext}
+              fitSelection={fitSelection}
+              onFitSelectionChange={setFitSelection}
+              measurementProfiles={measurementProfiles ?? []}
+              measurementProfilesLoading={
+                isAuthenticated && measurementProfiles === undefined
+              }
+              isAuthenticated={isAuthenticated}
             />
 
             <div className="bg-background/95 sticky bottom-0 z-10 mt-8 border-t py-4 backdrop-blur">
@@ -409,6 +441,11 @@ type StepContentProps = {
   configuration: CustomizerConfiguration;
   currentStepCode: (typeof CUSTOMIZER_STEPS)[number]["code"];
   cartEditContext: CartEditContext | null;
+  fitSelection: CartFitSelection;
+  onFitSelectionChange: (fitSelection: CartFitSelection) => void;
+  measurementProfiles: Array<{ _id: Id<"measurementProfiles">; name: string }>;
+  measurementProfilesLoading: boolean;
+  isAuthenticated: boolean;
 };
 
 function StepContent({
@@ -416,6 +453,11 @@ function StepContent({
   configuration,
   currentStepCode,
   cartEditContext,
+  fitSelection,
+  onFitSelectionChange,
+  measurementProfiles,
+  measurementProfilesLoading,
+  isAuthenticated,
 }: StepContentProps) {
   if (currentStepCode === "fabric") {
     return <FabricStep catalog={catalog} configuration={configuration} />;
@@ -426,7 +468,21 @@ function StepContent({
       <ReviewStep
         catalog={catalog}
         configuration={configuration}
+        fitSelection={fitSelection}
         cartEditContext={cartEditContext}
+        isAuthenticated={isAuthenticated}
+      />
+    );
+  }
+
+  if (currentStepCode === "fit") {
+    return (
+      <FitMethodStep
+        fitSelection={fitSelection}
+        onFitSelectionChange={onFitSelectionChange}
+        measurementProfiles={measurementProfiles}
+        measurementProfilesLoading={measurementProfilesLoading}
+        isAuthenticated={isAuthenticated}
       />
     );
   }
@@ -550,11 +606,15 @@ function OptionGroupStep({
 function ReviewStep({
   catalog,
   configuration,
+  fitSelection,
   cartEditContext,
+  isAuthenticated,
 }: {
   catalog: CustomizerCatalog;
   configuration: CustomizerConfiguration;
+  fitSelection: CartFitSelection;
   cartEditContext: CartEditContext | null;
+  isAuthenticated: boolean;
 }) {
   const updatePersonalization = useCustomizerStore(
     (state) => state.updatePersonalization,
@@ -617,11 +677,22 @@ function ReviewStep({
         </CardFooter>
       </Card>
 
+      <Card className="rounded-lg">
+        <CardHeader>
+          <CardTitle className="font-serif text-3xl leading-none">
+            Fit method
+          </CardTitle>
+          <CardDescription>{reviewFitSummary(fitSelection)}</CardDescription>
+        </CardHeader>
+      </Card>
+
       <div className="flex flex-col justify-end gap-3 sm:flex-row">
         <SaveDesignButton configuration={configuration} summary={summary} />
         <CartActionButton
           configuration={configuration}
+          fitSelection={fitSelection}
           editContext={cartEditContext}
+          disabled={!isFitSelectionReady(fitSelection, isAuthenticated)}
         />
       </div>
 
@@ -643,6 +714,456 @@ function ReviewStep({
       </Card>
     </div>
   );
+}
+
+const jacketSizes = [
+  "34S",
+  "36S",
+  "38S",
+  "40S",
+  "42S",
+  "44S",
+  "36R",
+  "38R",
+  "40R",
+  "42R",
+  "44R",
+  "46R",
+  "48R",
+  "40L",
+  "42L",
+  "44L",
+  "46L",
+  "48L",
+];
+const trouserSizes = ["XS", "S", "M", "L", "XL", "XXL"];
+const trouserWaists = Array.from({ length: 16 }, (_, index) =>
+  String(28 + index * 2),
+);
+const trouserInseams = ["28", "29", "30", "31", "32", "33", "34", "36"];
+
+function FitMethodStep({
+  fitSelection,
+  onFitSelectionChange,
+  measurementProfiles,
+  measurementProfilesLoading,
+  isAuthenticated,
+}: {
+  fitSelection: CartFitSelection;
+  onFitSelectionChange: (fitSelection: CartFitSelection) => void;
+  measurementProfiles: Array<{ _id: Id<"measurementProfiles">; name: string }>;
+  measurementProfilesLoading: boolean;
+  isAuthenticated: boolean;
+}) {
+  const ready = isFitSelectionReady(fitSelection, isAuthenticated);
+  const standardSelection =
+    fitSelection.fitMethod === "standard"
+      ? fitSelection
+      : createDefaultStandardFitSelection();
+  const trouserSizingMode = standardSelection.trouserSize
+    ? "trouser-size"
+    : "waist-inseam";
+
+  function selectStandard() {
+    onFitSelectionChange(
+      fitSelection.fitMethod === "standard"
+        ? fitSelection
+        : createDefaultStandardFitSelection(),
+    );
+  }
+
+  function selectMadeToMeasure() {
+    onFitSelectionChange(
+      fitSelection.fitMethod === "made-to-measure"
+        ? fitSelection
+        : { fitMethod: "made-to-measure" },
+    );
+  }
+
+  function updateStandard(
+    updates: Partial<typeof standardSelection>,
+  ) {
+    onFitSelectionChange({
+      ...standardSelection,
+      ...updates,
+      fitMethod: "standard",
+    });
+  }
+
+  function chooseMeasurement(value: string) {
+    if (value === "appointment") {
+      onFitSelectionChange({
+        fitMethod: "made-to-measure",
+        measurementAppointmentRequired: true,
+      });
+      return;
+    }
+
+    const profile = measurementProfiles.find((item) => item._id === value);
+
+    onFitSelectionChange({
+      fitMethod: "made-to-measure",
+      ...(profile
+        ? {
+            measurementProfileId: profile._id,
+            measurementProfileName: profile.name,
+          }
+        : {}),
+    });
+  }
+
+  return (
+    <div className="grid gap-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FitChoiceCard
+          title="Standard Fit"
+          description="Choose ready sizing for the configured look without the friction of measurements."
+          selected={fitSelection.fitMethod === "standard"}
+          onSelect={selectStandard}
+          icon="standard"
+        />
+        <FitChoiceCard
+          title="Made to Measure"
+          description="Use a measurement profile or request an appointment before tailor review."
+          selected={fitSelection.fitMethod === "made-to-measure"}
+          onSelect={selectMadeToMeasure}
+          icon="mtm"
+        />
+      </div>
+
+      {fitSelection.fitMethod === "standard" ? (
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle className="font-serif text-3xl leading-none">
+              Standard sizing
+            </CardTitle>
+            <CardDescription>
+              Built to standard sizing. Final alterations may be needed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SelectField
+                id="jacket-size"
+                label="Jacket size"
+                value={standardSelection.jacketSize}
+                onChange={(value) => updateStandard({ jacketSize: value })}
+                options={jacketSizes}
+              />
+              <div>
+                <label
+                  className="text-sm leading-none font-medium"
+                  htmlFor="trouser-sizing-mode"
+                >
+                  Trouser sizing
+                </label>
+                <select
+                  id="trouser-sizing-mode"
+                  className="form-control mt-2 rounded-lg py-2"
+                  value={trouserSizingMode}
+                  onChange={(event) => {
+                    if (event.target.value === "trouser-size") {
+                      updateStandard({
+                        trouserSize: "M",
+                        trouserWaist: undefined,
+                        trouserInseam: undefined,
+                      });
+                      return;
+                    }
+
+                    updateStandard({
+                      trouserSize: undefined,
+                      trouserWaist: "32",
+                      trouserInseam: "32",
+                    });
+                  }}
+                >
+                  <option value="waist-inseam">Waist and inseam</option>
+                  <option value="trouser-size">Trouser size</option>
+                </select>
+              </div>
+              {trouserSizingMode === "trouser-size" ? (
+                <SelectField
+                  id="trouser-size"
+                  label="Trouser size"
+                  value={standardSelection.trouserSize ?? "M"}
+                  onChange={(value) =>
+                    updateStandard({
+                      trouserSize: value,
+                      trouserWaist: undefined,
+                      trouserInseam: undefined,
+                    })
+                  }
+                  options={trouserSizes}
+                />
+              ) : (
+                <>
+                  <SelectField
+                    id="trouser-waist"
+                    label="Trouser waist"
+                    value={standardSelection.trouserWaist ?? "32"}
+                    onChange={(value) =>
+                      updateStandard({
+                        trouserWaist: value,
+                        trouserSize: undefined,
+                      })
+                    }
+                    options={trouserWaists}
+                  />
+                  <SelectField
+                    id="trouser-inseam"
+                    label="Trouser inseam"
+                    value={standardSelection.trouserInseam ?? "32"}
+                    onChange={(value) =>
+                      updateStandard({
+                        trouserInseam: value,
+                        trouserSize: undefined,
+                      })
+                    }
+                    options={trouserInseams}
+                  />
+                </>
+              )}
+            </div>
+
+            <div className="mt-5">
+              <p className="text-sm leading-none font-medium">
+                Fit preference
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {STANDARD_FIT_PREFERENCES.map((preference) => (
+                  <Button
+                    type="button"
+                    variant={
+                      standardSelection.fitPreference === preference
+                        ? "default"
+                        : "outline"
+                    }
+                    key={preference}
+                    onClick={() =>
+                      updateStandard({
+                        fitPreference: preference,
+                      })
+                    }
+                  >
+                    {formatFitPreference(preference)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle className="font-serif text-3xl leading-none">
+              Made to Measure
+            </CardTitle>
+            <CardDescription>
+              Made to your measurement profile. Tailor review happens before
+              production.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isAuthenticated ? (
+              <div className="max-w-md">
+                <label
+                  className="text-sm leading-none font-medium"
+                  htmlFor="measurement-profile"
+                >
+                  Measurement profile
+                </label>
+                <select
+                  id="measurement-profile"
+                  className="form-control mt-2 rounded-lg py-2"
+                  value={measurementValue(fitSelection)}
+                  disabled={measurementProfilesLoading}
+                  onChange={(event) => chooseMeasurement(event.target.value)}
+                >
+                  <option value="">
+                    {measurementProfilesLoading
+                      ? "Loading profiles"
+                      : "Select measurements"}
+                  </option>
+                  {measurementProfiles.map((profile) => (
+                    <option value={profile._id} key={profile._id}>
+                      {profile.name}
+                    </option>
+                  ))}
+                  <option value="appointment">
+                    Measurement appointment required
+                  </option>
+                </select>
+                {measurementProfiles.length === 0 &&
+                !measurementProfilesLoading ? (
+                  <Link className="text-link mt-3" href="/account/measurements">
+                    Create a profile
+                  </Link>
+                ) : null}
+              </div>
+            ) : (
+              <div className="rounded-lg border p-4">
+                <p className="text-ink text-sm font-semibold">
+                  Sign in is required for Made to Measure.
+                </p>
+                <p className="text-muted-foreground mt-2 text-sm leading-6">
+                  Measurement profiles and appointment requests are tied to an
+                  account before checkout.
+                </p>
+                <Link className="button-primary mt-4" href="/sign-in">
+                  Sign in
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="border-t pt-5">
+        <p className="text-muted-foreground max-w-xl text-sm leading-6">
+          {fitSelection.fitMethod === "standard"
+            ? "Checkout is allowed with sizes only."
+            : "Made to Measure orders require an account and a saved measurement profile or appointment request."}
+        </p>
+        {!ready ? (
+          <p className="text-destructive mt-3 text-sm font-medium">
+            Complete this fit choice before review.
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function FitChoiceCard({
+  title,
+  description,
+  selected,
+  onSelect,
+  icon,
+}: {
+  title: string;
+  description: string;
+  selected: boolean;
+  onSelect: () => void;
+  icon: "standard" | "mtm";
+}) {
+  const Icon = icon === "standard" ? Ruler : CalendarClock;
+
+  return (
+    <button
+      type="button"
+      className={`rounded-lg border p-5 text-left transition ${
+        selected
+          ? "border-ink bg-stone"
+          : "border-border bg-card hover:border-ink/40"
+      }`}
+      onClick={onSelect}
+    >
+      <span className="flex items-start justify-between gap-4">
+        <Icon aria-hidden="true" className="text-ink mt-1 size-5" />
+        {selected ? (
+          <Check aria-hidden="true" className="text-ink size-5" />
+        ) : null}
+      </span>
+      <span className="text-ink mt-4 block font-serif text-3xl leading-none">
+        {title}
+      </span>
+      <span className="text-muted-foreground mt-3 block text-sm leading-6">
+        {description}
+      </span>
+    </button>
+  );
+}
+
+function SelectField({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <div>
+      <label className="text-sm leading-none font-medium" htmlFor={id}>
+        {label}
+      </label>
+      <select
+        id={id}
+        className="form-control mt-2 rounded-lg py-2"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {options.map((option) => (
+          <option value={option} key={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function isFitSelectionReady(
+  fitSelection: CartFitSelection,
+  isAuthenticated: boolean,
+) {
+  if (fitSelection.fitMethod === "standard") {
+    return Boolean(
+      fitSelection.jacketSize &&
+        fitSelection.fitPreference &&
+        (fitSelection.trouserSize ||
+          (fitSelection.trouserWaist && fitSelection.trouserInseam)),
+    );
+  }
+
+  return Boolean(
+    isAuthenticated &&
+      (fitSelection.measurementProfileId ||
+        fitSelection.measurementAppointmentRequired),
+  );
+}
+
+function measurementValue(fitSelection: CartFitSelection) {
+  if (fitSelection.fitMethod !== "made-to-measure") {
+    return "";
+  }
+
+  if (fitSelection.measurementAppointmentRequired) {
+    return "appointment";
+  }
+
+  return fitSelection.measurementProfileId ?? "";
+}
+
+function reviewFitSummary(fitSelection: CartFitSelection) {
+  if (fitSelection.fitMethod === "made-to-measure") {
+    if (fitSelection.measurementAppointmentRequired) {
+      return "Made to Measure / Measurement appointment required.";
+    }
+
+    if (fitSelection.measurementProfileName) {
+      return `Made to Measure / Measurement profile: ${fitSelection.measurementProfileName}.`;
+    }
+
+    return "Made to Measure / Measurement profile needed.";
+  }
+
+  const trouser = fitSelection.trouserSize
+    ? `trouser ${fitSelection.trouserSize}`
+    : `waist ${fitSelection.trouserWaist} / inseam ${fitSelection.trouserInseam}`;
+
+  return `Standard Fit / Jacket ${fitSelection.jacketSize}, ${trouser}, ${fitSelection.fitPreference} fit. Built to standard sizing. Final alterations may be needed.`;
+}
+
+function formatFitPreference(preference: StandardFitPreference) {
+  return preference.charAt(0).toUpperCase() + preference.slice(1);
 }
 
 function CustomizerSkeleton() {

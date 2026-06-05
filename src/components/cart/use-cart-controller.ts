@@ -6,6 +6,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import {
   getCartItemCount,
+  getCartLineFitSelection,
   getCartLineItems,
   getCartSubtotal,
   type CartLineItem,
@@ -75,4 +76,19 @@ export function toConvexConfiguration(configuration: CartLineItem["configuration
     ...configuration,
     productId: configuration.productId as Id<"products">,
   };
+}
+
+export function toConvexFitSelection(item: CartLineItem) {
+  const fitSelection = getCartLineFitSelection(item);
+
+  if (fitSelection.fitMethod === "made-to-measure") {
+    return {
+      ...fitSelection,
+      measurementProfileId: fitSelection.measurementProfileId as
+        | Id<"measurementProfiles">
+        | undefined,
+    };
+  }
+
+  return fitSelection;
 }

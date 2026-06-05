@@ -104,7 +104,17 @@ export function CartItemSummary({
           </p>
         ) : null}
 
-        {item.measurementProfileName || item.measurementAppointmentRequired ? (
+        <p className="text-muted-foreground mt-4 inline-flex items-center gap-2 text-sm">
+          {item.fitMethod === "made-to-measure" ? (
+            <CalendarClock aria-hidden="true" className="size-4" />
+          ) : (
+            <Ruler aria-hidden="true" className="size-4" />
+          )}
+          {fitSummary(item)}
+        </p>
+
+        {item.fitMethod === "made-to-measure" &&
+        (item.measurementProfileName || item.measurementAppointmentRequired) ? (
           <p className="text-muted-foreground mt-4 inline-flex items-center gap-2 text-sm">
             {item.measurementAppointmentRequired ? (
               <CalendarClock aria-hidden="true" className="size-4" />
@@ -164,4 +174,16 @@ export function CartItemSummary({
       </div>
     </article>
   );
+}
+
+function fitSummary(item: CartLineItem) {
+  if (item.fitMethod === "made-to-measure") {
+    return "Made to Measure";
+  }
+
+  const trouser = item.trouserSize
+    ? `Trouser ${item.trouserSize}`
+    : `Waist ${item.trouserWaist} / Inseam ${item.trouserInseam}`;
+
+  return `Standard Fit: Jacket ${item.jacketSize}, ${trouser}, ${item.fitPreference} fit`;
 }

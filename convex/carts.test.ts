@@ -19,6 +19,14 @@ type TestConfiguration = {
   };
 };
 
+const standardFitSelection = {
+  fitMethod: "standard" as const,
+  jacketSize: "40R",
+  trouserWaist: "32",
+  trouserInseam: "32",
+  fitPreference: "classic" as const,
+};
+
 describe("carts", () => {
   it("revalidates configured suit pricing on the server", async () => {
     const t = convexTest(schema, modules);
@@ -27,6 +35,7 @@ describe("carts", () => {
 
     const line = await t.mutation(api.carts.previewLine, {
       configuration,
+      fitSelection: standardFitSelection,
       quantity: 2,
     });
 
@@ -53,6 +62,7 @@ describe("carts", () => {
             lapel: ["shawl-lapel"],
           },
         },
+        fitSelection: standardFitSelection,
         quantity: 1,
       }),
     ).rejects.toThrow(
@@ -71,12 +81,14 @@ describe("carts", () => {
 
     await user.mutation(api.carts.addLine, {
       configuration,
+      fitSelection: standardFitSelection,
       quantity: 1,
     });
     await user.mutation(api.carts.mergeGuestCart, {
       items: [
         {
           configuration,
+          fitSelection: standardFitSelection,
           quantity: 2,
         },
         {
@@ -84,6 +96,7 @@ describe("carts", () => {
             ...configuration,
             fabricCode: "grey-traveller",
           },
+          fitSelection: standardFitSelection,
           quantity: 1,
         },
       ],
@@ -107,6 +120,7 @@ describe("carts", () => {
 
     await user.mutation(api.carts.addLine, {
       configuration,
+      fitSelection: standardFitSelection,
       quantity: 60,
     });
 
@@ -115,6 +129,7 @@ describe("carts", () => {
         items: [
           {
             configuration,
+            fitSelection: standardFitSelection,
             quantity: 50,
           },
         ],

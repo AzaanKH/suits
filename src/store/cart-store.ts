@@ -10,6 +10,34 @@ import type {
 } from "@/features/customizer/types";
 import type { ProductImage } from "@/types";
 
+export const STANDARD_FIT_PREFERENCES = [
+  "slim",
+  "classic",
+  "relaxed",
+] as const;
+
+export type StandardFitPreference = (typeof STANDARD_FIT_PREFERENCES)[number];
+
+export type StandardFitSelection = {
+  fitMethod: "standard";
+  jacketSize: string;
+  trouserSize?: string;
+  trouserWaist?: string;
+  trouserInseam?: string;
+  fitPreference: StandardFitPreference;
+};
+
+export type MadeToMeasureFitSelection = {
+  fitMethod: "made-to-measure";
+  measurementProfileId?: string;
+  measurementProfileName?: string;
+  measurementAppointmentRequired?: boolean;
+};
+
+export type CartFitSelection =
+  | StandardFitSelection
+  | MadeToMeasureFitSelection;
+
 export type CartConfigurationSnapshot = Omit<
   CustomizerConfiguration,
   "selectedOptionCodes"
@@ -28,6 +56,12 @@ export type CartLineItem = {
   personalization: CustomizerPersonalization;
   unitPriceCents: number;
   quantity: number;
+  fitMethod: CartFitSelection["fitMethod"];
+  jacketSize?: string;
+  trouserSize?: string;
+  trouserWaist?: string;
+  trouserInseam?: string;
+  fitPreference?: StandardFitPreference;
   measurementProfileId?: string;
   measurementProfileName?: string;
   measurementAppointmentRequired?: boolean;
@@ -107,10 +141,49 @@ export const useCartStore = create<CartState>()(
     {
       name: "arden-configured-cart",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
+      migrate: () => [],
     },
   ),
 );
+
+export function createDefaultStandardFitSelection(): StandardFitSelection {
+  return {
+    fitMethod: "standard",
+    jacketSize: "40R",
+    trouserWaist: "32",
+    trouserInseam: "32",
+    fitPreference: "classic",
+  };
+}
+
+export function getCartLineFitSelection(
+  item: CartLineItem,
+): CartFitSelection {
+  if (item.fitMethod === "made-to-measure") {
+    return {
+      fitMethod: "made-to-measure",
+      ...(item.measurementProfileId
+        ? { measurementProfileId: item.measurementProfileId }
+        : {}),
+      ...(item.measurementProfileName
+        ? { measurementProfileName: item.measurementProfileName }
+        : {}),
+      ...(item.measurementAppointmentRequired
+        ? { measurementAppointmentRequired: true }
+        : {}),
+    };
+  }
+
+  return {
+    fitMethod: "standard",
+    jacketSize: item.jacketSize ?? "",
+    ...(item.trouserSize ? { trouserSize: item.trouserSize } : {}),
+    ...(item.trouserWaist ? { trouserWaist: item.trouserWaist } : {}),
+    ...(item.trouserInseam ? { trouserInseam: item.trouserInseam } : {}),
+    fitPreference: item.fitPreference ?? "classic",
+  };
+}
 
 export function getCartSubtotal(items: CartLineItem[]) {
   return items.reduce(
@@ -140,9 +213,7 @@ export function isCartLineItem(value: unknown): value is CartLineItem {
     isPersonalization(value.personalization) &&
     Number.isInteger(value.unitPriceCents) &&
     Number.isInteger(value.quantity) &&
-    optionalString(value.measurementProfileId) &&
-    optionalString(value.measurementProfileName) &&
-    optionalBoolean(value.measurementAppointmentRequired) &&
+    isCartFitSelection(value) &&
     Number.isInteger(value.createdAt) &&
     Number.isInteger(value.updatedAt)
   );
@@ -219,6 +290,50 @@ function isPersonalization(value: unknown): value is CustomizerPersonalization {
     typeof value.monogramText === "string" &&
     typeof value.notes === "string"
   );
+}
+
+function isCartFitSelection(value: Record<string, unknown>) {
+  if (value.fitMethod === "standard") {
+    const hasTrouserSize = optionalString(value.trouserSize)
+      ? typeof value.trouserSize === "string" && value.trouserSize.length > 0
+      : false;
+    const hasWaistInseam =
+      typeof value.trouserWaist === "string" &&
+      value.trouserWaist.length > 0 &&
+      typeof value.trouserInseam === "string" &&
+      value.trouserInseam.length > 0;
+
+    return (
+      typeof value.jacketSize === "string" &&
+      value.jacketSize.length > 0 &&
+      optionalString(value.trouserSize) &&
+      optionalString(value.trouserWaist) &&
+      optionalString(value.trouserInseam) &&
+      STANDARD_FIT_PREFERENCES.includes(
+        value.fitPreference as StandardFitPreference,
+      ) &&
+      (hasTrouserSize || hasWaistInseam) &&
+      optionalString(value.measurementProfileId) &&
+      optionalString(value.measurementProfileName) &&
+      optionalBoolean(value.measurementAppointmentRequired)
+    );
+  }
+
+  if (value.fitMethod === "made-to-measure") {
+    return (
+      optionalString(value.jacketSize) &&
+      optionalString(value.trouserSize) &&
+      optionalString(value.trouserWaist) &&
+      optionalString(value.trouserInseam) &&
+      optionalString(value.fitPreference) &&
+      optionalString(value.measurementProfileId) &&
+      optionalString(value.measurementProfileName) &&
+      optionalBoolean(value.measurementAppointmentRequired) &&
+      Boolean(value.measurementProfileId || value.measurementAppointmentRequired)
+    );
+  }
+
+  return false;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

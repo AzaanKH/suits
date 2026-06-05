@@ -94,6 +94,12 @@ export async function POST(request: Request) {
               productId: item.productId,
               slug: item.productSlug,
               cartLineId: item.lineId,
+              fitMethod: item.fitMethod,
+              jacketSize: item.jacketSize ?? "",
+              trouserSize: item.trouserSize ?? "",
+              trouserWaist: item.trouserWaist ?? "",
+              trouserInseam: item.trouserInseam ?? "",
+              fitPreference: item.fitPreference ?? "",
               measurementProfileId: item.measurementProfileId ?? "",
               measurementAppointmentRequired: item.measurementAppointmentRequired
                 ? "true"

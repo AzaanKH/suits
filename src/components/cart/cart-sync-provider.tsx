@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 import { api } from "../../../convex/_generated/api";
 import { useCartStore } from "@/store/cart-store";
-import { toConvexConfiguration } from "./use-cart-controller";
+import {
+  toConvexConfiguration,
+} from "./use-cart-controller";
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -35,12 +37,23 @@ export function CartSyncProvider() {
     void (async () => {
       try {
         await mergeGuestCart({
-          items: localItems.map((item) => ({
-            configuration: toConvexConfiguration(item.configuration),
-            quantity: item.quantity,
-            measurementAppointmentRequired:
-              item.measurementAppointmentRequired,
-          })),
+          items: localItems
+            .filter((item) => item.fitMethod === "standard")
+            .map((item) => ({
+              configuration: toConvexConfiguration(item.configuration),
+              fitSelection: {
+                fitMethod: "standard",
+                jacketSize: item.jacketSize ?? "",
+                ...(item.trouserSize
+                  ? { trouserSize: item.trouserSize }
+                  : {
+                      trouserWaist: item.trouserWaist,
+                      trouserInseam: item.trouserInseam,
+                    }),
+                fitPreference: item.fitPreference ?? "classic",
+              },
+              quantity: item.quantity,
+            })),
         });
 
         if (createMergeKey(useCartStore.getState().items) === mergeKey) {
