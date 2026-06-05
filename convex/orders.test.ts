@@ -66,10 +66,6 @@ describe("orders", () => {
     });
 
     expect(order.subtotalCents).toBe((119500 + 3500 + 3500) * 2);
-    expect(order.taxJurisdictionCode).toBe("CA");
-    expect(order.taxRateBps).toBe(725);
-    expect(order.taxCents).toBe(18343);
-    expect(order.totalCents).toBe(271343);
     expect(order.itemCount).toBe(2);
     expect(order.lineItems[0].unitPriceCents).toBe(119500 + 3500 + 3500);
 
@@ -77,7 +73,7 @@ describe("orders", () => {
       orderId: order.orderId,
     });
     expect(detail.order.paymentStatus).toBe("checkout_pending");
-    expect(detail.order.totalCents).toBe(271343);
+    expect(detail.order.totalCents).toBeUndefined();
     expect(detail.items).toHaveLength(1);
     expect(detail.items[0].configurationSnapshot.personalization).toEqual({
       monogramText: "AK",
@@ -122,7 +118,7 @@ describe("orders", () => {
     expect(detail.items).toHaveLength(1);
   });
 
-  it("creates a fresh checkout attempt when the tax state changes", async () => {
+  it("reuses a pending checkout attempt when the local state changes", async () => {
     const t = convexTest(schema, modules);
     await t.mutation(internal.seed.seed);
     const configuration = await buildValidConfiguration(t);
@@ -153,10 +149,17 @@ describe("orders", () => {
       currency: "usd",
     });
 
-    expect(newYorkOrder.orderId).not.toBe(californiaOrder.orderId);
-    expect(newYorkOrder.taxJurisdictionCode).toBe("NY");
-    expect(newYorkOrder.taxCents).toBe(5060);
-    expect(newYorkOrder.totalCents).toBe(131560);
+    expect(newYorkOrder.orderId).toBe(californiaOrder.orderId);
+    expect(newYorkOrder.checkoutAttemptKey).toBe(
+      californiaOrder.checkoutAttemptKey,
+    );
+
+    const detail = await user.query(api.orders.detail, {
+      orderId: californiaOrder.orderId,
+    });
+    expect(detail.order.shippingAddress.state).toBe("NY");
+    expect(detail.order.taxCents).toBeUndefined();
+    expect(detail.order.totalCents).toBeUndefined();
   });
 
   it("rejects Stripe IDs already attached to another order", async () => {
@@ -244,6 +247,15 @@ describe("orders", () => {
         paymentIntentId: "pi_test_paid",
         paymentStatus: "paid",
         orderId: order.orderId,
+        stripeSubtotalCents: 126500,
+        stripeTaxCents: 8223,
+        stripeTotalCents: 134723,
+        shippingAddress: {
+          ...shippingAddress,
+          city: "Bellevue",
+          state: "WA",
+          postalCode: "98005",
+        },
       },
     );
     const duplicateResult = await t.mutation(
@@ -267,6 +279,12 @@ describe("orders", () => {
     });
     expect(detail.order.paymentStatus).toBe("paid");
     expect(detail.order.stripePaymentIntentId).toBe("pi_test_paid");
+    expect(detail.order.shippingAddress.state).toBe("WA");
+    expect(detail.order.subtotalCents).toBe(126500);
+    expect(detail.order.taxCents).toBe(8223);
+    expect(detail.order.totalCents).toBe(134723);
+    expect(detail.order.taxJurisdictionCode).toBe("WA");
+    expect(detail.order.taxJurisdictionName).toBe("Washington");
 
     const cart = await user.query(api.carts.mine, {});
     expect(cart.lineItems).toHaveLength(0);

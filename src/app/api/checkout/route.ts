@@ -6,7 +6,8 @@ import { ZodError } from "zod";
 
 import { api } from "../../../../convex/_generated/api";
 import { checkoutPreparationSchema } from "@/features/checkout/schema";
-import { formatSalesTaxRate } from "@/lib/sales-tax";
+
+const STRIPE_SUIT_TAX_CODE = "txcd_30011000";
 
 export async function POST(request: Request) {
   const { getToken, userId } = await auth.protect();
@@ -96,7 +97,13 @@ export async function POST(request: Request) {
         mode: "payment",
         client_reference_id: userId,
         customer_email: checkoutPreparation.shippingAddress.email,
-        customer_creation: "if_required",
+        customer_creation: "always",
+        automatic_tax: {
+          enabled: true,
+        },
+        shipping_address_collection: {
+          allowed_countries: ["US"],
+        },
         phone_number_collection: {
           enabled: true,
         },
@@ -106,8 +113,10 @@ export async function POST(request: Request) {
             price_data: {
               currency: pendingOrder.currency,
               unit_amount: item.unitPriceCents,
+              tax_behavior: "exclusive" as const,
               product_data: {
                 name: item.productName,
+                tax_code: STRIPE_SUIT_TAX_CODE,
                 description: summarizeSelections(item.selections),
                 metadata: {
                   orderId: pendingOrder.orderId,
@@ -127,16 +136,11 @@ export async function POST(request: Request) {
               },
             },
           })),
-          ...getSalesTaxLineItem(pendingOrder),
         ],
         metadata: {
           orderId: pendingOrder.orderId,
           clerkUserId: userId,
           subtotalCents: String(pendingOrder.subtotalCents),
-          taxCents: String(pendingOrder.taxCents),
-          taxRateBps: String(pendingOrder.taxRateBps),
-          taxJurisdictionCode: pendingOrder.taxJurisdictionCode,
-          totalCents: String(pendingOrder.totalCents),
           currency: pendingOrder.currency,
         },
         payment_intent_data: {
@@ -144,8 +148,6 @@ export async function POST(request: Request) {
             orderId: pendingOrder.orderId,
             clerkUserId: userId,
             subtotalCents: String(pendingOrder.subtotalCents),
-            taxCents: String(pendingOrder.taxCents),
-            totalCents: String(pendingOrder.totalCents),
           },
         },
         success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -192,39 +194,6 @@ function summarizeSelections(
     .map((selection) => `${selection.groupLabel}: ${selection.optionLabel}`)
     .join(" / ")
     .slice(0, 500);
-}
-
-function getSalesTaxLineItem(pendingOrder: {
-  orderId: string;
-  currency: string;
-  taxCents: number;
-  taxRateBps: number;
-  taxJurisdictionCode: string;
-  taxJurisdictionName: string;
-}): Stripe.Checkout.SessionCreateParams.LineItem[] {
-  if (pendingOrder.taxCents <= 0) {
-    return [];
-  }
-
-  return [
-    {
-      quantity: 1,
-      price_data: {
-        currency: pendingOrder.currency,
-        unit_amount: pendingOrder.taxCents,
-        product_data: {
-          name: `Sales tax (${pendingOrder.taxJurisdictionCode})`,
-          description: `${pendingOrder.taxJurisdictionName} state sales tax at ${formatSalesTaxRate(pendingOrder.taxRateBps)}`,
-          metadata: {
-            orderId: pendingOrder.orderId,
-            type: "sales_tax",
-            taxJurisdictionCode: pendingOrder.taxJurisdictionCode,
-            taxRateBps: String(pendingOrder.taxRateBps),
-          },
-        },
-      },
-    },
-  ];
 }
 
 function isAuthenticationError(error: unknown) {

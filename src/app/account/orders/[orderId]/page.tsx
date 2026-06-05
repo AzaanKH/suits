@@ -156,11 +156,15 @@ export default async function OrderDetailPage({
             <div className="flex justify-between gap-3">
               <span className="text-muted-foreground">
                 Sales tax
-                {order.taxJurisdictionCode && order.taxRateBps !== undefined
-                  ? ` (${order.taxJurisdictionCode} ${formatSalesTaxRate(order.taxRateBps)})`
+                {order.taxJurisdictionCode
+                  ? ` (${order.taxJurisdictionCode}${order.taxRateBps !== undefined ? ` ${formatSalesTaxRate(order.taxRateBps)}` : ""})`
                   : ""}
               </span>
-              <PriceDisplay priceCents={order.taxCents ?? 0} />
+              {order.taxCents !== undefined ? (
+                <PriceDisplay priceCents={order.taxCents} />
+              ) : (
+                <span className="text-muted-foreground">Pending</span>
+              )}
             </div>
             <div className="border-border flex justify-between gap-3 border-t pt-3 font-semibold">
               <span>Total</span>

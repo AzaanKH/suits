@@ -5,10 +5,7 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { clearCartForOwner, getCheckoutCartForUser } from "./carts";
-import {
-  calculateUsStateSalesTax,
-  getUsStateSalesTaxDetails,
-} from "../src/lib/sales-tax";
+import { getUsStateSalesTaxDetails } from "../src/lib/sales-tax";
 
 const shippingAddressValidator = v.object({
   fullName: v.string(),
@@ -49,14 +46,7 @@ export const createPendingFromCart = mutation({
       0,
     );
     const normalizedShippingAddress = normalizeShippingAddress(shippingAddress);
-    const taxQuote = toConvexSalesTaxQuote(
-      subtotalCents,
-      normalizedShippingAddress,
-    );
-    const checkoutAttemptKey = await createCheckoutAttemptKey(
-      cart.lineItems,
-      taxQuote.code,
-    );
+    const checkoutAttemptKey = await createCheckoutAttemptKey(cart.lineItems);
     const itemCount = cart.lineItems.reduce(
       (total, item) => total + item.quantity,
       0,
@@ -71,11 +61,6 @@ export const createPendingFromCart = mutation({
       await ctx.db.patch(reusableOrder._id, {
         shippingAddress: normalizedShippingAddress,
         subtotalCents,
-        taxCents: taxQuote.taxCents,
-        taxRateBps: taxQuote.rateBps,
-        taxJurisdictionCode: taxQuote.code,
-        taxJurisdictionName: taxQuote.name,
-        totalCents: taxQuote.totalCents,
         currency: normalizedCurrency,
         itemCount,
         updatedAt: now,
@@ -86,11 +71,6 @@ export const createPendingFromCart = mutation({
         checkoutAttemptKey,
         stripeCheckoutSessionId: reusableOrder.stripeCheckoutSessionId,
         subtotalCents,
-        taxCents: taxQuote.taxCents,
-        taxRateBps: taxQuote.rateBps,
-        taxJurisdictionCode: taxQuote.code,
-        taxJurisdictionName: taxQuote.name,
-        totalCents: taxQuote.totalCents,
         currency: normalizedCurrency,
         itemCount,
         lineItems: cart.lineItems,
@@ -102,11 +82,6 @@ export const createPendingFromCart = mutation({
       checkoutAttemptKey,
       shippingAddress: normalizedShippingAddress,
       subtotalCents,
-      taxCents: taxQuote.taxCents,
-      taxRateBps: taxQuote.rateBps,
-      taxJurisdictionCode: taxQuote.code,
-      taxJurisdictionName: taxQuote.name,
-      totalCents: taxQuote.totalCents,
       currency: normalizedCurrency,
       paymentStatus: "checkout_pending",
       fulfillmentStatus: "unfulfilled",
@@ -149,11 +124,6 @@ export const createPendingFromCart = mutation({
       orderId,
       checkoutAttemptKey,
       subtotalCents,
-      taxCents: taxQuote.taxCents,
-      taxRateBps: taxQuote.rateBps,
-      taxJurisdictionCode: taxQuote.code,
-      taxJurisdictionName: taxQuote.name,
-      totalCents: taxQuote.totalCents,
       currency: normalizedCurrency,
       itemCount,
       lineItems: cart.lineItems,
@@ -253,6 +223,10 @@ export const recordCheckoutSessionStatus = mutation({
     paymentIntentId: v.optional(v.string()),
     paymentStatus: webhookPaymentStatusValidator,
     orderId: v.optional(v.id("orders")),
+    stripeSubtotalCents: v.optional(v.number()),
+    stripeTaxCents: v.optional(v.number()),
+    stripeTotalCents: v.optional(v.number()),
+    shippingAddress: v.optional(shippingAddressValidator),
   },
   handler: async (ctx, args) => {
     requireWebhookProcessingSecret(args.processingSecret);
@@ -294,6 +268,19 @@ export const recordCheckoutSessionStatus = mutation({
       ...(args.paymentIntentId
         ? { stripePaymentIntentId: args.paymentIntentId }
         : {}),
+      ...(args.shippingAddress
+        ? { shippingAddress: normalizeShippingAddress(args.shippingAddress) }
+        : {}),
+      ...(args.stripeSubtotalCents !== undefined
+        ? { subtotalCents: args.stripeSubtotalCents }
+        : {}),
+      ...(args.stripeTaxCents !== undefined
+        ? { taxCents: args.stripeTaxCents }
+        : {}),
+      ...(args.stripeTotalCents !== undefined
+        ? { totalCents: args.stripeTotalCents }
+        : {}),
+      ...taxJurisdictionPatch(args.shippingAddress),
       paymentStatus,
       ...(paymentStatus === "paid" ? { paymentConfirmedAt: now } : {}),
       updatedAt: now,
@@ -582,7 +569,6 @@ async function createCheckoutAttemptKey(
     measurementProfileId?: Id<"measurementProfiles">;
     measurementAppointmentRequired?: boolean;
   }>,
-  taxJurisdictionCode: string,
 ) {
   const snapshot = lineItems
     .map((item) => ({
@@ -600,7 +586,6 @@ async function createCheckoutAttemptKey(
       measurementAppointmentRequired: Boolean(
         item.measurementAppointmentRequired,
       ),
-      taxJurisdictionCode,
     }))
     .sort((left, right) => left.lineId.localeCompare(right.lineId));
   const digest = await crypto.subtle.digest(
@@ -642,25 +627,6 @@ function normalizeShippingAddress(
   };
 }
 
-function toConvexSalesTaxQuote(
-  subtotalCents: number,
-  shippingAddress: ReturnType<typeof normalizeShippingAddress>,
-) {
-  try {
-    return calculateUsStateSalesTax({
-      subtotalCents,
-      state: shippingAddress.state,
-      country: shippingAddress.country,
-    });
-  } catch (error) {
-    throw new ConvexError(
-      error instanceof Error
-        ? error.message
-        : "Unable to calculate sales tax for this address.",
-    );
-  }
-}
-
 function normalizeText(
   value: string,
   label: string,
@@ -676,6 +642,23 @@ function normalizeText(
   }
 
   return trimmed;
+}
+
+function taxJurisdictionPatch(
+  shippingAddress: typeof shippingAddressValidator.type | undefined,
+) {
+  if (!shippingAddress) {
+    return {};
+  }
+
+  const taxState = getUsStateSalesTaxDetails(shippingAddress.state);
+
+  return taxState
+    ? {
+        taxJurisdictionCode: taxState.code,
+        taxJurisdictionName: taxState.name,
+      }
+    : {};
 }
 
 function toOrderPaymentStatus(paymentStatus: "paid" | "unpaid" | "failed") {
