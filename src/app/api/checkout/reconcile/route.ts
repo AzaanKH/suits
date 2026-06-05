@@ -24,7 +24,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsed = reconcileCheckoutSchema.safeParse(await request.json());
+  let requestBody: unknown;
+
+  try {
+    requestBody = await request.json();
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Malformed JSON" }, { status: 400 });
+    }
+
+    throw error;
+  }
+
+  const parsed = reconcileCheckoutSchema.safeParse(requestBody);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -34,9 +46,13 @@ export async function POST(request: Request) {
   }
 
   const stripe = new Stripe(stripeSecretKey);
-  const session = await stripe.checkout.sessions.retrieve(
-    parsed.data.sessionId,
-  );
+  let session: Stripe.Checkout.Session;
+
+  try {
+    session = await stripe.checkout.sessions.retrieve(parsed.data.sessionId);
+  } catch (error) {
+    return getStripeSessionRetrieveErrorResponse(error);
+  }
 
   if (session.client_reference_id !== userId) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
@@ -80,4 +96,29 @@ function getCheckoutSessionPaymentStatus(session: Stripe.Checkout.Session) {
   }
 
   return session.payment_status === "paid" ? "paid" : "unpaid";
+}
+
+function getStripeSessionRetrieveErrorResponse(error: unknown) {
+  if (error instanceof Stripe.errors.StripeError) {
+    const status = error.statusCode ?? 502;
+
+    if (error.type === "StripeInvalidRequestError") {
+      return NextResponse.json(
+        { error: "Checkout Session not found." },
+        { status: status === 404 ? 404 : 400 },
+      );
+    }
+
+    if (status >= 400 && status < 500) {
+      return NextResponse.json(
+        { error: "Unable to retrieve Checkout Session." },
+        { status },
+      );
+    }
+  }
+
+  return NextResponse.json(
+    { error: "Stripe is unavailable for checkout reconciliation." },
+    { status: 502 },
+  );
 }

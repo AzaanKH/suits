@@ -9,14 +9,16 @@ export function CheckoutSessionReconciler({
   sessionIds: string[];
 }) {
   const router = useRouter();
-  const reconciled = useRef(false);
+  const lastReconciledKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (reconciled.current || sessionIds.length === 0) {
+    const key = JSON.stringify(sessionIds);
+
+    if (sessionIds.length === 0 || lastReconciledKey.current === key) {
       return;
     }
 
-    reconciled.current = true;
+    lastReconciledKey.current = key;
     let active = true;
 
     void Promise.all(

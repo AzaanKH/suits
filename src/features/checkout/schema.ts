@@ -46,10 +46,11 @@ export const shippingAddressSchema = z
       .max(80, "Country must be 80 characters or fewer."),
   })
   .superRefine((shippingAddress, ctx) => {
-    if (
-      shippingAddress.country.length >= 2 &&
-      !isUnitedStatesCountry(shippingAddress.country)
-    ) {
+    const countryIsUnitedStates = isUnitedStatesCountry(
+      shippingAddress.country,
+    );
+
+    if (shippingAddress.country.length >= 2 && !countryIsUnitedStates) {
       ctx.addIssue({
         code: "custom",
         message: "Checkout currently supports United States addresses only.",
@@ -58,6 +59,7 @@ export const shippingAddressSchema = z
     }
 
     if (
+      countryIsUnitedStates &&
       shippingAddress.state.length >= 2 &&
       !getUsStateSalesTaxDetails(shippingAddress.state)
     ) {

@@ -142,5 +142,5 @@ export function formatSalesTaxRate(rateBps: number) {
 }
 
 function normalizeLookupValue(value: string) {
-  return value.trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, " ");
+  return value.trim().toLowerCase().replace(/[,.]/g, "").replace(/\s+/g, " ");
 }
