@@ -80,6 +80,16 @@ export async function POST(request: Request) {
   const stripe = new Stripe(stripeSecretKey);
 
   try {
+    if (pendingOrder.stripeCheckoutSessionId) {
+      const existingSession = await stripe.checkout.sessions.retrieve(
+        pendingOrder.stripeCheckoutSessionId,
+      );
+
+      if (existingSession.url && existingSession.status === "open") {
+        return NextResponse.json({ url: existingSession.url });
+      }
+    }
+
     const session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
@@ -131,7 +141,7 @@ export async function POST(request: Request) {
         cancel_url: `${appUrl}/checkout/cancel?order_id=${pendingOrder.orderId}`,
       },
       {
-        idempotencyKey: `checkout_${pendingOrder.orderId}`,
+        idempotencyKey: pendingOrder.checkoutAttemptKey,
       },
     );
 

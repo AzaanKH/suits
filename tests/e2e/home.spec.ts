@@ -91,10 +91,16 @@ test("completes the two-dimensional customization flow", async ({ page }) => {
     page.getByRole("heading", { name: "Customize The House Suit" }),
   ).toBeVisible();
   await page.getByRole("button", { name: /Midnight navy hopsack/ }).click();
-  for (let step = 0; step < 8; step += 1) {
+  const updateCartButton = page.getByRole("button", { name: "Update cart" });
+  for (let step = 0; step < 10; step += 1) {
+    if (await updateCartButton.isVisible()) {
+      break;
+    }
+
     await page.getByRole("button", { name: "Next" }).click();
   }
-  await page.getByRole("button", { name: "Update cart" }).click();
+  await expect(updateCartButton).toBeEnabled();
+  await updateCartButton.click();
   await expect(page.getByText("Midnight navy hopsack")).toBeVisible();
 
   await page.getByRole("button", { name: /Remove/ }).click();

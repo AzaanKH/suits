@@ -39,6 +39,7 @@ export const createPendingFromCart = mutation({
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const cart = await getCheckoutCartForUser(ctx, ownerClerkUserId, true);
     const normalizedCurrency = normalizeCurrency(currency ?? "usd");
+    const checkoutAttemptKey = await createCheckoutAttemptKey(cart.lineItems);
     const now = Date.now();
     const subtotalCents = cart.lineItems.reduce(
       (total, item) => total + item.unitPriceCents * item.quantity,
@@ -48,8 +49,35 @@ export const createPendingFromCart = mutation({
       (total, item) => total + item.quantity,
       0,
     );
+    const reusableOrder = await getReusableCheckoutAttempt(
+      ctx,
+      ownerClerkUserId,
+      checkoutAttemptKey,
+    );
+
+    if (reusableOrder) {
+      await ctx.db.patch(reusableOrder._id, {
+        shippingAddress: normalizeShippingAddress(shippingAddress),
+        subtotalCents,
+        currency: normalizedCurrency,
+        itemCount,
+        updatedAt: now,
+      });
+
+      return {
+        orderId: reusableOrder._id,
+        checkoutAttemptKey,
+        stripeCheckoutSessionId: reusableOrder.stripeCheckoutSessionId,
+        subtotalCents,
+        currency: normalizedCurrency,
+        itemCount,
+        lineItems: cart.lineItems,
+      };
+    }
+
     const orderId = await ctx.db.insert("orders", {
       ownerClerkUserId,
+      checkoutAttemptKey,
       shippingAddress: normalizeShippingAddress(shippingAddress),
       subtotalCents,
       currency: normalizedCurrency,
@@ -92,6 +120,7 @@ export const createPendingFromCart = mutation({
 
     return {
       orderId,
+      checkoutAttemptKey,
       subtotalCents,
       currency: normalizedCurrency,
       itemCount,
@@ -119,6 +148,11 @@ export const attachCheckoutSession = mutation({
     ) {
       throw new ConvexError("Order already has a Checkout Session.");
     }
+
+    await assertStripeIdsAvailable(ctx, order._id, {
+      checkoutSessionId: stripeCheckoutSessionId,
+      paymentIntentId: stripePaymentIntentId,
+    });
 
     await ctx.db.patch(order._id, {
       stripeCheckoutSessionId,
@@ -171,7 +205,12 @@ export const byCheckoutSessionForCurrentUser = query({
       return null;
     }
 
-    return order;
+    const items = await ctx.db
+      .query("orderItems")
+      .withIndex("by_order", (q) => q.eq("orderId", order._id))
+      .collect();
+
+    return { order, items };
   },
 });
 
@@ -212,6 +251,11 @@ export const recordCheckoutSessionStatus = mutation({
     }
 
     const paymentStatus = toOrderPaymentStatus(args.paymentStatus);
+    await assertStripeIdsAvailable(ctx, order._id, {
+      checkoutSessionId: args.checkoutSessionId,
+      paymentIntentId: args.paymentIntentId,
+    });
+
     await ctx.db.patch(order._id, {
       stripeCheckoutSessionId:
         order.stripeCheckoutSessionId ?? args.checkoutSessionId,
@@ -275,6 +319,10 @@ export const recordPaymentIntentStatus = mutation({
     }
 
     const paymentStatus = toOrderPaymentStatus(args.paymentStatus);
+    await assertStripeIdsAvailable(ctx, order._id, {
+      paymentIntentId: args.paymentIntentId,
+    });
+
     await ctx.db.patch(order._id, {
       stripePaymentIntentId: args.paymentIntentId,
       paymentStatus,
@@ -313,6 +361,28 @@ async function requireOwnedOrder(
   return order;
 }
 
+async function getReusableCheckoutAttempt(
+  ctx: QueryCtx | MutationCtx,
+  ownerClerkUserId: string,
+  checkoutAttemptKey: string,
+) {
+  const attempts = await ctx.db
+    .query("orders")
+    .withIndex("by_owner_checkout_attempt_key", (q) =>
+      q
+        .eq("ownerClerkUserId", ownerClerkUserId)
+        .eq("checkoutAttemptKey", checkoutAttemptKey),
+    )
+    .order("desc")
+    .collect();
+
+  return (
+    attempts.find((order) =>
+      ["checkout_pending", "unpaid"].includes(order.paymentStatus),
+    ) ?? null
+  );
+}
+
 async function findWebhookOrder(
   ctx: QueryCtx | MutationCtx,
   {
@@ -346,6 +416,37 @@ async function findWebhookOrder(
   }
 
   return null;
+}
+
+async function assertStripeIdsAvailable(
+  ctx: QueryCtx | MutationCtx,
+  orderId: Id<"orders">,
+  {
+    checkoutSessionId,
+    paymentIntentId,
+  }: {
+    checkoutSessionId?: string;
+    paymentIntentId?: string;
+  },
+) {
+  if (checkoutSessionId) {
+    const existingOrder = await getOrderByCheckoutSession(
+      ctx,
+      checkoutSessionId,
+    );
+
+    if (existingOrder && existingOrder._id !== orderId) {
+      throw new ConvexError("Stripe Checkout Session is already attached.");
+    }
+  }
+
+  if (paymentIntentId) {
+    const existingOrder = await getOrderByPaymentIntent(ctx, paymentIntentId);
+
+    if (existingOrder && existingOrder._id !== orderId) {
+      throw new ConvexError("Stripe PaymentIntent is already attached.");
+    }
+  }
 }
 
 async function getOrderByCheckoutSession(
@@ -432,6 +533,51 @@ function normalizeCurrency(currency: string) {
   }
 
   return normalizedCurrency;
+}
+
+async function createCheckoutAttemptKey(
+  lineItems: Array<{
+    lineId: string;
+    productId: Id<"products">;
+    unitPriceCents: number;
+    quantity: number;
+    fitMethod: "standard" | "made-to-measure";
+    jacketSize?: string;
+    trouserSize?: string;
+    trouserWaist?: string;
+    trouserInseam?: string;
+    fitPreference?: "slim" | "classic" | "relaxed";
+    measurementProfileId?: Id<"measurementProfiles">;
+    measurementAppointmentRequired?: boolean;
+  }>,
+) {
+  const snapshot = lineItems
+    .map((item) => ({
+      lineId: item.lineId,
+      productId: item.productId,
+      unitPriceCents: item.unitPriceCents,
+      quantity: item.quantity,
+      fitMethod: item.fitMethod,
+      jacketSize: item.jacketSize ?? "",
+      trouserSize: item.trouserSize ?? "",
+      trouserWaist: item.trouserWaist ?? "",
+      trouserInseam: item.trouserInseam ?? "",
+      fitPreference: item.fitPreference ?? "",
+      measurementProfileId: item.measurementProfileId ?? "",
+      measurementAppointmentRequired: Boolean(
+        item.measurementAppointmentRequired,
+      ),
+    }))
+    .sort((left, right) => left.lineId.localeCompare(right.lineId));
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(snapshot)),
+  );
+  const hash = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+
+  return `cart_${hash}`;
 }
 
 function normalizeShippingAddress(

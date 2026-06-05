@@ -256,6 +256,7 @@ export default defineSchema({
 
   orders: defineTable({
     ownerClerkUserId: v.string(),
+    checkoutAttemptKey: v.optional(v.string()),
     stripeCheckoutSessionId: v.optional(v.string()),
     stripePaymentIntentId: v.optional(v.string()),
     shippingAddress,
@@ -269,6 +270,10 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_owner_created_at", ["ownerClerkUserId", "createdAt"])
+    .index("by_owner_checkout_attempt_key", [
+      "ownerClerkUserId",
+      "checkoutAttemptKey",
+    ])
     .index("by_stripe_checkout_session", ["stripeCheckoutSessionId"])
     .index("by_stripe_payment_intent", ["stripePaymentIntentId"]),
 

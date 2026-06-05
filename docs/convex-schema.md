@@ -1,20 +1,21 @@
 # Convex storefront schema
 
-The storefront uses eleven tables:
+The storefront uses twelve tables:
 
-| Table                              | Purpose                                                                                                                                                   |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `products`                         | Sellable suit foundations, pricing, copy, images, status, ordering, and fabric availability.                                                              |
-| `categories`                       | Active catalog filters such as business, occasion, and seasonal.                                                                                          |
-| `fabrics`                          | Reusable cloth records with mill, composition, weight, seasonality, and descriptive copy.                                                                 |
-| `customizationGroups`              | Ordered configurator sections such as jacket, trouser, lining, and finishing.                                                                             |
-| `customizationOptions`             | Stable option codes, price modifiers in integer cents, presentation data, and open-ended compatibility metadata.                                          |
-| `productCustomizationAvailability` | Explicit product-to-option join rows. Each row also stores the option's group ID for efficient product/group lookups.                                     |
-| `savedDesigns`                     | Authenticated saved configurations keyed by owner Clerk user id with product IDs, names, server-priced snapshots, and previews.                           |
-| `carts`                            | Authenticated cart records keyed by owner Clerk user id with immutable configured line snapshots, server-priced unit amounts, quantities, and timestamps. |
-| `orders`                           | Authenticated order headers keyed by owner Clerk user id with Stripe IDs, shipping, totals, payment status, fulfillment status, and timestamps.           |
-| `orderItems`                       | Normalized order line snapshots with product, configuration, selections, personalization, fit, measurement, quantity, and cents-based pricing data.       |
-| `stripeEvents`                     | Webhook processing records keyed by Stripe event id for idempotent payment-status updates.                                                                |
+| Table                              | Purpose                                                                                                                                                                                                                                               |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `products`                         | Sellable suit foundations, pricing, copy, images, status, ordering, and fabric availability.                                                                                                                                                          |
+| `categories`                       | Active catalog filters such as business, occasion, and seasonal.                                                                                                                                                                                      |
+| `fabrics`                          | Reusable cloth records with mill, composition, weight, seasonality, and descriptive copy.                                                                                                                                                             |
+| `customizationGroups`              | Ordered configurator sections such as jacket, trouser, lining, and finishing.                                                                                                                                                                         |
+| `customizationOptions`             | Stable option codes, price modifiers in integer cents, presentation data, and open-ended compatibility metadata.                                                                                                                                      |
+| `productCustomizationAvailability` | Explicit product-to-option join rows. Each row also stores the option's group ID for efficient product/group lookups.                                                                                                                                 |
+| `savedDesigns`                     | Authenticated saved configurations keyed by owner Clerk user id with product IDs, names, server-priced snapshots, and previews.                                                                                                                       |
+| `measurementProfiles`              | Authenticated user measurement templates keyed by owner Clerk user id with profile name, units, body measurements, fit preferences, notes, and timestamps. Saved designs, carts, and orders reference profile IDs/names for personalized fit lookups. |
+| `carts`                            | Authenticated cart records keyed by owner Clerk user id with immutable configured line snapshots, server-priced unit amounts, quantities, and timestamps.                                                                                             |
+| `orders`                           | Authenticated order headers keyed by owner Clerk user id with Stripe IDs, shipping, totals, payment status, fulfillment status, and timestamps.                                                                                                       |
+| `orderItems`                       | Normalized order line snapshots with product, configuration, selections, personalization, fit, measurement, quantity, and cents-based pricing data.                                                                                                   |
+| `stripeEvents`                     | Webhook processing records keyed by Stripe event id for idempotent payment-status updates.                                                                                                                                                            |
 
 ## Decisions
 

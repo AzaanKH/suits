@@ -80,6 +80,95 @@ describe("orders", () => {
     });
   });
 
+  it("reuses a pending checkout attempt for the same cart snapshot", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_checkout_retry",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      fitSelection: standardFitSelection,
+      quantity: 1,
+    });
+
+    const firstOrder = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress,
+      currency: "usd",
+    });
+    const retriedOrder = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress: {
+        ...shippingAddress,
+        line1: "200 Market Street",
+      },
+      currency: "usd",
+    });
+
+    expect(retriedOrder.orderId).toBe(firstOrder.orderId);
+    expect(retriedOrder.checkoutAttemptKey).toBe(firstOrder.checkoutAttemptKey);
+
+    const detail = await user.query(api.orders.detail, {
+      orderId: firstOrder.orderId,
+    });
+    expect(detail.order.shippingAddress.line1).toBe("200 Market Street");
+    expect(detail.items).toHaveLength(1);
+  });
+
+  it("rejects Stripe IDs already attached to another order", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_stripe_id_conflict",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      fitSelection: standardFitSelection,
+      quantity: 1,
+    });
+
+    const firstOrder = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress,
+      currency: "usd",
+    });
+    await user.mutation(api.orders.attachCheckoutSession, {
+      orderId: firstOrder.orderId,
+      stripeCheckoutSessionId: "cs_test_conflict",
+      stripePaymentIntentId: "pi_test_conflict",
+    });
+    await user.mutation(api.carts.updateQuantity, {
+      lineId: firstOrder.lineItems[0].lineId,
+      quantity: 2,
+    });
+    const secondOrder = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress,
+      currency: "usd",
+    });
+
+    await expect(
+      user.mutation(api.orders.attachCheckoutSession, {
+        orderId: secondOrder.orderId,
+        stripeCheckoutSessionId: "cs_test_conflict",
+      }),
+    ).rejects.toThrow("Stripe Checkout Session is already attached.");
+
+    await expect(
+      t.mutation(api.orders.recordPaymentIntentStatus, {
+        processingSecret,
+        stripeEventId: "evt_conflicting_payment_intent",
+        eventType: "payment_intent.succeeded",
+        paymentIntentId: "pi_test_conflict",
+        paymentStatus: "paid",
+        orderId: secondOrder.orderId,
+      }),
+    ).rejects.toThrow("Stripe PaymentIntent is already attached.");
+  });
+
   it("processes paid webhooks once and clears the cart after payment", async () => {
     const t = convexTest(schema, modules);
     await t.mutation(internal.seed.seed);

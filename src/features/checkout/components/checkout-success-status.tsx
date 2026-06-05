@@ -9,17 +9,22 @@ import { api } from "../../../../convex/_generated/api";
 import { useCartStore } from "@/store/cart-store";
 
 export function CheckoutSuccessStatus({ sessionId }: { sessionId?: string }) {
+  const localItems = useCartStore((state) => state.items);
   const clearCart = useCartStore((state) => state.clearCart);
-  const order = useQuery(
+  const orderDetails = useQuery(
     api.orders.byCheckoutSessionForCurrentUser,
     sessionId ? { stripeCheckoutSessionId: sessionId } : "skip",
   );
 
   useEffect(() => {
-    if (order?.paymentStatus === "paid") {
+    if (
+      orderDetails?.order.paymentStatus === "paid" &&
+      localItems.length > 0 &&
+      localCartMatchesOrder(localItems, orderDetails.items)
+    ) {
       clearCart();
     }
-  }, [clearCart, order?.paymentStatus]);
+  }, [clearCart, localItems, orderDetails]);
 
   if (!sessionId) {
     return (
@@ -31,7 +36,7 @@ export function CheckoutSuccessStatus({ sessionId }: { sessionId?: string }) {
     );
   }
 
-  if (order === undefined) {
+  if (orderDetails === undefined) {
     return (
       <StatusBlock
         icon={<Clock aria-hidden="true" className="size-5" />}
@@ -41,7 +46,7 @@ export function CheckoutSuccessStatus({ sessionId }: { sessionId?: string }) {
     );
   }
 
-  if (!order || order.paymentStatus !== "paid") {
+  if (!orderDetails || orderDetails.order.paymentStatus !== "paid") {
     return (
       <StatusBlock
         icon={<Clock aria-hidden="true" className="size-5" />}
@@ -55,10 +60,27 @@ export function CheckoutSuccessStatus({ sessionId }: { sessionId?: string }) {
     <StatusBlock
       icon={<CheckCircle2 aria-hidden="true" className="size-5" />}
       title="Payment confirmed"
-      description="The order is paid and your cart has been cleared."
-      actionHref={`/account/orders/${order._id}`}
+      description="The order is paid and your account order history is ready."
+      actionHref={`/account/orders/${orderDetails.order._id}`}
       actionLabel="View order"
     />
+  );
+}
+
+function localCartMatchesOrder(
+  localItems: Array<{ lineId: string; quantity: number }>,
+  orderItems: Array<{ lineId: string; quantity: number }>,
+) {
+  if (localItems.length !== orderItems.length) {
+    return false;
+  }
+
+  const orderQuantities = new Map(
+    orderItems.map((item) => [item.lineId, item.quantity]),
+  );
+
+  return localItems.every(
+    (item) => orderQuantities.get(item.lineId) === item.quantity,
   );
 }
 

@@ -21,14 +21,18 @@ export default async function OrderDetailPage({
 }) {
   const { orderId } = await params;
   const convex = await getAuthenticatedConvexClient();
-  const details = await convex
-    .query(api.orders.detail, {
-      orderId: orderId as Id<"orders">,
-    })
-    .catch(() => null);
+  let details;
 
-  if (!details) {
-    notFound();
+  try {
+    details = await convex.query(api.orders.detail, {
+      orderId: orderId as Id<"orders">,
+    });
+  } catch (error) {
+    if (isOrderNotFoundError(error)) {
+      notFound();
+    }
+
+    throw error;
   }
 
   const { order, items } = details;
@@ -194,6 +198,14 @@ function formatCurrency(priceCents: number) {
     style: "currency",
     currency: "USD",
   }).format(priceCents / 100);
+}
+
+function isOrderNotFoundError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (/Order not found/i.test(error.message) ||
+      /Value does not match validator v\.id\("orders"\)/i.test(error.message))
+  );
 }
 
 function fitSummary(item: {

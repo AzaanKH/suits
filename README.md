@@ -54,10 +54,26 @@ Create a Stripe account, use test mode locally, and add:
 - `STRIPE_WEBHOOK_PROCESSING_SECRET`
 - `NEXT_PUBLIC_APP_URL=http://localhost:3000`
 
-`STRIPE_WEBHOOK_PROCESSING_SECRET` is a shared server-side secret between the Next.js webhook route and Convex. Set the same value in `.env.local` and in the Convex dashboard:
+`STRIPE_WEBHOOK_PROCESSING_SECRET` is a shared server-side secret between the Next.js webhook route and Convex. Generate it with a cryptographically secure source:
 
 ```bash
-pnpm exec convex env set STRIPE_WEBHOOK_PROCESSING_SECRET "replace-with-a-long-random-value"
+openssl rand -base64 32
+```
+
+Or with Node:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+```
+
+Set the generated value in `.env.local` and in the Convex dashboard:
+
+```bash
+STRIPE_WEBHOOK_PROCESSING_SECRET="generated-secret-value"
+```
+
+```bash
+pnpm exec convex env set STRIPE_WEBHOOK_PROCESSING_SECRET "generated-secret-value"
 ```
 
 Forward local webhooks with the Stripe CLI:
@@ -66,7 +82,13 @@ Forward local webhooks with the Stripe CLI:
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
-Copy the printed `whsec_...` value into `STRIPE_WEBHOOK_SECRET`. Then run the app, sign in with Clerk, add a configured suit to the cart, complete Checkout with Stripe test card `4242 4242 4242 4242`, any future expiry date, any CVC, and any postal code.
+Copy the printed `whsec_...` value into `STRIPE_WEBHOOK_SECRET`. Restart the Next.js dev server after changing `.env.local` so `/api/stripe/webhook` uses the current signature secret:
+
+```bash
+pnpm dev
+```
+
+Then sign in with Clerk, add a configured suit to the cart, complete Checkout with Stripe test card `4242 4242 4242 4242`, any future expiry date, any CVC, and any postal code.
 
 Successful payment redirects to `/checkout/success?session_id=...`. The cart is cleared only after `/api/stripe/webhook` verifies the Stripe signature and Convex records a paid order. Cancelled or abandoned Checkout Sessions keep the cart available.
 
