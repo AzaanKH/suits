@@ -97,7 +97,7 @@ export function CartSheet({ checkoutEnabled }: CartSheetProps) {
               <PriceDisplay priceCents={subtotalCents} />
             </div>
             <p className="text-muted-foreground text-sm leading-6">
-              Estimated total excludes taxes and delivery.
+              Estimated total excludes sales tax until checkout.
             </p>
             <CheckoutButton checkoutEnabled={checkoutEnabled} />
             <Link

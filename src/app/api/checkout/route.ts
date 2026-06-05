@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 
 import { api } from "../../../../convex/_generated/api";
 import { checkoutPreparationSchema } from "@/features/checkout/schema";
+import { formatSalesTaxRate } from "@/lib/sales-tax";
 
 export async function POST(request: Request) {
   const { getToken, userId } = await auth.protect();
@@ -99,42 +100,52 @@ export async function POST(request: Request) {
         phone_number_collection: {
           enabled: true,
         },
-        line_items: pendingOrder.lineItems.map((item) => ({
-          quantity: item.quantity,
-          price_data: {
-            currency: pendingOrder.currency,
-            unit_amount: item.unitPriceCents,
-            product_data: {
-              name: item.productName,
-              description: summarizeSelections(item.selections),
-              metadata: {
-                orderId: pendingOrder.orderId,
-                productId: item.productId,
-                slug: item.productSlug,
-                cartLineId: item.lineId,
-                fitMethod: item.fitMethod,
-                jacketSize: item.jacketSize ?? "",
-                trouserSize: item.trouserSize ?? "",
-                trouserWaist: item.trouserWaist ?? "",
-                trouserInseam: item.trouserInseam ?? "",
-                fitPreference: item.fitPreference ?? "",
-                measurementProfileId: item.measurementProfileId ?? "",
-                measurementAppointmentRequired:
-                  item.measurementAppointmentRequired ? "true" : "false",
+        line_items: [
+          ...pendingOrder.lineItems.map((item) => ({
+            quantity: item.quantity,
+            price_data: {
+              currency: pendingOrder.currency,
+              unit_amount: item.unitPriceCents,
+              product_data: {
+                name: item.productName,
+                description: summarizeSelections(item.selections),
+                metadata: {
+                  orderId: pendingOrder.orderId,
+                  productId: item.productId,
+                  slug: item.productSlug,
+                  cartLineId: item.lineId,
+                  fitMethod: item.fitMethod,
+                  jacketSize: item.jacketSize ?? "",
+                  trouserSize: item.trouserSize ?? "",
+                  trouserWaist: item.trouserWaist ?? "",
+                  trouserInseam: item.trouserInseam ?? "",
+                  fitPreference: item.fitPreference ?? "",
+                  measurementProfileId: item.measurementProfileId ?? "",
+                  measurementAppointmentRequired:
+                    item.measurementAppointmentRequired ? "true" : "false",
+                },
               },
             },
-          },
-        })),
+          })),
+          ...getSalesTaxLineItem(pendingOrder),
+        ],
         metadata: {
           orderId: pendingOrder.orderId,
           clerkUserId: userId,
           subtotalCents: String(pendingOrder.subtotalCents),
+          taxCents: String(pendingOrder.taxCents),
+          taxRateBps: String(pendingOrder.taxRateBps),
+          taxJurisdictionCode: pendingOrder.taxJurisdictionCode,
+          totalCents: String(pendingOrder.totalCents),
           currency: pendingOrder.currency,
         },
         payment_intent_data: {
           metadata: {
             orderId: pendingOrder.orderId,
             clerkUserId: userId,
+            subtotalCents: String(pendingOrder.subtotalCents),
+            taxCents: String(pendingOrder.taxCents),
+            totalCents: String(pendingOrder.totalCents),
           },
         },
         success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -181,6 +192,39 @@ function summarizeSelections(
     .map((selection) => `${selection.groupLabel}: ${selection.optionLabel}`)
     .join(" / ")
     .slice(0, 500);
+}
+
+function getSalesTaxLineItem(pendingOrder: {
+  orderId: string;
+  currency: string;
+  taxCents: number;
+  taxRateBps: number;
+  taxJurisdictionCode: string;
+  taxJurisdictionName: string;
+}): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  if (pendingOrder.taxCents <= 0) {
+    return [];
+  }
+
+  return [
+    {
+      quantity: 1,
+      price_data: {
+        currency: pendingOrder.currency,
+        unit_amount: pendingOrder.taxCents,
+        product_data: {
+          name: `Sales tax (${pendingOrder.taxJurisdictionCode})`,
+          description: `${pendingOrder.taxJurisdictionName} state sales tax at ${formatSalesTaxRate(pendingOrder.taxRateBps)}`,
+          metadata: {
+            orderId: pendingOrder.orderId,
+            type: "sales_tax",
+            taxJurisdictionCode: pendingOrder.taxJurisdictionCode,
+            taxRateBps: String(pendingOrder.taxRateBps),
+          },
+        },
+      },
+    },
+  ];
 }
 
 function isAuthenticationError(error: unknown) {

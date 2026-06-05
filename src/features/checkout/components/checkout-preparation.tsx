@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { CalendarClock, CreditCard, Ruler } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { api } from "../../../../convex/_generated/api";
@@ -28,6 +28,7 @@ import {
   defaultShippingAddressValues,
   type CheckoutPreparationValues,
 } from "@/features/checkout/schema";
+import { calculateUsStateSalesTax, formatSalesTaxRate } from "@/lib/sales-tax";
 
 type CheckoutPreparationProps = {
   clerkConfigured: boolean;
@@ -71,6 +72,10 @@ export function CheckoutPreparation({
     },
     mode: "onBlur",
   });
+  const shippingAddress = useWatch({
+    control: form.control,
+    name: "shippingAddress",
+  });
 
   if (!clerkConfigured) {
     return (
@@ -98,6 +103,11 @@ export function CheckoutPreparation({
 
   const lineItems = cart.lineItems as CheckoutLineItem[];
   const incompleteFitLines = lineItems.filter((item) => !isReady(item));
+  const taxQuote = getTaxPreview(
+    cart.subtotalCents,
+    shippingAddress?.state ?? "",
+    shippingAddress?.country ?? "",
+  );
 
   async function handleMeasurementChange(lineId: string, value: string) {
     setBusyLineId(lineId);
@@ -351,8 +361,27 @@ export function CheckoutPreparation({
           <span>Subtotal</span>
           <PriceDisplay priceCents={cart.subtotalCents} />
         </div>
+        <div className="mt-3 flex justify-between gap-3 text-sm">
+          <span>
+            Sales tax
+            {taxQuote
+              ? ` (${taxQuote.code} ${formatSalesTaxRate(taxQuote.rateBps)})`
+              : ""}
+          </span>
+          {taxQuote ? (
+            <PriceDisplay priceCents={taxQuote.taxCents} />
+          ) : (
+            <span className="text-muted-foreground">Enter state</span>
+          )}
+        </div>
+        <div className="border-border mt-4 flex justify-between border-t pt-4 text-base font-semibold">
+          <span>Total</span>
+          <PriceDisplay
+            priceCents={taxQuote?.totalCents ?? cart.subtotalCents}
+          />
+        </div>
         <p className="text-muted-foreground mt-3 text-sm leading-6">
-          Taxes and delivery are calculated in Stripe.
+          Delivery is arranged by our tailoring team after payment.
         </p>
         {incompleteFitLines.length > 0 ? (
           <p className="text-destructive mt-4 text-sm font-medium">
@@ -364,6 +393,14 @@ export function CheckoutPreparation({
       </aside>
     </div>
   );
+}
+
+function getTaxPreview(subtotalCents: number, state: string, country: string) {
+  try {
+    return calculateUsStateSalesTax({ subtotalCents, state, country });
+  } catch {
+    return null;
+  }
 }
 
 function CheckoutInput({

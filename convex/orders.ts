@@ -5,6 +5,10 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { clearCartForOwner, getCheckoutCartForUser } from "./carts";
+import {
+  calculateUsStateSalesTax,
+  getUsStateSalesTaxDetails,
+} from "../src/lib/sales-tax";
 
 const shippingAddressValidator = v.object({
   fullName: v.string(),
@@ -39,11 +43,19 @@ export const createPendingFromCart = mutation({
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const cart = await getCheckoutCartForUser(ctx, ownerClerkUserId, true);
     const normalizedCurrency = normalizeCurrency(currency ?? "usd");
-    const checkoutAttemptKey = await createCheckoutAttemptKey(cart.lineItems);
     const now = Date.now();
     const subtotalCents = cart.lineItems.reduce(
       (total, item) => total + item.unitPriceCents * item.quantity,
       0,
+    );
+    const normalizedShippingAddress = normalizeShippingAddress(shippingAddress);
+    const taxQuote = toConvexSalesTaxQuote(
+      subtotalCents,
+      normalizedShippingAddress,
+    );
+    const checkoutAttemptKey = await createCheckoutAttemptKey(
+      cart.lineItems,
+      taxQuote.code,
     );
     const itemCount = cart.lineItems.reduce(
       (total, item) => total + item.quantity,
@@ -57,8 +69,13 @@ export const createPendingFromCart = mutation({
 
     if (reusableOrder) {
       await ctx.db.patch(reusableOrder._id, {
-        shippingAddress: normalizeShippingAddress(shippingAddress),
+        shippingAddress: normalizedShippingAddress,
         subtotalCents,
+        taxCents: taxQuote.taxCents,
+        taxRateBps: taxQuote.rateBps,
+        taxJurisdictionCode: taxQuote.code,
+        taxJurisdictionName: taxQuote.name,
+        totalCents: taxQuote.totalCents,
         currency: normalizedCurrency,
         itemCount,
         updatedAt: now,
@@ -69,6 +86,11 @@ export const createPendingFromCart = mutation({
         checkoutAttemptKey,
         stripeCheckoutSessionId: reusableOrder.stripeCheckoutSessionId,
         subtotalCents,
+        taxCents: taxQuote.taxCents,
+        taxRateBps: taxQuote.rateBps,
+        taxJurisdictionCode: taxQuote.code,
+        taxJurisdictionName: taxQuote.name,
+        totalCents: taxQuote.totalCents,
         currency: normalizedCurrency,
         itemCount,
         lineItems: cart.lineItems,
@@ -78,8 +100,13 @@ export const createPendingFromCart = mutation({
     const orderId = await ctx.db.insert("orders", {
       ownerClerkUserId,
       checkoutAttemptKey,
-      shippingAddress: normalizeShippingAddress(shippingAddress),
+      shippingAddress: normalizedShippingAddress,
       subtotalCents,
+      taxCents: taxQuote.taxCents,
+      taxRateBps: taxQuote.rateBps,
+      taxJurisdictionCode: taxQuote.code,
+      taxJurisdictionName: taxQuote.name,
+      totalCents: taxQuote.totalCents,
       currency: normalizedCurrency,
       paymentStatus: "checkout_pending",
       fulfillmentStatus: "unfulfilled",
@@ -122,6 +149,11 @@ export const createPendingFromCart = mutation({
       orderId,
       checkoutAttemptKey,
       subtotalCents,
+      taxCents: taxQuote.taxCents,
+      taxRateBps: taxQuote.rateBps,
+      taxJurisdictionCode: taxQuote.code,
+      taxJurisdictionName: taxQuote.name,
+      totalCents: taxQuote.totalCents,
       currency: normalizedCurrency,
       itemCount,
       lineItems: cart.lineItems,
@@ -550,6 +582,7 @@ async function createCheckoutAttemptKey(
     measurementProfileId?: Id<"measurementProfiles">;
     measurementAppointmentRequired?: boolean;
   }>,
+  taxJurisdictionCode: string,
 ) {
   const snapshot = lineItems
     .map((item) => ({
@@ -567,6 +600,7 @@ async function createCheckoutAttemptKey(
       measurementAppointmentRequired: Boolean(
         item.measurementAppointmentRequired,
       ),
+      taxJurisdictionCode,
     }))
     .sort((left, right) => left.lineId.localeCompare(right.lineId));
   const digest = await crypto.subtle.digest(
@@ -583,6 +617,14 @@ async function createCheckoutAttemptKey(
 function normalizeShippingAddress(
   shippingAddress: typeof shippingAddressValidator.type,
 ) {
+  const country = normalizeText(shippingAddress.country, "Country", 2, 80);
+  const state = normalizeText(shippingAddress.state, "State or region", 2, 80);
+  const taxState = getUsStateSalesTaxDetails(state);
+
+  if (!taxState) {
+    throw new ConvexError("Enter a valid US state.");
+  }
+
   return {
     fullName: normalizeText(shippingAddress.fullName, "Recipient name", 2, 80),
     email: normalizeText(shippingAddress.email, "Email", 3, 254).toLowerCase(),
@@ -594,10 +636,29 @@ function normalizeShippingAddress(
         }
       : {}),
     city: normalizeText(shippingAddress.city, "City", 2, 80),
-    state: normalizeText(shippingAddress.state, "State or region", 2, 80),
+    state: taxState.code,
     postalCode: normalizeText(shippingAddress.postalCode, "Postal code", 3, 20),
-    country: normalizeText(shippingAddress.country, "Country", 2, 80),
+    country,
   };
+}
+
+function toConvexSalesTaxQuote(
+  subtotalCents: number,
+  shippingAddress: ReturnType<typeof normalizeShippingAddress>,
+) {
+  try {
+    return calculateUsStateSalesTax({
+      subtotalCents,
+      state: shippingAddress.state,
+      country: shippingAddress.country,
+    });
+  } catch (error) {
+    throw new ConvexError(
+      error instanceof Error
+        ? error.message
+        : "Unable to calculate sales tax for this address.",
+    );
+  }
 }
 
 function normalizeText(

@@ -66,6 +66,10 @@ describe("orders", () => {
     });
 
     expect(order.subtotalCents).toBe((119500 + 3500 + 3500) * 2);
+    expect(order.taxJurisdictionCode).toBe("CA");
+    expect(order.taxRateBps).toBe(725);
+    expect(order.taxCents).toBe(18343);
+    expect(order.totalCents).toBe(271343);
     expect(order.itemCount).toBe(2);
     expect(order.lineItems[0].unitPriceCents).toBe(119500 + 3500 + 3500);
 
@@ -73,6 +77,7 @@ describe("orders", () => {
       orderId: order.orderId,
     });
     expect(detail.order.paymentStatus).toBe("checkout_pending");
+    expect(detail.order.totalCents).toBe(271343);
     expect(detail.items).toHaveLength(1);
     expect(detail.items[0].configurationSnapshot.personalization).toEqual({
       monogramText: "AK",
@@ -115,6 +120,43 @@ describe("orders", () => {
     });
     expect(detail.order.shippingAddress.line1).toBe("200 Market Street");
     expect(detail.items).toHaveLength(1);
+  });
+
+  it("creates a fresh checkout attempt when the tax state changes", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_checkout_tax_state",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      fitSelection: standardFitSelection,
+      quantity: 1,
+    });
+
+    const californiaOrder = await user.mutation(
+      api.orders.createPendingFromCart,
+      {
+        shippingAddress,
+        currency: "usd",
+      },
+    );
+    const newYorkOrder = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress: {
+        ...shippingAddress,
+        state: "NY",
+        postalCode: "10001",
+      },
+      currency: "usd",
+    });
+
+    expect(newYorkOrder.orderId).not.toBe(californiaOrder.orderId);
+    expect(newYorkOrder.taxJurisdictionCode).toBe("NY");
+    expect(newYorkOrder.taxCents).toBe(5060);
+    expect(newYorkOrder.totalCents).toBe(131560);
   });
 
   it("rejects Stripe IDs already attached to another order", async () => {
@@ -240,6 +282,47 @@ describe("orders", () => {
       ).length;
     });
     expect(eventCount).toBe(1);
+  });
+
+  it("marks an attached Checkout Session paid without order metadata", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_session_fallback",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      fitSelection: standardFitSelection,
+      quantity: 1,
+    });
+    const order = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress,
+      currency: "usd",
+    });
+    await user.mutation(api.orders.attachCheckoutSession, {
+      orderId: order.orderId,
+      stripeCheckoutSessionId: "cs_test_metadata_missing",
+    });
+
+    const result = await t.mutation(api.orders.recordCheckoutSessionStatus, {
+      processingSecret,
+      stripeEventId: "evt_session_fallback",
+      eventType: "checkout.session.completed",
+      checkoutSessionId: "cs_test_metadata_missing",
+      paymentIntentId: "pi_test_session_fallback",
+      paymentStatus: "paid",
+    });
+
+    expect(result.status).toBe("processed");
+
+    const detail = await user.query(api.orders.detail, {
+      orderId: order.orderId,
+    });
+    expect(detail.order.paymentStatus).toBe("paid");
+    expect(detail.order.stripePaymentIntentId).toBe("pi_test_session_fallback");
   });
 
   it("rejects webhook processing without the shared server secret", async () => {

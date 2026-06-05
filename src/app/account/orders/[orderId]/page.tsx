@@ -8,7 +8,9 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PriceDisplay } from "@/components/storefront/price-display";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { CheckoutSessionReconciler } from "@/features/checkout/components/checkout-session-reconciler";
 import { getAuthenticatedConvexClient } from "@/lib/convex-server";
+import { formatSalesTaxRate } from "@/lib/sales-tax";
 
 export const metadata: Metadata = {
   title: "Order Details",
@@ -39,6 +41,14 @@ export default async function OrderDetailPage({
 
   return (
     <PageContainer className="py-12 sm:py-16 lg:py-20">
+      <CheckoutSessionReconciler
+        sessionIds={
+          order.paymentStatus === "checkout_pending" &&
+          order.stripeCheckoutSessionId
+            ? [order.stripeCheckoutSessionId]
+            : []
+        }
+      />
       <div className="mb-9 flex flex-wrap items-end justify-between gap-4">
         <div>
           <Link className="text-link mb-4 inline-flex" href="/account/orders">
@@ -56,7 +66,7 @@ export default async function OrderDetailPage({
           </div>
         </div>
         <div className="text-left sm:text-right">
-          <PriceDisplay priceCents={order.subtotalCents} />
+          <PriceDisplay priceCents={order.totalCents ?? order.subtotalCents} />
           <p className="text-muted-foreground mt-1 text-xs uppercase">
             {order.currency}
           </p>
@@ -134,6 +144,31 @@ export default async function OrderDetailPage({
               }
             />
           </dl>
+
+          <Separator className="my-6" />
+
+          <h2 className="text-ink font-serif text-3xl leading-none">Total</h2>
+          <div className="mt-5 grid gap-3 text-sm">
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Subtotal</span>
+              <PriceDisplay priceCents={order.subtotalCents} />
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">
+                Sales tax
+                {order.taxJurisdictionCode && order.taxRateBps !== undefined
+                  ? ` (${order.taxJurisdictionCode} ${formatSalesTaxRate(order.taxRateBps)})`
+                  : ""}
+              </span>
+              <PriceDisplay priceCents={order.taxCents ?? 0} />
+            </div>
+            <div className="border-border flex justify-between gap-3 border-t pt-3 font-semibold">
+              <span>Total</span>
+              <PriceDisplay
+                priceCents={order.totalCents ?? order.subtotalCents}
+              />
+            </div>
+          </div>
 
           <Separator className="my-6" />
 

@@ -17,6 +17,18 @@ export function CheckoutSuccessStatus({ sessionId }: { sessionId?: string }) {
   );
 
   useEffect(() => {
+    if (!sessionId || orderDetails?.order.paymentStatus === "paid") {
+      return;
+    }
+
+    void fetch("/api/checkout/reconcile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    });
+  }, [orderDetails?.order.paymentStatus, sessionId]);
+
+  useEffect(() => {
     if (
       orderDetails?.order.paymentStatus === "paid" &&
       localItems.length > 0 &&
