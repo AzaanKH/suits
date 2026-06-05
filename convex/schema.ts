@@ -39,7 +39,9 @@ const cartLineItem = v.object({
   personalization,
   unitPriceCents: v.number(),
   quantity: v.number(),
-  fitMethod: v.union(v.literal("standard"), v.literal("made-to-measure")),
+  fitMethod: v.optional(
+    v.union(v.literal("standard"), v.literal("made-to-measure")),
+  ),
   jacketSize: v.optional(v.string()),
   trouserSize: v.optional(v.string()),
   trouserWaist: v.optional(v.string()),
@@ -53,6 +55,39 @@ const cartLineItem = v.object({
   createdAt: v.number(),
   updatedAt: v.number(),
 });
+
+const shippingAddress = v.object({
+  fullName: v.string(),
+  email: v.string(),
+  phone: v.string(),
+  line1: v.string(),
+  line2: v.optional(v.string()),
+  city: v.string(),
+  state: v.string(),
+  postalCode: v.string(),
+  country: v.string(),
+});
+
+const orderPaymentStatus = v.union(
+  v.literal("checkout_pending"),
+  v.literal("unpaid"),
+  v.literal("paid"),
+  v.literal("failed"),
+  v.literal("refunded"),
+);
+
+const orderFulfillmentStatus = v.union(
+  v.literal("unfulfilled"),
+  v.literal("in_production"),
+  v.literal("fulfilled"),
+  v.literal("cancelled"),
+);
+
+const stripeEventProcessingStatus = v.union(
+  v.literal("processed"),
+  v.literal("ignored"),
+  v.literal("failed"),
+);
 
 export default defineSchema({
   categories: defineTable({
@@ -218,4 +253,70 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_owner", ["ownerClerkUserId"]),
+
+  orders: defineTable({
+    ownerClerkUserId: v.string(),
+    checkoutAttemptKey: v.optional(v.string()),
+    stripeCheckoutSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+    shippingAddress,
+    subtotalCents: v.number(),
+    currency: v.string(),
+    paymentStatus: orderPaymentStatus,
+    fulfillmentStatus: orderFulfillmentStatus,
+    itemCount: v.number(),
+    paymentConfirmedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner_created_at", ["ownerClerkUserId", "createdAt"])
+    .index("by_owner_checkout_attempt_key", [
+      "ownerClerkUserId",
+      "checkoutAttemptKey",
+    ])
+    .index("by_stripe_checkout_session", ["stripeCheckoutSessionId"])
+    .index("by_stripe_payment_intent", ["stripePaymentIntentId"]),
+
+  orderItems: defineTable({
+    orderId: v.id("orders"),
+    ownerClerkUserId: v.string(),
+    lineId: v.string(),
+    productId: v.id("products"),
+    productSlug: v.string(),
+    productName: v.string(),
+    previewImageReference: v.optional(imageReference),
+    configurationSnapshot: savedConfiguration,
+    selectionsSnapshot: v.array(configurationSelection),
+    personalizationSnapshot: personalization,
+    unitPriceCents: v.number(),
+    quantity: v.number(),
+    lineSubtotalCents: v.number(),
+    fitMethod: v.union(v.literal("standard"), v.literal("made-to-measure")),
+    jacketSize: v.optional(v.string()),
+    trouserSize: v.optional(v.string()),
+    trouserWaist: v.optional(v.string()),
+    trouserInseam: v.optional(v.string()),
+    fitPreference: v.optional(
+      v.union(v.literal("slim"), v.literal("classic"), v.literal("relaxed")),
+    ),
+    measurementProfileId: v.optional(v.id("measurementProfiles")),
+    measurementProfileName: v.optional(v.string()),
+    measurementAppointmentRequired: v.optional(v.boolean()),
+    createdAt: v.number(),
+  })
+    .index("by_order", ["orderId"])
+    .index("by_owner", ["ownerClerkUserId"]),
+
+  stripeEvents: defineTable({
+    stripeEventId: v.string(),
+    eventType: v.string(),
+    stripeObjectId: v.optional(v.string()),
+    orderId: v.optional(v.id("orders")),
+    processingStatus: stripeEventProcessingStatus,
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_stripe_event_id", ["stripeEventId"])
+    .index("by_order", ["orderId"]),
 });

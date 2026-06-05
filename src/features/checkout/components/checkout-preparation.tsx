@@ -170,18 +170,11 @@ export function CheckoutPreparation({
       <div className="grid gap-9">
         <section>
           <h2 className="text-ink font-serif text-4xl leading-none">
-            Fit readiness
+            Fit details
           </h2>
-          <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-6">
-            Standard Fit orders can continue with sizes only. Made to Measure
-            orders need a saved measurement profile or an appointment request.
-          </p>
           <div className="divide-border border-border mt-5 divide-y border-y">
             {lineItems.map((item) => (
-              <article
-                className="grid gap-4 py-5 sm:grid-cols-[1fr_18rem] sm:items-start"
-                key={item.lineId}
-              >
+              <article className="grid gap-4 py-5" key={item.lineId}>
                 <div>
                   <h3 className="text-ink font-serif text-3xl leading-none">
                     {item.productName}
@@ -240,11 +233,7 @@ export function CheckoutPreparation({
                       </Link>
                     ) : null}
                   </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm leading-6">
-                    Built to standard sizing. Final alterations may be needed.
-                  </p>
-                )}
+                ) : null}
               </article>
             ))}
           </div>
@@ -265,23 +254,27 @@ export function CheckoutPreparation({
                   name="shippingAddress.fullName"
                   label="Full name"
                   control={form.control}
+                  required
                 />
                 <CheckoutInput
                   name="shippingAddress.email"
                   label="Email"
                   type="email"
                   control={form.control}
+                  required
                 />
                 <CheckoutInput
                   name="shippingAddress.phone"
                   label="Phone"
                   type="tel"
                   control={form.control}
+                  required
                 />
                 <CheckoutInput
                   name="shippingAddress.line1"
                   label="Address line 1"
                   control={form.control}
+                  required
                 />
                 <CheckoutInput
                   name="shippingAddress.line2"
@@ -292,21 +285,25 @@ export function CheckoutPreparation({
                   name="shippingAddress.city"
                   label="City"
                   control={form.control}
+                  required
                 />
                 <CheckoutInput
                   name="shippingAddress.state"
                   label="State / region"
                   control={form.control}
+                  required
                 />
                 <CheckoutInput
                   name="shippingAddress.postalCode"
                   label="Postal code"
                   control={form.control}
+                  required
                 />
                 <CheckoutInput
                   name="shippingAddress.country"
                   label="Country"
                   control={form.control}
+                  required
                 />
               </div>
 
@@ -355,8 +352,7 @@ export function CheckoutPreparation({
           <PriceDisplay priceCents={cart.subtotalCents} />
         </div>
         <p className="text-muted-foreground mt-3 text-sm leading-6">
-          Taxes and delivery are calculated in Stripe Checkout. Card details are
-          entered only in Stripe.
+          Taxes and delivery are calculated in Stripe.
         </p>
         {incompleteFitLines.length > 0 ? (
           <p className="text-destructive mt-4 text-sm font-medium">
@@ -375,6 +371,7 @@ function CheckoutInput({
   name,
   label,
   type = "text",
+  required = false,
 }: {
   control: ReturnType<typeof useForm<CheckoutPreparationValues>>["control"];
   name:
@@ -389,6 +386,7 @@ function CheckoutInput({
     | "shippingAddress.country";
   label: string;
   type?: string;
+  required?: boolean;
 }) {
   return (
     <FormField
@@ -396,9 +394,16 @@ function CheckoutInput({
       name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel>{label}</FormLabel>
+          <FormLabel>
+            {label}
+            {required ? (
+              <span className="text-destructive ml-1" aria-hidden="true">
+                *
+              </span>
+            ) : null}
+          </FormLabel>
           <FormControl>
-            <Input type={type} {...field} />
+            <Input type={type} required={required} {...field} />
           </FormControl>
           <FormMessage />
         </FormItem>

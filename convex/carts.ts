@@ -171,6 +171,43 @@ export const forCheckout = query({
   },
 });
 
+export async function getCheckoutCartForUser(
+  ctx: QueryCtx | MutationCtx,
+  ownerClerkUserId: string,
+  requireMeasurements: boolean,
+) {
+  const cart = await getCart(ctx, ownerClerkUserId);
+
+  if (!cart || cart.lineItems.length === 0) {
+    throw new ConvexError("Cart is empty.");
+  }
+
+  const canonicalLineItems = await Promise.all(
+    cart.lineItems.map(async (lineItem) => {
+      const validated = await validateConfigurationSnapshot(
+        ctx,
+        lineItem.configuration,
+      );
+      const fitDetails = await validateCartLineFit(
+        ctx,
+        lineItem,
+        ownerClerkUserId,
+        requireMeasurements,
+      );
+
+      return await buildLineItem(
+        validated,
+        fitDetails,
+        normalizeQuantity(lineItem.quantity),
+        lineItem.createdAt,
+        lineItem.updatedAt,
+      );
+    }),
+  );
+
+  return toCartResponse({ ...cart, lineItems: canonicalLineItems });
+}
+
 export const addLine = mutation({
   args: {
     configuration: configurationValidator,
@@ -193,8 +230,9 @@ export const addLine = mutation({
       now,
     );
     const cart = await getOrCreateCart(ctx, ownerClerkUserId, now);
+    const currentLines = getCurrentCartLineItems(cart);
 
-    await patchCartLines(ctx, cart, mergeLineItems(cart.lineItems, nextLine));
+    await patchCartLines(ctx, cart, mergeLineItems(currentLines, nextLine));
 
     return nextLine;
   },
@@ -210,7 +248,8 @@ export const updateLine = mutation({
   handler: async (ctx, { lineId, configuration, fitSelection, quantity }) => {
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const cart = await requireCart(ctx, ownerClerkUserId);
-    const existingLine = cart.lineItems.find((item) => item.lineId === lineId);
+    const currentLines = getCurrentCartLineItems(cart);
+    const existingLine = currentLines.find((item) => item.lineId === lineId);
 
     if (!existingLine) {
       throw new ConvexError("Cart item not found.");
@@ -230,15 +269,11 @@ export const updateLine = mutation({
       existingLine.createdAt,
       now,
     );
-    const remainingLines = cart.lineItems.filter(
+    const remainingLines = currentLines.filter(
       (item) => item.lineId !== lineId,
     );
 
-    await patchCartLines(
-      ctx,
-      cart,
-      mergeLineItems(remainingLines, nextLine),
-    );
+    await patchCartLines(ctx, cart, mergeLineItems(remainingLines, nextLine));
 
     return nextLine;
   },
@@ -255,7 +290,7 @@ export const updateQuantity = mutation({
     const normalizedQuantity = normalizeQuantity(quantity);
     const now = Date.now();
     let found = false;
-    const lineItems = cart.lineItems.map((item) => {
+    const lineItems = getCurrentCartLineItems(cart).map((item) => {
       if (item.lineId !== lineId) {
         return item;
       }
@@ -307,7 +342,7 @@ export const setLineMeasurementChoice = mutation({
       profileName = profile.name;
     }
 
-    const lineItems = cart.lineItems.map((item) => {
+    const lineItems = getCurrentCartLineItems(cart).map((item) => {
       if (item.lineId !== lineId) {
         return item;
       }
@@ -353,9 +388,10 @@ export const removeLine = mutation({
   handler: async (ctx, { lineId }) => {
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const cart = await requireCart(ctx, ownerClerkUserId);
-    const lineItems = cart.lineItems.filter((item) => item.lineId !== lineId);
+    const currentLines = getCurrentCartLineItems(cart);
+    const lineItems = currentLines.filter((item) => item.lineId !== lineId);
 
-    if (lineItems.length === cart.lineItems.length) {
+    if (lineItems.length === currentLines.length) {
       throw new ConvexError("Cart item not found.");
     }
 
@@ -374,20 +410,17 @@ export const mergeGuestCart = mutation({
       items.map(async (item) => ({
         ...(await buildLineItem(
           await validateConfigurationSnapshot(ctx, item.configuration),
-          await validateFitSelection(
-            ctx,
-            item.fitSelection,
-            ownerClerkUserId,
-          ),
+          await validateFitSelection(ctx, item.fitSelection, ownerClerkUserId),
           normalizeQuantity(item.quantity),
           now,
         )),
       })),
     );
     const cart = await getOrCreateCart(ctx, ownerClerkUserId, now);
+    const currentLines = getCurrentCartLineItems(cart);
     const lineItems = validatedLines.reduce(
       (currentLines, lineItem) => mergeLineItems(currentLines, lineItem),
-      cart.lineItems,
+      currentLines,
     );
 
     await patchCartLines(ctx, cart, lineItems);
@@ -409,6 +442,19 @@ export const clear = mutation({
     await patchCartLines(ctx, cart, []);
   },
 });
+
+export async function clearCartForOwner(
+  ctx: MutationCtx,
+  ownerClerkUserId: string,
+) {
+  const cart = await getCart(ctx, ownerClerkUserId);
+
+  if (!cart) {
+    return;
+  }
+
+  await patchCartLines(ctx, cart, []);
+}
 
 async function getCart(ctx: QueryCtx | MutationCtx, ownerClerkUserId: string) {
   return await ctx.db
@@ -466,6 +512,19 @@ async function patchCartLines(
     lineItems,
     updatedAt: Date.now(),
   });
+}
+
+function getCurrentCartLineItems(cart: Doc<"carts">) {
+  return cart.lineItems.filter(hasCartLineFitMethod);
+}
+
+function hasCartLineFitMethod(
+  lineItem: Doc<"carts">["lineItems"][number],
+): lineItem is CartLineItem {
+  return (
+    lineItem.fitMethod === "standard" ||
+    lineItem.fitMethod === "made-to-measure"
+  );
 }
 
 async function buildLineItem(
@@ -527,7 +586,10 @@ async function validateFitSelection(
     throw new ConvexError("Made to Measure requires an account.");
   }
 
-  if (fitSelection.measurementProfileId && fitSelection.measurementAppointmentRequired) {
+  if (
+    fitSelection.measurementProfileId &&
+    fitSelection.measurementAppointmentRequired
+  ) {
     throw new ConvexError(
       "Choose a measurement profile or request an appointment, not both.",
     );
@@ -560,16 +622,31 @@ async function validateFitSelection(
 }
 
 async function validateCartLineFit(
-  ctx: QueryCtx,
-  lineItem: CartLineItem,
+  ctx: QueryCtx | MutationCtx,
+  lineItem: Doc<"carts">["lineItems"][number],
   ownerClerkUserId: string,
   required: boolean,
 ) {
+  if (!lineItem.fitMethod) {
+    if (required) {
+      throw new ConvexError(
+        `${lineItem.productName} needs complete fit details before checkout.`,
+      );
+    }
+
+    return {
+      fitMethod: "standard",
+      jacketSize: lineItem.jacketSize ?? "",
+      fitPreference: lineItem.fitPreference ?? "classic",
+    } as CartFitDetails;
+  }
+
   if (lineItem.fitMethod === "standard") {
     if (
       lineItem.jacketSize &&
       lineItem.fitPreference &&
-      (lineItem.trouserSize || (lineItem.trouserWaist && lineItem.trouserInseam))
+      (lineItem.trouserSize ||
+        (lineItem.trouserWaist && lineItem.trouserInseam))
     ) {
       return {
         fitMethod: "standard",
@@ -678,7 +755,9 @@ function mergeLineItems(
     lineItem.lineId === nextLine.lineId
       ? {
           ...nextLine,
-          quantity: normalizeQuantity(existingLine.quantity + nextLine.quantity),
+          quantity: normalizeQuantity(
+            existingLine.quantity + nextLine.quantity,
+          ),
           createdAt: existingLine.createdAt,
           updatedAt: nextLine.updatedAt,
         }
@@ -686,8 +765,10 @@ function mergeLineItems(
   );
 }
 
-function toCartResponse(cart: Pick<Doc<"carts">, "lineItems"> | null) {
-  const lineItems = cart?.lineItems ?? [];
+function toCartResponse(
+  cart: Pick<Doc<"carts">, "lineItems"> | { lineItems: CartLineItem[] } | null,
+) {
+  const lineItems = (cart?.lineItems ?? []).filter(hasCartLineFitMethod);
 
   return {
     lineItems,

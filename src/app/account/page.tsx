@@ -13,8 +13,8 @@ export default async function AccountPage() {
             Account setup required.
           </h1>
           <p className="text-muted-foreground mx-auto mt-6 max-w-lg text-sm leading-6">
-            Add Clerk keys to <code>.env.local</code> to enable protected account
-            access.
+            Add Clerk keys to <code>.env.local</code> to enable protected
+            account access.
           </p>
         </section>
       </PageContainer>
@@ -57,6 +57,9 @@ export default async function AccountPage() {
             <Link className="button-primary" href="/account/designs">
               Saved designs
             </Link>
+            <Link className="button-primary" href="/account/orders">
+              Orders
+            </Link>
             <Link className="button-primary" href="/account/measurements">
               Measurements
             </Link>
@@ -79,7 +82,7 @@ function AccountDetail({ label, value }: { label: string; value: string }) {
       <dt className="text-muted-foreground text-xs font-bold tracking-[0.1em] uppercase">
         {label}
       </dt>
-      <dd className="text-ink break-words font-medium">{value}</dd>
+      <dd className="text-ink font-medium break-words">{value}</dd>
     </div>
   );
 }
