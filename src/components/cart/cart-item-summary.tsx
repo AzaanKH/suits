@@ -2,7 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarClock, Minus, Pencil, Plus, Ruler, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  Minus,
+  Pencil,
+  Plus,
+  Ruler,
+  Trash2,
+} from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PriceDisplay } from "@/components/storefront/price-display";
@@ -104,13 +111,18 @@ export function CartItemSummary({
           </p>
         ) : null}
 
-        {item.measurementProfileName || item.measurementAppointmentRequired ? (
-          <p className="text-muted-foreground mt-4 inline-flex items-center gap-2 text-sm">
-            {item.measurementAppointmentRequired ? (
-              <CalendarClock aria-hidden="true" className="size-4" />
-            ) : (
-              <Ruler aria-hidden="true" className="size-4" />
-            )}
+        <p className="text-muted-foreground mt-4 inline-flex items-center gap-2 text-sm">
+          {item.fitMethod === "made-to-measure" ? (
+            <CalendarClock aria-hidden="true" className="size-4" />
+          ) : (
+            <Ruler aria-hidden="true" className="size-4" />
+          )}
+          {fitSummary(item)}
+        </p>
+
+        {item.fitMethod === "made-to-measure" &&
+        (item.measurementProfileName || item.measurementAppointmentRequired) ? (
+          <p className="text-muted-foreground mt-2 text-sm">
             {item.measurementAppointmentRequired
               ? "Measurement appointment required"
               : `Measurements: ${item.measurementProfileName}`}
@@ -164,4 +176,28 @@ export function CartItemSummary({
       </div>
     </article>
   );
+}
+
+function fitSummary(item: CartLineItem) {
+  if (item.fitMethod === "made-to-measure") {
+    return "Made to Measure";
+  }
+
+  const trouser = getTrouserSummary(item);
+
+  return `Standard Fit: Jacket ${item.jacketSize}, ${trouser}, ${item.fitPreference} fit`;
+}
+
+function getTrouserSummary(item: CartLineItem) {
+  if (item.trouserSize) {
+    return `Trouser ${item.trouserSize}`;
+  }
+
+  if (!item.trouserWaist && !item.trouserInseam) {
+    return "Trouser measurements unavailable";
+  }
+
+  return `Waist ${item.trouserWaist ?? "N/A"} / Inseam ${
+    item.trouserInseam ?? "N/A"
+  }`;
 }

@@ -14,11 +14,64 @@ import {
 import { requireOwnedProfile } from "./measurementProfiles";
 
 const quantityValidator = v.number();
+const fitPreferenceValidator = v.union(
+  v.literal("slim"),
+  v.literal("classic"),
+  v.literal("relaxed"),
+);
+const standardFitSelectionValidator = v.object({
+  fitMethod: v.literal("standard"),
+  jacketSize: v.string(),
+  trouserSize: v.optional(v.string()),
+  trouserWaist: v.optional(v.string()),
+  trouserInseam: v.optional(v.string()),
+  fitPreference: fitPreferenceValidator,
+});
+const madeToMeasureFitSelectionValidator = v.object({
+  fitMethod: v.literal("made-to-measure"),
+  measurementProfileId: v.optional(v.id("measurementProfiles")),
+  measurementAppointmentRequired: v.optional(v.boolean()),
+});
+const fitSelectionValidator = v.union(
+  standardFitSelectionValidator,
+  madeToMeasureFitSelectionValidator,
+);
 const guestCartItemValidator = v.object({
   configuration: configurationValidator,
   quantity: quantityValidator,
-  measurementAppointmentRequired: v.optional(v.boolean()),
+  fitSelection: standardFitSelectionValidator,
 });
+
+type FitSelection =
+  | {
+      fitMethod: "standard";
+      jacketSize: string;
+      trouserSize?: string;
+      trouserWaist?: string;
+      trouserInseam?: string;
+      fitPreference: "slim" | "classic" | "relaxed";
+    }
+  | {
+      fitMethod: "made-to-measure";
+      measurementProfileId?: Id<"measurementProfiles">;
+      measurementAppointmentRequired?: boolean;
+    };
+
+type CartFitDetails =
+  | {
+      fitMethod: "standard";
+      jacketSize: string;
+      trouserSize?: string;
+      trouserWaist?: string;
+      trouserInseam?: string;
+      fitPreference: "slim" | "classic" | "relaxed";
+    }
+  | {
+      fitMethod: "made-to-measure";
+      measurementProfileId?: Id<"measurementProfiles">;
+      measurementProfileName?: string;
+      measurementAppointmentRequired?: boolean;
+    };
 
 type CartLineItem = {
   lineId: string;
@@ -34,6 +87,12 @@ type CartLineItem = {
   personalization: CartConfiguration["personalization"];
   unitPriceCents: number;
   quantity: number;
+  fitMethod: CartFitDetails["fitMethod"];
+  jacketSize?: string;
+  trouserSize?: string;
+  trouserWaist?: string;
+  trouserInseam?: string;
+  fitPreference?: "slim" | "classic" | "relaxed";
   measurementProfileId?: Id<"measurementProfiles">;
   measurementProfileName?: string;
   measurementAppointmentRequired?: boolean;
@@ -44,13 +103,20 @@ type CartLineItem = {
 export const previewLine = mutation({
   args: {
     configuration: configurationValidator,
+    fitSelection: fitSelectionValidator,
     quantity: quantityValidator,
   },
-  handler: async (ctx, { configuration, quantity }) => {
+  handler: async (ctx, { configuration, fitSelection, quantity }) => {
     const validated = await validateConfigurationSnapshot(ctx, configuration);
     const now = Date.now();
+    const fitDetails = await validateFitSelection(ctx, fitSelection);
 
-    return await buildLineItem(validated, normalizeQuantity(quantity), now);
+    return await buildLineItem(
+      validated,
+      fitDetails,
+      normalizeQuantity(quantity),
+      now,
+    );
   },
 });
 
@@ -82,7 +148,7 @@ export const forCheckout = query({
           ctx,
           lineItem.configuration,
         );
-        const measurementChoice = await validateMeasurementChoice(
+        const fitDetails = await validateCartLineFit(
           ctx,
           lineItem,
           ownerClerkUserId,
@@ -91,15 +157,13 @@ export const forCheckout = query({
 
         const canonicalLine = await buildLineItem(
           validated,
+          fitDetails,
           normalizeQuantity(lineItem.quantity),
           lineItem.createdAt,
           lineItem.updatedAt,
         );
 
-        return {
-          ...canonicalLine,
-          ...measurementChoice,
-        };
+        return canonicalLine;
       }),
     );
 
@@ -110,14 +174,21 @@ export const forCheckout = query({
 export const addLine = mutation({
   args: {
     configuration: configurationValidator,
+    fitSelection: fitSelectionValidator,
     quantity: quantityValidator,
   },
-  handler: async (ctx, { configuration, quantity }) => {
+  handler: async (ctx, { configuration, fitSelection, quantity }) => {
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const validated = await validateConfigurationSnapshot(ctx, configuration);
+    const fitDetails = await validateFitSelection(
+      ctx,
+      fitSelection,
+      ownerClerkUserId,
+    );
     const now = Date.now();
     const nextLine = await buildLineItem(
       validated,
+      fitDetails,
       normalizeQuantity(quantity),
       now,
     );
@@ -133,9 +204,10 @@ export const updateLine = mutation({
   args: {
     lineId: v.string(),
     configuration: configurationValidator,
+    fitSelection: fitSelectionValidator,
     quantity: quantityValidator,
   },
-  handler: async (ctx, { lineId, configuration, quantity }) => {
+  handler: async (ctx, { lineId, configuration, fitSelection, quantity }) => {
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const cart = await requireCart(ctx, ownerClerkUserId);
     const existingLine = cart.lineItems.find((item) => item.lineId === lineId);
@@ -145,25 +217,19 @@ export const updateLine = mutation({
     }
 
     const validated = await validateConfigurationSnapshot(ctx, configuration);
+    const fitDetails = await validateFitSelection(
+      ctx,
+      fitSelection,
+      ownerClerkUserId,
+    );
     const now = Date.now();
     const nextLine = await buildLineItem(
       validated,
+      fitDetails,
       normalizeQuantity(quantity),
       existingLine.createdAt,
       now,
     );
-    const nextLineWithMeasurement = {
-      ...nextLine,
-      ...(existingLine.measurementProfileId
-        ? {
-            measurementProfileId: existingLine.measurementProfileId,
-            measurementProfileName: existingLine.measurementProfileName,
-          }
-        : {}),
-      ...(existingLine.measurementAppointmentRequired
-        ? { measurementAppointmentRequired: true }
-        : {}),
-    };
     const remainingLines = cart.lineItems.filter(
       (item) => item.lineId !== lineId,
     );
@@ -171,10 +237,10 @@ export const updateLine = mutation({
     await patchCartLines(
       ctx,
       cart,
-      mergeLineItems(remainingLines, nextLineWithMeasurement),
+      mergeLineItems(remainingLines, nextLine),
     );
 
-    return nextLineWithMeasurement;
+    return nextLine;
   },
 });
 
@@ -248,6 +314,12 @@ export const setLineMeasurementChoice = mutation({
 
       found = true;
 
+      if (item.fitMethod !== "made-to-measure") {
+        throw new ConvexError(
+          "Measurement choices only apply to Made to Measure suits.",
+        );
+      }
+
       const remainingItem = { ...item };
       delete remainingItem.measurementProfileId;
       delete remainingItem.measurementProfileName;
@@ -255,6 +327,7 @@ export const setLineMeasurementChoice = mutation({
 
       return {
         ...remainingItem,
+        fitMethod: "made-to-measure" as const,
         ...(measurementProfileId
           ? { measurementProfileId, measurementProfileName: profileName }
           : {}),
@@ -299,15 +372,17 @@ export const mergeGuestCart = mutation({
     const now = Date.now();
     const validatedLines = await Promise.all(
       items.map(async (item) => ({
-          ...(await buildLineItem(
-            await validateConfigurationSnapshot(ctx, item.configuration),
-            normalizeQuantity(item.quantity),
-            now,
-          )),
-          ...(item.measurementAppointmentRequired
-            ? { measurementAppointmentRequired: true }
-            : {}),
-        })),
+        ...(await buildLineItem(
+          await validateConfigurationSnapshot(ctx, item.configuration),
+          await validateFitSelection(
+            ctx,
+            item.fitSelection,
+            ownerClerkUserId,
+          ),
+          normalizeQuantity(item.quantity),
+          now,
+        )),
+      })),
     );
     const cart = await getOrCreateCart(ctx, ownerClerkUserId, now);
     const lineItems = validatedLines.reduce(
@@ -395,12 +470,15 @@ async function patchCartLines(
 
 async function buildLineItem(
   validated: ValidatedConfiguration,
+  fitDetails: CartFitDetails,
   quantity: number,
   createdAt: number,
   updatedAt = createdAt,
 ): Promise<CartLineItem> {
   return {
-    lineId: await createCartLineId(validated.selectionSignature),
+    lineId: await createCartLineId(
+      `${validated.selectionSignature}|${createFitSignature(fitDetails)}`,
+    ),
     productId: validated.product._id,
     productSlug: validated.product.slug,
     productName: validated.product.name,
@@ -410,21 +488,120 @@ async function buildLineItem(
     personalization: validated.personalization,
     unitPriceCents: validated.priceCents,
     quantity,
+    ...fitDetails,
     createdAt,
     updatedAt,
   };
 }
 
-async function validateMeasurementChoice(
+async function validateFitSelection(
+  ctx: MutationCtx,
+  fitSelection: FitSelection,
+  ownerClerkUserId?: string,
+): Promise<CartFitDetails> {
+  if (fitSelection.fitMethod === "standard") {
+    const jacketSize = fitSelection.jacketSize.trim().toUpperCase();
+    const trouserSize = fitSelection.trouserSize?.trim().toUpperCase() ?? "";
+    const trouserWaist = fitSelection.trouserWaist?.trim() ?? "";
+    const trouserInseam = fitSelection.trouserInseam?.trim() ?? "";
+
+    if (!jacketSize) {
+      throw new ConvexError("Choose a jacket size for Standard Fit.");
+    }
+
+    if (!trouserSize && (!trouserWaist || !trouserInseam)) {
+      throw new ConvexError(
+        "Choose a trouser size or trouser waist and inseam for Standard Fit.",
+      );
+    }
+
+    return {
+      fitMethod: "standard",
+      jacketSize,
+      ...(trouserSize ? { trouserSize } : { trouserWaist, trouserInseam }),
+      fitPreference: fitSelection.fitPreference,
+    };
+  }
+
+  if (!ownerClerkUserId) {
+    throw new ConvexError("Made to Measure requires an account.");
+  }
+
+  if (fitSelection.measurementProfileId && fitSelection.measurementAppointmentRequired) {
+    throw new ConvexError(
+      "Choose a measurement profile or request an appointment, not both.",
+    );
+  }
+
+  if (fitSelection.measurementProfileId) {
+    const profile = await requireOwnedProfile(
+      ctx,
+      fitSelection.measurementProfileId,
+      ownerClerkUserId,
+    );
+
+    return {
+      fitMethod: "made-to-measure",
+      measurementProfileId: profile._id,
+      measurementProfileName: profile.name,
+    };
+  }
+
+  if (fitSelection.measurementAppointmentRequired) {
+    return {
+      fitMethod: "made-to-measure",
+      measurementAppointmentRequired: true,
+    };
+  }
+
+  throw new ConvexError(
+    "Made to Measure requires a measurement profile or appointment request.",
+  );
+}
+
+async function validateCartLineFit(
   ctx: QueryCtx,
   lineItem: CartLineItem,
   ownerClerkUserId: string,
   required: boolean,
 ) {
+  if (lineItem.fitMethod === "standard") {
+    if (
+      lineItem.jacketSize &&
+      lineItem.fitPreference &&
+      (lineItem.trouserSize || (lineItem.trouserWaist && lineItem.trouserInseam))
+    ) {
+      return {
+        fitMethod: "standard",
+        jacketSize: lineItem.jacketSize,
+        ...(lineItem.trouserSize
+          ? { trouserSize: lineItem.trouserSize }
+          : {
+              trouserWaist: lineItem.trouserWaist,
+              trouserInseam: lineItem.trouserInseam,
+            }),
+        fitPreference: lineItem.fitPreference,
+      } as CartFitDetails;
+    }
+
+    if (required) {
+      throw new ConvexError(
+        `${lineItem.productName} needs standard jacket and trouser sizes.`,
+      );
+    }
+
+    return {
+      fitMethod: "standard",
+      jacketSize: lineItem.jacketSize ?? "",
+      fitPreference: lineItem.fitPreference ?? "classic",
+    } as CartFitDetails;
+  }
+
   if (lineItem.measurementAppointmentRequired) {
     return {
+      fitMethod: "made-to-measure",
       measurementAppointmentRequired: true,
-    };
+    } as CartFitDetails;
   }
 
   if (lineItem.measurementProfileId) {
@@ -432,9 +609,10 @@ async function validateMeasurementChoice(
 
     if (profile?.ownerClerkUserId === ownerClerkUserId) {
       return {
+        fitMethod: "made-to-measure",
         measurementProfileId: profile._id,
         measurementProfileName: profile.name,
-      };
+      } as CartFitDetails;
     }
 
     if (required) {
@@ -450,7 +628,32 @@ async function validateMeasurementChoice(
     );
   }
 
-  return {};
+  return {
+    fitMethod: "made-to-measure",
+  } as CartFitDetails;
+}
+
+function createFitSignature(fitDetails: CartFitDetails) {
+  if (fitDetails.fitMethod === "standard") {
+    return [
+      "fit:standard",
+      `jacket:${stableValue(fitDetails.jacketSize)}`,
+      `trouserSize:${stableValue(fitDetails.trouserSize ?? "")}`,
+      `waist:${stableValue(fitDetails.trouserWaist ?? "")}`,
+      `inseam:${stableValue(fitDetails.trouserInseam ?? "")}`,
+      `pref:${fitDetails.fitPreference}`,
+    ].join("|");
+  }
+
+  return [
+    "fit:made-to-measure",
+    `profile:${stableValue(fitDetails.measurementProfileId ?? "")}`,
+    `appointment:${fitDetails.measurementAppointmentRequired ? "true" : "false"}`,
+  ].join("|");
+}
+
+function stableValue(value: string) {
+  return value.trim().toLowerCase().replaceAll("|", "%7C");
 }
 
 function mergeLineItems(

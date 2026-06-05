@@ -70,7 +70,9 @@ export function useCartController() {
   };
 }
 
-export function toConvexConfiguration(configuration: CartLineItem["configuration"]) {
+export function toConvexConfiguration(
+  configuration: CartLineItem["configuration"],
+) {
   return {
     ...configuration,
     productId: configuration.productId as Id<"products">,

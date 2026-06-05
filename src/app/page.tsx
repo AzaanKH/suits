@@ -21,9 +21,9 @@ const process = [
   },
   {
     number: "03",
-    title: "Share your measurements",
+    title: "Choose your fit",
     description:
-      "Meet with a stylist so your measurements and preferences become a balanced personal pattern.",
+      "Order with standard sizing or use a measurement profile for a made-to-measure review.",
   },
   {
     number: "04",
@@ -86,8 +86,8 @@ export default function HomePage() {
             </h1>
             <p className="text-muted-foreground mt-7 max-w-lg text-base leading-7 sm:text-lg sm:leading-8">
               Personal tailoring for a life in motion. Start with a refined
-              house silhouette, customize every considered detail, and receive a
-              suit cut specifically for your proportions.
+              house silhouette, customize every considered detail, and choose
+              standard fit or made to measure before checkout.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link className="button-primary" href="/shop">
@@ -116,7 +116,7 @@ export default function HomePage() {
         <PageContainer>
           <SectionHeading
             title="The essential collection."
-            description="A focused edit of versatile foundations, seasonal cloths, and occasion tailoring. Every style is made to your measurements."
+            description="A focused edit of versatile foundations, seasonal cloths, and occasion tailoring. Configure online, then order with standard sizing or made to measure."
             action={{ label: "View all suits", href: "/shop" }}
           />
           <FeaturedProducts />

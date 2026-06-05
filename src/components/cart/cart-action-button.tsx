@@ -12,7 +12,12 @@ import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import type { CustomizerConfiguration } from "@/features/customizer/types";
 import { useCustomizerStore } from "@/store/customizer-store";
-import { isCartLineItem, useCartStore } from "@/store/cart-store";
+import {
+  type CartFitSelection,
+  isCartLineItem,
+  useCartStore,
+} from "@/store/cart-store";
+import { toConvexFitSelection } from "./cart-fit-selection";
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -24,18 +29,24 @@ type CartEditContext = {
 
 type CartActionButtonProps = {
   configuration: CustomizerConfiguration;
+  fitSelection: CartFitSelection;
   editContext: CartEditContext | null;
+  disabled?: boolean;
 };
 
 export function CartActionButton({
   configuration,
+  fitSelection,
   editContext,
+  disabled = false,
 }: CartActionButtonProps) {
   if (!clerkConfigured) {
     return (
       <LocalCartActionButton
         configuration={configuration}
+        fitSelection={fitSelection}
         editContext={editContext}
+        disabled={disabled}
       />
     );
   }
@@ -43,14 +54,18 @@ export function CartActionButton({
   return (
     <ClerkCartActionButton
       configuration={configuration}
+      fitSelection={fitSelection}
       editContext={editContext}
+      disabled={disabled}
     />
   );
 }
 
 function ClerkCartActionButton({
   configuration,
+  fitSelection,
   editContext,
+  disabled = false,
 }: CartActionButtonProps) {
   const { isLoaded, isSignedIn } = useAuth();
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -67,12 +82,19 @@ function ClerkCartActionButton({
   const label = editContext ? "Update cart" : "Add to cart";
 
   async function handleCartAction() {
-    if (!authReady || pending) {
+    if (!authReady || pending || disabled) {
       return;
     }
 
     const quantity = editContext?.quantity ?? 1;
     const submittedConfiguration = configuration;
+    const submittedFitSelection = toConvexFitSelection(fitSelection);
+
+    if (fitSelection.fitMethod === "made-to-measure" && !signedIn) {
+      toast.error("Sign in to order Made to Measure.");
+      router.push("/sign-in");
+      return;
+    }
 
     setPending(true);
 
@@ -84,6 +106,7 @@ function ClerkCartActionButton({
             ...configuration,
             productId: configuration.productId as Id<"products">,
           },
+          fitSelection: submittedFitSelection,
           quantity,
         });
       } else if (signedIn) {
@@ -92,6 +115,7 @@ function ClerkCartActionButton({
             ...configuration,
             productId: configuration.productId as Id<"products">,
           },
+          fitSelection: submittedFitSelection,
           quantity,
         });
       } else {
@@ -100,6 +124,7 @@ function ClerkCartActionButton({
             ...configuration,
             productId: configuration.productId as Id<"products">,
           },
+          fitSelection: submittedFitSelection,
           quantity,
         });
 
@@ -114,7 +139,9 @@ function ClerkCartActionButton({
         }
       }
 
-      if (useCustomizerStore.getState().configuration === submittedConfiguration) {
+      if (
+        useCustomizerStore.getState().configuration === submittedConfiguration
+      ) {
         markClean();
       }
       toast.success(editContext ? "Cart item updated." : "Added to cart.");
@@ -127,7 +154,11 @@ function ClerkCartActionButton({
   }
 
   return (
-    <Button size="lg" onClick={handleCartAction} disabled={!authReady || pending}>
+    <Button
+      size="lg"
+      onClick={handleCartAction}
+      disabled={!authReady || pending || disabled}
+    >
       <ShoppingBag aria-hidden="true" />
       {label}
     </Button>
@@ -136,7 +167,9 @@ function ClerkCartActionButton({
 
 function LocalCartActionButton({
   configuration,
+  fitSelection,
   editContext,
+  disabled = false,
 }: CartActionButtonProps) {
   const previewLine = useMutation(api.carts.previewLine);
   const addLocalLine = useCartStore((state) => state.addItem);
@@ -147,12 +180,18 @@ function LocalCartActionButton({
   const label = editContext ? "Update cart" : "Add to cart";
 
   async function handleCartAction() {
-    if (pending) {
+    if (pending || disabled) {
       return;
     }
 
     const quantity = editContext?.quantity ?? 1;
     const submittedConfiguration = configuration;
+    const submittedFitSelection = toConvexFitSelection(fitSelection);
+
+    if (fitSelection.fitMethod === "made-to-measure") {
+      toast.error("Made to Measure requires an account.");
+      return;
+    }
 
     setPending(true);
 
@@ -162,6 +201,7 @@ function LocalCartActionButton({
           ...configuration,
           productId: configuration.productId as Id<"products">,
         },
+        fitSelection: submittedFitSelection,
         quantity,
       });
 
@@ -175,7 +215,9 @@ function LocalCartActionButton({
         addLocalLine(line);
       }
 
-      if (useCustomizerStore.getState().configuration === submittedConfiguration) {
+      if (
+        useCustomizerStore.getState().configuration === submittedConfiguration
+      ) {
         markClean();
       }
       toast.success(editContext ? "Cart item updated." : "Added to cart.");
@@ -188,7 +230,7 @@ function LocalCartActionButton({
   }
 
   return (
-    <Button size="lg" onClick={handleCartAction} disabled={pending}>
+    <Button size="lg" onClick={handleCartAction} disabled={pending || disabled}>
       <ShoppingBag aria-hidden="true" />
       {label}
     </Button>

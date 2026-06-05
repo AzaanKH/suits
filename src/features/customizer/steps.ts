@@ -59,10 +59,17 @@ export const CUSTOMIZER_STEPS = [
     groupCode: "extras",
   },
   {
+    code: "fit",
+    label: "Choose fit method",
+    shortLabel: "Fit",
+    description:
+      "Choose standard sizing or connect this order to your measurement profile.",
+  },
+  {
     code: "review",
     label: "Review configuration",
     shortLabel: "Review",
-    description: "Confirm the selected details and total price.",
+    description: "Confirm the selected details, fit method, and total price.",
   },
 ] as const;
 

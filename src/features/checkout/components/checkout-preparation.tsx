@@ -41,6 +41,12 @@ type CheckoutLineItem = {
   unitPriceCents: number;
   quantity: number;
   selections: Array<{ groupLabel: string; optionLabel: string }>;
+  fitMethod: "standard" | "made-to-measure";
+  jacketSize?: string;
+  trouserSize?: string;
+  trouserWaist?: string;
+  trouserInseam?: string;
+  fitPreference?: "slim" | "classic" | "relaxed";
   measurementProfileId?: Id<"measurementProfiles">;
   measurementProfileName?: string;
   measurementAppointmentRequired?: boolean;
@@ -50,10 +56,7 @@ export function CheckoutPreparation({
   clerkConfigured,
   checkoutEnabled,
 }: CheckoutPreparationProps) {
-  const cart = useQuery(
-    api.carts.forCheckout,
-    clerkConfigured ? {} : "skip",
-  );
+  const cart = useQuery(api.carts.forCheckout, clerkConfigured ? {} : "skip");
   const profiles = useQuery(
     api.measurementProfiles.mine,
     clerkConfigured ? {} : "skip",
@@ -94,7 +97,7 @@ export function CheckoutPreparation({
   }
 
   const lineItems = cart.lineItems as CheckoutLineItem[];
-  const missingMeasurements = lineItems.filter((item) => !isReady(item));
+  const incompleteFitLines = lineItems.filter((item) => !isReady(item));
 
   async function handleMeasurementChange(lineId: string, value: string) {
     setBusyLineId(lineId);
@@ -124,8 +127,8 @@ export function CheckoutPreparation({
   }
 
   async function handleSubmit(values: CheckoutPreparationValues) {
-    if (missingMeasurements.length > 0) {
-      toast.error("Choose measurements or an appointment for every suit.");
+    if (incompleteFitLines.length > 0) {
+      toast.error("Complete fit details for every suit.");
       return;
     }
 
@@ -167,11 +170,11 @@ export function CheckoutPreparation({
       <div className="grid gap-9">
         <section>
           <h2 className="text-ink font-serif text-4xl leading-none">
-            Measurement readiness
+            Fit readiness
           </h2>
           <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-6">
-            Each suit needs a saved measurement profile or an explicit
-            appointment request before payment can begin.
+            Standard Fit orders can continue with sizes only. Made to Measure
+            orders need a saved measurement profile or an appointment request.
           </p>
           <div className="divide-border border-border mt-5 divide-y border-y">
             {lineItems.map((item) => (
@@ -190,7 +193,7 @@ export function CheckoutPreparation({
                       .join(" / ")}
                   </p>
                   <p className="text-muted-foreground mt-3 inline-flex items-center gap-2 text-sm">
-                    {item.measurementAppointmentRequired ? (
+                    {item.fitMethod === "made-to-measure" ? (
                       <CalendarClock aria-hidden="true" className="size-4" />
                     ) : (
                       <Ruler aria-hidden="true" className="size-4" />
@@ -198,41 +201,50 @@ export function CheckoutPreparation({
                     {readinessLabel(item)}
                   </p>
                 </div>
-                <div>
-                  <label
-                    className="text-sm leading-none font-medium"
-                    htmlFor={`measurement-${item.lineId}`}
-                  >
-                    Measurement choice
-                  </label>
-                  <select
-                    id={`measurement-${item.lineId}`}
-                    className="form-control mt-2 rounded-lg py-2"
-                    value={measurementValue(item)}
-                    disabled={busyLineId === item.lineId}
-                    onChange={(event) =>
-                      handleMeasurementChange(item.lineId, event.target.value)
-                    }
-                  >
-                    <option value="">Select measurements</option>
-                    {profiles.map((profile) => (
-                      <option value={`profile:${profile._id}`} key={profile._id}>
-                        {profile.name}
-                      </option>
-                    ))}
-                    <option value="appointment">
-                      Measurement appointment required
-                    </option>
-                  </select>
-                  {profiles.length === 0 ? (
-                    <Link
-                      className="text-link mt-3"
-                      href="/account/measurements"
+                {item.fitMethod === "made-to-measure" ? (
+                  <div>
+                    <label
+                      className="text-sm leading-none font-medium"
+                      htmlFor={`measurement-${item.lineId}`}
                     >
-                      Create a profile
-                    </Link>
-                  ) : null}
-                </div>
+                      Measurement choice
+                    </label>
+                    <select
+                      id={`measurement-${item.lineId}`}
+                      className="form-control mt-2 rounded-lg py-2"
+                      value={measurementValue(item)}
+                      disabled={busyLineId === item.lineId}
+                      onChange={(event) =>
+                        handleMeasurementChange(item.lineId, event.target.value)
+                      }
+                    >
+                      <option value="">Select measurements</option>
+                      {profiles.map((profile) => (
+                        <option
+                          value={`profile:${profile._id}`}
+                          key={profile._id}
+                        >
+                          {profile.name}
+                        </option>
+                      ))}
+                      <option value="appointment">
+                        Measurement appointment required
+                      </option>
+                    </select>
+                    {profiles.length === 0 ? (
+                      <Link
+                        className="text-link mt-3"
+                        href="/account/measurements"
+                      >
+                        Create a profile
+                      </Link>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm leading-6">
+                    Built to standard sizing. Final alterations may be needed.
+                  </p>
+                )}
               </article>
             ))}
           </div>
@@ -306,7 +318,7 @@ export function CheckoutPreparation({
                   type="submit"
                   disabled={
                     startingPayment ||
-                    missingMeasurements.length > 0 ||
+                    incompleteFitLines.length > 0 ||
                     form.formState.isSubmitting
                   }
                 >
@@ -346,11 +358,11 @@ export function CheckoutPreparation({
           Taxes and delivery are calculated in Stripe Checkout. Card details are
           entered only in Stripe.
         </p>
-        {missingMeasurements.length > 0 ? (
+        {incompleteFitLines.length > 0 ? (
           <p className="text-destructive mt-4 text-sm font-medium">
-            {missingMeasurements.length} suit
-            {missingMeasurements.length === 1 ? " needs" : "s need"} a
-            measurement choice.
+            {incompleteFitLines.length} suit
+            {incompleteFitLines.length === 1 ? " needs" : "s need"} complete fit
+            details.
           </p>
         ) : null}
       </aside>
@@ -396,6 +408,14 @@ function CheckoutInput({
 }
 
 function isReady(item: CheckoutLineItem) {
+  if (item.fitMethod === "standard") {
+    return Boolean(
+      item.jacketSize &&
+      item.fitPreference &&
+      (item.trouserSize || (item.trouserWaist && item.trouserInseam)),
+    );
+  }
+
   return Boolean(
     item.measurementAppointmentRequired || item.measurementProfileId,
   );
@@ -414,6 +434,22 @@ function measurementValue(item: CheckoutLineItem) {
 }
 
 function readinessLabel(item: CheckoutLineItem) {
+  if (item.fitMethod === "standard") {
+    if (
+      !item.jacketSize ||
+      !item.fitPreference ||
+      (!item.trouserSize && (!item.trouserWaist || !item.trouserInseam))
+    ) {
+      return "Standard Fit: Pending";
+    }
+
+    const trouser = item.trouserSize
+      ? `Trouser ${item.trouserSize}`
+      : `Waist ${item.trouserWaist} / Inseam ${item.trouserInseam}`;
+
+    return `Standard Fit: Jacket ${item.jacketSize}, ${trouser}, ${item.fitPreference} fit`;
+  }
+
   if (item.measurementAppointmentRequired) {
     return "Measurement appointment required";
   }

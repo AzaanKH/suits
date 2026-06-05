@@ -81,6 +81,10 @@ describe("measurement profiles", () => {
     );
     const line = await userA.mutation(api.carts.addLine, {
       configuration,
+      fitSelection: {
+        fitMethod: "made-to-measure",
+        measurementProfileId: profileId,
+      },
       quantity: 1,
     });
 
@@ -92,20 +96,12 @@ describe("measurement profiles", () => {
       }),
     ).rejects.toThrow("Measurement profile not found.");
 
-    await expect(
-      userA.query(api.carts.forCheckout, { requireMeasurements: true }),
-    ).rejects.toThrow("needs a measurement profile or appointment request");
-
-    await userA.mutation(api.carts.setLineMeasurementChoice, {
-      lineId: line.lineId,
-      measurementProfileId: profileId,
-    });
-
     const readyCart = await userA.query(api.carts.forCheckout, {
       requireMeasurements: true,
     });
 
     expect(readyCart.lineItems[0]?.measurementProfileName).toBe("Wedding suit");
+    expect(line.fitMethod).toBe("made-to-measure");
 
     await userA.mutation(api.measurementProfiles.remove, { profileId });
 

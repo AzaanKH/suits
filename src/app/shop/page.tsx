@@ -7,7 +7,7 @@ export default function ShopPage() {
     <PageContainer className="py-16 sm:py-20 lg:py-24">
       <SectionHeading
         title="Suits, considered."
-        description="A focused edit of house signatures, soft tailoring, and occasion pieces. Every style is made to your measurements and finished to your preferences."
+        description="A focused edit of house signatures, soft tailoring, and occasion pieces. Configure online, then choose standard fit or made to measure."
       />
       <ShopCatalog />
     </PageContainer>
