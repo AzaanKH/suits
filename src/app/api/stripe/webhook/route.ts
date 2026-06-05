@@ -4,6 +4,7 @@ import Stripe from "stripe";
 
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { getCheckoutSessionOrderData } from "@/lib/stripe-checkout-session";
 
 export const runtime = "nodejs";
 
@@ -50,14 +51,24 @@ export async function POST(request: Request) {
       case "checkout.session.async_payment_failed":
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
-        await convex.mutation(api.orders.recordCheckoutSessionStatus, {
-          processingSecret,
-          stripeEventId: event.id,
+        const result = await convex.mutation(
+          api.orders.recordCheckoutSessionStatus,
+          {
+            processingSecret,
+            stripeEventId: event.id,
+            eventType: event.type,
+            checkoutSessionId: session.id,
+            paymentIntentId: getStripeId(session.payment_intent),
+            paymentStatus: getCheckoutSessionPaymentStatus(event.type, session),
+            orderId: getOrderId(session.metadata),
+            ...getCheckoutSessionOrderData(session),
+          },
+        );
+        console.info("Processed Stripe Checkout Session webhook.", {
+          eventId: event.id,
           eventType: event.type,
           checkoutSessionId: session.id,
-          paymentIntentId: getStripeId(session.payment_intent),
-          paymentStatus: getCheckoutSessionPaymentStatus(event.type, session),
-          orderId: getOrderId(session.metadata),
+          result,
         });
         break;
       }
@@ -66,19 +77,32 @@ export async function POST(request: Request) {
       case "payment_intent.payment_failed":
       case "payment_intent.canceled": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        await convex.mutation(api.orders.recordPaymentIntentStatus, {
-          processingSecret,
-          stripeEventId: event.id,
+        const result = await convex.mutation(
+          api.orders.recordPaymentIntentStatus,
+          {
+            processingSecret,
+            stripeEventId: event.id,
+            eventType: event.type,
+            paymentIntentId: paymentIntent.id,
+            paymentStatus:
+              event.type === "payment_intent.succeeded" ? "paid" : "failed",
+            orderId: getOrderId(paymentIntent.metadata),
+          },
+        );
+        console.info("Processed Stripe PaymentIntent webhook.", {
+          eventId: event.id,
           eventType: event.type,
           paymentIntentId: paymentIntent.id,
-          paymentStatus:
-            event.type === "payment_intent.succeeded" ? "paid" : "failed",
-          orderId: getOrderId(paymentIntent.metadata),
+          result,
         });
         break;
       }
 
       default:
+        console.info("Skipped unsupported Stripe webhook event.", {
+          eventId: event.id,
+          eventType: event.type,
+        });
         break;
     }
 

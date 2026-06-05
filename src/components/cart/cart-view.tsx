@@ -10,14 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCartController } from "./use-cart-controller";
 
 export function CartView({ checkoutEnabled }: { checkoutEnabled: boolean }) {
-  const {
-    items,
-    source,
-    subtotalCents,
-    loading,
-    updateQuantity,
-    removeItem,
-  } = useCartController();
+  const { items, source, subtotalCents, loading, updateQuantity, removeItem } =
+    useCartController();
 
   if (loading) {
     return <CartSkeleton />;
@@ -59,9 +53,9 @@ export function CartView({ checkoutEnabled }: { checkoutEnabled: boolean }) {
           <PriceDisplay priceCents={subtotalCents} />
         </div>
         <p className="text-muted-foreground mt-3 text-sm leading-6">
-          Estimated total excludes taxes and delivery, which are calculated
-          during Stripe Checkout. Each order is confirmed by our tailoring team
-          before production.
+          Estimated total excludes sales tax, which is calculated from your
+          shipping state during checkout. Each order is confirmed by our
+          tailoring team before production.
         </p>
         <CheckoutButton checkoutEnabled={checkoutEnabled} />
         <div className="mt-5 flex justify-center">

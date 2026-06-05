@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { EmptyState } from "@/components/storefront/empty-state";
 import { PriceDisplay } from "@/components/storefront/price-display";
 import { Badge } from "@/components/ui/badge";
+import { CheckoutSessionReconciler } from "@/features/checkout/components/checkout-session-reconciler";
 import { getAuthenticatedConvexClient } from "@/lib/convex-server";
 
 export const metadata: Metadata = {
@@ -15,9 +16,17 @@ export const metadata: Metadata = {
 export default async function OrdersPage() {
   const convex = await getAuthenticatedConvexClient();
   const orders = await convex.query(api.orders.mine, {});
+  const pendingCheckoutSessionIds = orders
+    .filter(
+      (order) =>
+        order.paymentStatus === "checkout_pending" &&
+        order.stripeCheckoutSessionId,
+    )
+    .map((order) => order.stripeCheckoutSessionId as string);
 
   return (
     <PageContainer className="py-12 sm:py-16 lg:py-20">
+      <CheckoutSessionReconciler sessionIds={pendingCheckoutSessionIds} />
       <div className="mb-9 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-ink font-serif text-6xl leading-[0.95] tracking-[-0.04em] sm:text-7xl">
@@ -62,7 +71,9 @@ export default async function OrdersPage() {
                 </p>
               </div>
               <div className="text-left sm:text-right">
-                <PriceDisplay priceCents={order.subtotalCents} />
+                <PriceDisplay
+                  priceCents={order.totalCents ?? order.subtotalCents}
+                />
                 <p className="text-muted-foreground mt-1 text-xs uppercase">
                   {order.currency}
                 </p>

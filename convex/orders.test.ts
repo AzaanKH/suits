@@ -73,6 +73,7 @@ describe("orders", () => {
       orderId: order.orderId,
     });
     expect(detail.order.paymentStatus).toBe("checkout_pending");
+    expect(detail.order.totalCents).toBeUndefined();
     expect(detail.items).toHaveLength(1);
     expect(detail.items[0].configurationSnapshot.personalization).toEqual({
       monogramText: "AK",
@@ -115,6 +116,50 @@ describe("orders", () => {
     });
     expect(detail.order.shippingAddress.line1).toBe("200 Market Street");
     expect(detail.items).toHaveLength(1);
+  });
+
+  it("reuses a pending checkout attempt when the local state changes", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_checkout_tax_state",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      fitSelection: standardFitSelection,
+      quantity: 1,
+    });
+
+    const californiaOrder = await user.mutation(
+      api.orders.createPendingFromCart,
+      {
+        shippingAddress,
+        currency: "usd",
+      },
+    );
+    const newYorkOrder = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress: {
+        ...shippingAddress,
+        state: "NY",
+        postalCode: "10001",
+      },
+      currency: "usd",
+    });
+
+    expect(newYorkOrder.orderId).toBe(californiaOrder.orderId);
+    expect(newYorkOrder.checkoutAttemptKey).toBe(
+      californiaOrder.checkoutAttemptKey,
+    );
+
+    const detail = await user.query(api.orders.detail, {
+      orderId: californiaOrder.orderId,
+    });
+    expect(detail.order.shippingAddress.state).toBe("NY");
+    expect(detail.order.taxCents).toBeUndefined();
+    expect(detail.order.totalCents).toBeUndefined();
   });
 
   it("rejects Stripe IDs already attached to another order", async () => {
@@ -202,6 +247,15 @@ describe("orders", () => {
         paymentIntentId: "pi_test_paid",
         paymentStatus: "paid",
         orderId: order.orderId,
+        stripeSubtotalCents: 126500,
+        stripeTaxCents: 8223,
+        stripeTotalCents: 134723,
+        shippingAddress: {
+          ...shippingAddress,
+          city: "Bellevue",
+          state: "WA",
+          postalCode: "98005",
+        },
       },
     );
     const duplicateResult = await t.mutation(
@@ -225,6 +279,12 @@ describe("orders", () => {
     });
     expect(detail.order.paymentStatus).toBe("paid");
     expect(detail.order.stripePaymentIntentId).toBe("pi_test_paid");
+    expect(detail.order.shippingAddress.state).toBe("WA");
+    expect(detail.order.subtotalCents).toBe(126500);
+    expect(detail.order.taxCents).toBe(8223);
+    expect(detail.order.totalCents).toBe(134723);
+    expect(detail.order.taxJurisdictionCode).toBe("WA");
+    expect(detail.order.taxJurisdictionName).toBe("Washington");
 
     const cart = await user.query(api.carts.mine, {});
     expect(cart.lineItems).toHaveLength(0);
@@ -240,6 +300,47 @@ describe("orders", () => {
       ).length;
     });
     expect(eventCount).toBe(1);
+  });
+
+  it("marks an attached Checkout Session paid without order metadata", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_session_fallback",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      fitSelection: standardFitSelection,
+      quantity: 1,
+    });
+    const order = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress,
+      currency: "usd",
+    });
+    await user.mutation(api.orders.attachCheckoutSession, {
+      orderId: order.orderId,
+      stripeCheckoutSessionId: "cs_test_metadata_missing",
+    });
+
+    const result = await t.mutation(api.orders.recordCheckoutSessionStatus, {
+      processingSecret,
+      stripeEventId: "evt_session_fallback",
+      eventType: "checkout.session.completed",
+      checkoutSessionId: "cs_test_metadata_missing",
+      paymentIntentId: "pi_test_session_fallback",
+      paymentStatus: "paid",
+    });
+
+    expect(result.status).toBe("processed");
+
+    const detail = await user.query(api.orders.detail, {
+      orderId: order.orderId,
+    });
+    expect(detail.order.paymentStatus).toBe("paid");
+    expect(detail.order.stripePaymentIntentId).toBe("pi_test_session_fallback");
   });
 
   it("rejects webhook processing without the shared server secret", async () => {

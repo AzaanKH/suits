@@ -7,6 +7,8 @@ import { ZodError } from "zod";
 import { api } from "../../../../convex/_generated/api";
 import { checkoutPreparationSchema } from "@/features/checkout/schema";
 
+const STRIPE_SUIT_TAX_CODE = "txcd_30011000";
+
 export async function POST(request: Request) {
   const { getToken, userId } = await auth.protect();
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -95,36 +97,46 @@ export async function POST(request: Request) {
         mode: "payment",
         client_reference_id: userId,
         customer_email: checkoutPreparation.shippingAddress.email,
-        customer_creation: "if_required",
+        customer_creation: "always",
+        automatic_tax: {
+          enabled: true,
+        },
+        shipping_address_collection: {
+          allowed_countries: ["US"],
+        },
         phone_number_collection: {
           enabled: true,
         },
-        line_items: pendingOrder.lineItems.map((item) => ({
-          quantity: item.quantity,
-          price_data: {
-            currency: pendingOrder.currency,
-            unit_amount: item.unitPriceCents,
-            product_data: {
-              name: item.productName,
-              description: summarizeSelections(item.selections),
-              metadata: {
-                orderId: pendingOrder.orderId,
-                productId: item.productId,
-                slug: item.productSlug,
-                cartLineId: item.lineId,
-                fitMethod: item.fitMethod,
-                jacketSize: item.jacketSize ?? "",
-                trouserSize: item.trouserSize ?? "",
-                trouserWaist: item.trouserWaist ?? "",
-                trouserInseam: item.trouserInseam ?? "",
-                fitPreference: item.fitPreference ?? "",
-                measurementProfileId: item.measurementProfileId ?? "",
-                measurementAppointmentRequired:
-                  item.measurementAppointmentRequired ? "true" : "false",
+        line_items: [
+          ...pendingOrder.lineItems.map((item) => ({
+            quantity: item.quantity,
+            price_data: {
+              currency: pendingOrder.currency,
+              unit_amount: item.unitPriceCents,
+              tax_behavior: "exclusive" as const,
+              product_data: {
+                name: item.productName,
+                tax_code: STRIPE_SUIT_TAX_CODE,
+                description: summarizeSelections(item.selections),
+                metadata: {
+                  orderId: pendingOrder.orderId,
+                  productId: item.productId,
+                  slug: item.productSlug,
+                  cartLineId: item.lineId,
+                  fitMethod: item.fitMethod,
+                  jacketSize: item.jacketSize ?? "",
+                  trouserSize: item.trouserSize ?? "",
+                  trouserWaist: item.trouserWaist ?? "",
+                  trouserInseam: item.trouserInseam ?? "",
+                  fitPreference: item.fitPreference ?? "",
+                  measurementProfileId: item.measurementProfileId ?? "",
+                  measurementAppointmentRequired:
+                    item.measurementAppointmentRequired ? "true" : "false",
+                },
               },
             },
-          },
-        })),
+          })),
+        ],
         metadata: {
           orderId: pendingOrder.orderId,
           clerkUserId: userId,
@@ -135,6 +147,7 @@ export async function POST(request: Request) {
           metadata: {
             orderId: pendingOrder.orderId,
             clerkUserId: userId,
+            subtotalCents: String(pendingOrder.subtotalCents),
           },
         },
         success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,

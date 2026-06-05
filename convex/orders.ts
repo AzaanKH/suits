@@ -5,6 +5,7 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { clearCartForOwner, getCheckoutCartForUser } from "./carts";
+import { getUsStateSalesTaxDetails } from "../src/lib/sales-tax";
 
 const shippingAddressValidator = v.object({
   fullName: v.string(),
@@ -39,12 +40,13 @@ export const createPendingFromCart = mutation({
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const cart = await getCheckoutCartForUser(ctx, ownerClerkUserId, true);
     const normalizedCurrency = normalizeCurrency(currency ?? "usd");
-    const checkoutAttemptKey = await createCheckoutAttemptKey(cart.lineItems);
     const now = Date.now();
     const subtotalCents = cart.lineItems.reduce(
       (total, item) => total + item.unitPriceCents * item.quantity,
       0,
     );
+    const normalizedShippingAddress = normalizeShippingAddress(shippingAddress);
+    const checkoutAttemptKey = await createCheckoutAttemptKey(cart.lineItems);
     const itemCount = cart.lineItems.reduce(
       (total, item) => total + item.quantity,
       0,
@@ -57,7 +59,7 @@ export const createPendingFromCart = mutation({
 
     if (reusableOrder) {
       await ctx.db.patch(reusableOrder._id, {
-        shippingAddress: normalizeShippingAddress(shippingAddress),
+        shippingAddress: normalizedShippingAddress,
         subtotalCents,
         currency: normalizedCurrency,
         itemCount,
@@ -78,7 +80,7 @@ export const createPendingFromCart = mutation({
     const orderId = await ctx.db.insert("orders", {
       ownerClerkUserId,
       checkoutAttemptKey,
-      shippingAddress: normalizeShippingAddress(shippingAddress),
+      shippingAddress: normalizedShippingAddress,
       subtotalCents,
       currency: normalizedCurrency,
       paymentStatus: "checkout_pending",
@@ -221,6 +223,10 @@ export const recordCheckoutSessionStatus = mutation({
     paymentIntentId: v.optional(v.string()),
     paymentStatus: webhookPaymentStatusValidator,
     orderId: v.optional(v.id("orders")),
+    stripeSubtotalCents: v.optional(v.number()),
+    stripeTaxCents: v.optional(v.number()),
+    stripeTotalCents: v.optional(v.number()),
+    shippingAddress: v.optional(shippingAddressValidator),
   },
   handler: async (ctx, args) => {
     requireWebhookProcessingSecret(args.processingSecret);
@@ -262,6 +268,19 @@ export const recordCheckoutSessionStatus = mutation({
       ...(args.paymentIntentId
         ? { stripePaymentIntentId: args.paymentIntentId }
         : {}),
+      ...(args.shippingAddress
+        ? { shippingAddress: normalizeShippingAddress(args.shippingAddress) }
+        : {}),
+      ...(args.stripeSubtotalCents !== undefined
+        ? { subtotalCents: args.stripeSubtotalCents }
+        : {}),
+      ...(args.stripeTaxCents !== undefined
+        ? { taxCents: args.stripeTaxCents }
+        : {}),
+      ...(args.stripeTotalCents !== undefined
+        ? { totalCents: args.stripeTotalCents }
+        : {}),
+      ...taxJurisdictionPatch(args.shippingAddress),
       paymentStatus,
       ...(paymentStatus === "paid" ? { paymentConfirmedAt: now } : {}),
       updatedAt: now,
@@ -583,6 +602,14 @@ async function createCheckoutAttemptKey(
 function normalizeShippingAddress(
   shippingAddress: typeof shippingAddressValidator.type,
 ) {
+  const country = normalizeText(shippingAddress.country, "Country", 2, 80);
+  const state = normalizeText(shippingAddress.state, "State or region", 2, 80);
+  const taxState = getUsStateSalesTaxDetails(state);
+
+  if (!taxState) {
+    throw new ConvexError("Enter a valid US state.");
+  }
+
   return {
     fullName: normalizeText(shippingAddress.fullName, "Recipient name", 2, 80),
     email: normalizeText(shippingAddress.email, "Email", 3, 254).toLowerCase(),
@@ -594,9 +621,9 @@ function normalizeShippingAddress(
         }
       : {}),
     city: normalizeText(shippingAddress.city, "City", 2, 80),
-    state: normalizeText(shippingAddress.state, "State or region", 2, 80),
+    state: taxState.code,
     postalCode: normalizeText(shippingAddress.postalCode, "Postal code", 3, 20),
-    country: normalizeText(shippingAddress.country, "Country", 2, 80),
+    country,
   };
 }
 
@@ -615,6 +642,23 @@ function normalizeText(
   }
 
   return trimmed;
+}
+
+function taxJurisdictionPatch(
+  shippingAddress: typeof shippingAddressValidator.type | undefined,
+) {
+  if (!shippingAddress) {
+    return {};
+  }
+
+  const taxState = getUsStateSalesTaxDetails(shippingAddress.state);
+
+  return taxState
+    ? {
+        taxJurisdictionCode: taxState.code,
+        taxJurisdictionName: taxState.name,
+      }
+    : {};
 }
 
 function toOrderPaymentStatus(paymentStatus: "paid" | "unpaid" | "failed") {

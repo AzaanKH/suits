@@ -352,7 +352,9 @@ export function CheckoutPreparation({
           <PriceDisplay priceCents={cart.subtotalCents} />
         </div>
         <p className="text-muted-foreground mt-3 text-sm leading-6">
-          Taxes and delivery are calculated in Stripe.
+          Stripe Tax calculates sales tax from the shipping address entered
+          during payment. Delivery is arranged by our tailoring team after
+          payment.
         </p>
         {incompleteFitLines.length > 0 ? (
           <p className="text-destructive mt-4 text-sm font-medium">
