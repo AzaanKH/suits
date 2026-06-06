@@ -98,6 +98,25 @@ export async function POST(request: Request) {
         break;
       }
 
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        const paymentIntentId = getStripeId(charge.payment_intent);
+
+        if (!paymentIntentId) {
+          break;
+        }
+
+        await convex.mutation(api.orders.recordPaymentIntentStatus, {
+          processingSecret,
+          stripeEventId: event.id,
+          eventType: event.type,
+          paymentIntentId,
+          paymentStatus: "refunded",
+          orderId: getOrderId(charge.metadata),
+        });
+        break;
+      }
+
       default:
         console.info("Skipped unsupported Stripe webhook event.", {
           eventId: event.id,

@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { OrderPaymentStatus } from "@/components/account/order-payment-status";
 import { PageContainer } from "@/components/layout/page-container";
 import { PriceDisplay } from "@/components/storefront/price-display";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckoutSessionReconciler } from "@/features/checkout/components/checkout-session-reconciler";
 import { getAuthenticatedConvexClient } from "@/lib/convex-server";
@@ -58,11 +58,7 @@ export default async function OrderDetailPage({
             Order {shortOrderId(order._id)}
           </h1>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Badge
-              variant={order.paymentStatus === "paid" ? "default" : "secondary"}
-            >
-              {formatStatus(order.paymentStatus)}
-            </Badge>
+            <OrderPaymentStatus status={order.paymentStatus} />
           </div>
         </div>
         <div className="text-left sm:text-right">
@@ -216,10 +212,6 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 function shortOrderId(orderId: string) {
   return orderId.slice(-8).toUpperCase();
-}
-
-function formatStatus(status: string) {
-  return status.replaceAll("_", " ");
 }
 
 function formatDate(timestamp: number) {

@@ -23,6 +23,7 @@ const webhookPaymentStatusValidator = v.union(
   v.literal("paid"),
   v.literal("unpaid"),
   v.literal("failed"),
+  v.literal("refunded"),
 );
 
 const webhookSecretArgs = {
@@ -661,9 +662,15 @@ function taxJurisdictionPatch(
     : {};
 }
 
-function toOrderPaymentStatus(paymentStatus: "paid" | "unpaid" | "failed") {
+function toOrderPaymentStatus(
+  paymentStatus: "paid" | "unpaid" | "failed" | "refunded",
+) {
   if (paymentStatus === "paid") {
     return "paid";
+  }
+
+  if (paymentStatus === "refunded") {
+    return "refunded";
   }
 
   if (paymentStatus === "failed") {
