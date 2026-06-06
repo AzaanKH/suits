@@ -343,6 +343,44 @@ describe("orders", () => {
     expect(detail.order.stripePaymentIntentId).toBe("pi_test_session_fallback");
   });
 
+  it("marks an order refunded from a Stripe refund webhook", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_refunded_order",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      fitSelection: standardFitSelection,
+      quantity: 1,
+    });
+    const order = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress,
+      currency: "usd",
+    });
+    await user.mutation(api.orders.attachCheckoutSession, {
+      orderId: order.orderId,
+      stripeCheckoutSessionId: "cs_test_refunded",
+      stripePaymentIntentId: "pi_test_refunded",
+    });
+    await t.mutation(api.orders.recordPaymentIntentStatus, {
+      processingSecret,
+      stripeEventId: "evt_refunded_once",
+      eventType: "charge.refunded",
+      paymentIntentId: "pi_test_refunded",
+      paymentStatus: "refunded",
+      orderId: order.orderId,
+    });
+
+    const detail = await user.query(api.orders.detail, {
+      orderId: order.orderId,
+    });
+    expect(detail.order.paymentStatus).toBe("refunded");
+  });
+
   it("rejects webhook processing without the shared server secret", async () => {
     const t = convexTest(schema, modules);
 

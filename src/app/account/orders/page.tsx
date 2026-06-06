@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { api } from "../../../../convex/_generated/api";
+import { OrderPaymentStatus } from "@/components/account/order-payment-status";
 import { PageContainer } from "@/components/layout/page-container";
 import { EmptyState } from "@/components/storefront/empty-state";
 import { PriceDisplay } from "@/components/storefront/price-display";
-import { Badge } from "@/components/ui/badge";
 import { CheckoutSessionReconciler } from "@/features/checkout/components/checkout-session-reconciler";
 import { getAuthenticatedConvexClient } from "@/lib/convex-server";
 
@@ -61,9 +61,7 @@ export default async function OrdersPage() {
                   <h2 className="text-ink font-serif text-3xl leading-none">
                     Order {shortOrderId(order._id)}
                   </h2>
-                  <Badge variant={statusVariant(order.paymentStatus)}>
-                    {formatStatus(order.paymentStatus)}
-                  </Badge>
+                  <OrderPaymentStatus status={order.paymentStatus} />
                 </div>
                 <p className="text-muted-foreground mt-2 text-sm">
                   {formatDate(order.createdAt)} / {order.itemCount} item
@@ -96,12 +94,4 @@ function formatDate(timestamp: number) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(timestamp));
-}
-
-function formatStatus(status: string) {
-  return status.replaceAll("_", " ");
-}
-
-function statusVariant(status: string) {
-  return status === "paid" ? "default" : "secondary";
 }
