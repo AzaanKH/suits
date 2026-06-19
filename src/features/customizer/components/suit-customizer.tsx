@@ -79,9 +79,13 @@ import { useCustomizerStore } from "@/store/customizer-store";
 
 type SuitCustomizerProps = {
   productSlug: string;
+  threeDimensionalPreviewEnabled?: boolean;
 };
 
-export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
+export function SuitCustomizer({
+  productSlug,
+  threeDimensionalPreviewEnabled = false,
+}: SuitCustomizerProps) {
   const searchParams = useSearchParams();
   const designId = searchParams.get("designId");
   const cartLineId = searchParams.get("cartLineId");
@@ -318,7 +322,11 @@ export function SuitCustomizer({ productSlug }: SuitCustomizerProps) {
         </div>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-10 xl:grid-cols-[0.82fr_1.18fr]">
-          <CustomizerPreview catalog={catalog} configuration={configuration} />
+          <CustomizerPreview
+            catalog={catalog}
+            configuration={configuration}
+            threeDimensionalPreviewEnabled={threeDimensionalPreviewEnabled}
+          />
           <section>
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>

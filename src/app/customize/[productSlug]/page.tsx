@@ -13,6 +13,13 @@ export const metadata: Metadata = {
 
 export default async function CustomizePage({ params }: CustomizePageProps) {
   const { productSlug } = await params;
+  const threeDimensionalPreviewEnabled =
+    process.env.ENABLE_3D_CONFIGURATOR === "true";
 
-  return <SuitCustomizer productSlug={productSlug} />;
+  return (
+    <SuitCustomizer
+      productSlug={productSlug}
+      threeDimensionalPreviewEnabled={threeDimensionalPreviewEnabled}
+    />
+  );
 }

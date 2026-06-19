@@ -1,45 +1,63 @@
 "use client";
 
-import Image from "next/image";
+import dynamic from "next/dynamic";
+import { Box } from "lucide-react";
+import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  calculateConfigurationPrice,
-  getSelectedFabric,
-  getSelectedOptions,
-} from "@/features/customizer/pricing";
+import { calculateConfigurationPrice } from "@/features/customizer/pricing";
 import { createConfigurationSummary } from "@/features/customizer/serialization";
 import type {
   CustomizerCatalog,
   CustomizerConfiguration,
 } from "@/features/customizer/types";
 import { formatCurrency, formatPriceModifier } from "@/lib/product-format";
+import { TwoDimensionalPreview } from "./two-dimensional-preview";
+
+const Suit3dPreview = dynamic(
+  () =>
+    import("@/features/customizer/three-d/suit-3d-preview").then(
+      (mod) => mod.Suit3dPreview,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-card flex aspect-[4/5] items-center justify-center rounded-lg border">
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <Box aria-hidden="true" className="size-4" />
+          Loading 3D preview
+        </div>
+      </div>
+    ),
+  },
+);
 
 type CustomizerPreviewProps = {
   catalog: CustomizerCatalog;
   configuration: CustomizerConfiguration;
+  threeDimensionalPreviewEnabled?: boolean;
 };
+
+type PreviewTab = "two-dimensional" | "three-dimensional" | "summary";
 
 export function CustomizerPreview({
   catalog,
   configuration,
+  threeDimensionalPreviewEnabled = false,
 }: CustomizerPreviewProps) {
-  const selectedFabric = getSelectedFabric(catalog, configuration);
-  const selectedOptions = getSelectedOptions(catalog, configuration);
-  const image = selectedFabric?.imageReference ??
-    catalog.product.images[0] ?? {
-      src: "/images/hero-tailoring.png",
-      alt: "Tailored suit preview",
-    };
+  const [activeTab, setActiveTab] = useState<PreviewTab>("two-dimensional");
   const price = calculateConfigurationPrice(catalog, configuration);
   const summary = createConfigurationSummary(catalog, configuration);
 
   return (
     <aside className="lg:sticky lg:top-24">
-      <Tabs defaultValue="preview" className="gap-4">
-        <div className="flex items-center justify-between gap-3">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as PreviewTab)}
+        className="gap-4"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-muted-foreground text-xs font-bold tracking-[0.1em] uppercase">
               {catalog.product.name}
@@ -49,51 +67,38 @@ export function CustomizerPreview({
             </p>
           </div>
           <TabsList>
-            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="two-dimensional">2D</TabsTrigger>
+            {threeDimensionalPreviewEnabled ? (
+              <TabsTrigger value="three-dimensional">3D</TabsTrigger>
+            ) : null}
             <TabsTrigger value="summary">Summary</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="preview">
-          <div className="bg-stone relative aspect-[4/5] overflow-hidden rounded-lg">
-            <Image
-              priority
-              fill
-              sizes="(min-width: 1024px) 42vw, 100vw"
-              src={image.src}
-              alt={image.alt}
-              className="object-cover"
-            />
-            <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-              {selectedFabric ? (
-                <Badge variant="secondary">{selectedFabric.color}</Badge>
-              ) : null}
-              {price.modifierTotalCents > 0 ? (
-                <Badge>{formatPriceModifier(price.modifierTotalCents)}</Badge>
-              ) : null}
-            </div>
-          </div>
-          {selectedOptions.length > 0 ? (
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {selectedOptions.slice(0, 4).map((option) =>
-                option.imageReference ? (
-                  <div
-                    className="bg-stone relative aspect-square overflow-hidden rounded-md"
-                    key={option.code}
-                  >
-                    <Image
-                      fill
-                      sizes="96px"
-                      src={option.imageReference.src}
-                      alt={option.imageReference.alt}
-                      className="object-cover"
-                    />
-                  </div>
-                ) : null,
-              )}
-            </div>
-          ) : null}
+        <TabsContent value="two-dimensional">
+          <TwoDimensionalPreview
+            catalog={catalog}
+            configuration={configuration}
+            priority
+          />
         </TabsContent>
+
+        {threeDimensionalPreviewEnabled ? (
+          <TabsContent value="three-dimensional">
+            {activeTab === "three-dimensional" ? (
+              <Suit3dPreview
+                catalog={catalog}
+                configuration={configuration}
+                fallback={
+                  <TwoDimensionalPreview
+                    catalog={catalog}
+                    configuration={configuration}
+                  />
+                }
+              />
+            ) : null}
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="summary">
           <div className="bg-card rounded-lg border p-4">
