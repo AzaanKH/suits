@@ -175,24 +175,30 @@ export default async function OrderDetailPage({
           <h2 className="text-ink font-serif text-3xl leading-none">
             Shipping
           </h2>
-          <address className="text-muted-foreground mt-5 text-sm leading-6 not-italic">
-            <span className="text-ink font-semibold">
-              {order.shippingAddress.fullName}
-            </span>
-            <br />
-            {order.shippingAddress.line1}
-            <br />
-            {order.shippingAddress.line2 ? (
-              <>
-                {order.shippingAddress.line2}
-                <br />
-              </>
-            ) : null}
-            {order.shippingAddress.city}, {order.shippingAddress.state}{" "}
-            {order.shippingAddress.postalCode}
-            <br />
-            {order.shippingAddress.country}
-          </address>
+          {order.shippingAddress ? (
+            <address className="text-muted-foreground mt-5 text-sm leading-6 not-italic">
+              <span className="text-ink font-semibold">
+                {order.shippingAddress.fullName}
+              </span>
+              <br />
+              {order.shippingAddress.line1}
+              <br />
+              {order.shippingAddress.line2 ? (
+                <>
+                  {order.shippingAddress.line2}
+                  <br />
+                </>
+              ) : null}
+              {order.shippingAddress.city}, {order.shippingAddress.state}{" "}
+              {order.shippingAddress.postalCode}
+              <br />
+              {order.shippingAddress.country}
+            </address>
+          ) : (
+            <p className="text-muted-foreground mt-5 text-sm">
+              Shipping address pending validation.
+            </p>
+          )}
         </aside>
       </div>
     </PageContainer>

@@ -68,6 +68,29 @@ const shippingAddress = v.object({
   country: v.string(),
 });
 
+const addressValidationMessage = v.object({
+  code: v.string(),
+  text: v.string(),
+});
+
+const addressIndicators = v.object({
+  deliveryPoint: v.optional(v.string()),
+  carrierRoute: v.optional(v.string()),
+  cmra: v.optional(v.string()),
+  business: v.optional(v.string()),
+  centralDeliveryPoint: v.optional(v.string()),
+  vacant: v.optional(v.string()),
+});
+
+const addressValidationBehavior = v.union(
+  v.literal("accept"),
+  v.literal("add_unit"),
+  v.literal("verify_unit"),
+  v.literal("confirm"),
+);
+
+const addressSelection = v.union(v.literal("entered"), v.literal("usps"));
+
 const orderPaymentStatus = v.union(
   v.literal("checkout_pending"),
   v.literal("unpaid"),
@@ -259,7 +282,10 @@ export default defineSchema({
     checkoutAttemptKey: v.optional(v.string()),
     stripeCheckoutSessionId: v.optional(v.string()),
     stripePaymentIntentId: v.optional(v.string()),
-    shippingAddress,
+    shippingAddress: v.optional(shippingAddress),
+    enteredShippingAddress: v.optional(shippingAddress),
+    addressValidationId: v.optional(v.id("addressValidations")),
+    addressSelection: v.optional(addressSelection),
     subtotalCents: v.number(),
     taxCents: v.optional(v.number()),
     taxRateBps: v.optional(v.number()),
@@ -281,6 +307,42 @@ export default defineSchema({
     ])
     .index("by_stripe_checkout_session", ["stripeCheckoutSessionId"])
     .index("by_stripe_payment_intent", ["stripePaymentIntentId"]),
+
+  addressValidations: defineTable({
+    ownerClerkUserId: v.string(),
+    orderId: v.id("orders"),
+    enteredAddress: shippingAddress,
+    standardizedAddress: v.optional(shippingAddress),
+    dpvConfirmation: v.optional(v.string()),
+    corrections: v.array(addressValidationMessage),
+    warnings: v.array(addressValidationMessage),
+    indicators: addressIndicators,
+    addressChanged: v.boolean(),
+    behavior: addressValidationBehavior,
+    selection: v.optional(addressSelection),
+    selectedAddress: v.optional(shippingAddress),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner_created_at", ["ownerClerkUserId", "createdAt"])
+    .index("by_order_created_at", ["orderId", "createdAt"]),
+
+  customerAddresses: defineTable({
+    ownerClerkUserId: v.string(),
+    addressFingerprint: v.string(),
+    address: shippingAddress,
+    enteredAddress: shippingAddress,
+    standardizedAddress: v.optional(shippingAddress),
+    validationId: v.id("addressValidations"),
+    dpvConfirmation: v.optional(v.string()),
+    indicators: addressIndicators,
+    selection: addressSelection,
+    lastUsedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner_updated_at", ["ownerClerkUserId", "updatedAt"])
+    .index("by_owner_fingerprint", ["ownerClerkUserId", "addressFingerprint"]),
 
   orderItems: defineTable({
     orderId: v.id("orders"),

@@ -1,6 +1,6 @@
 # Convex storefront schema
 
-The storefront uses twelve tables:
+The storefront uses fourteen tables:
 
 | Table                              | Purpose                                                                                                                                                                                                                                               |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -15,6 +15,8 @@ The storefront uses twelve tables:
 | `carts`                            | Authenticated cart records keyed by owner Clerk user id with immutable configured line snapshots, server-priced unit amounts, quantities, and timestamps.                                                                                             |
 | `orders`                           | Authenticated order headers keyed by owner Clerk user id with Stripe IDs, shipping, totals, payment status, fulfillment status, and timestamps.                                                                                                       |
 | `orderItems`                       | Normalized order line snapshots with product, configuration, selections, personalization, fit, measurement, quantity, and cents-based pricing data.                                                                                                   |
+| `addressValidations`               | USPS Addresses 3.0 attempts with entered and standardized addresses, DPV result, corrections, warnings, delivery indicators, and the customer's final selection.                                                                                      |
+| `customerAddresses`                | Deduplicated saved customer addresses with the latest USPS validation metadata and last-used timestamp.                                                                                                                                               |
 | `stripeEvents`                     | Webhook processing records keyed by Stripe event id for idempotent payment-status updates.                                                                                                                                                            |
 
 ## Decisions
@@ -29,6 +31,8 @@ The storefront uses twelve tables:
 - Saved-design mutations validate configuration snapshots against active products, active fabrics, product option availability, compatibility metadata, and personalization limits. Prices are recalculated in Convex rather than accepted from clients.
 - Cart mutations validate the same product, fabric, option availability, compatibility metadata, personalization, and pricing rules before adding, updating, merging, or checking out configured suit snapshots. Client-submitted totals are ignored.
 - Order creation validates the authenticated Convex cart again before writing order records. Checkout Session line items are built from this server-priced order snapshot, never from browser totals.
+- Pending orders can exist without a shipping address while Stripe Elements collects it. A shipping address is attached only after the server records a USPS validation and the customer explicitly chooses the entered or standardized version.
+- USPS validation writes require `USPS_VALIDATION_PROCESSING_SECRET`. Final selections are copied to the order and upserted into `customerAddresses`; the original validation remains immutable audit context.
 - Stripe webhooks are verified in the Next.js route with `STRIPE_WEBHOOK_SECRET`, then processed by Convex with `STRIPE_WEBHOOK_PROCESSING_SECRET`. The `stripeEvents` table records processed event ids so repeated Stripe deliveries do not double-update orders.
 - Paid webhook events update `orders.paymentStatus`, attach Stripe PaymentIntent IDs when available, and clear the authenticated cart. Checkout success redirects alone do not clear carts.
 - Convex authentication uses Clerk's Frontend API URL through `convex/auth.config.ts`; set `CLERK_FRONTEND_API_URL` in the Convex dashboard before deploying authenticated functions.

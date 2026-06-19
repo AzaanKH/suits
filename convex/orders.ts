@@ -19,6 +19,32 @@ const shippingAddressValidator = v.object({
   country: v.string(),
 });
 
+const addressValidationMessageValidator = v.object({
+  code: v.string(),
+  text: v.string(),
+});
+
+const addressIndicatorsValidator = v.object({
+  deliveryPoint: v.optional(v.string()),
+  carrierRoute: v.optional(v.string()),
+  cmra: v.optional(v.string()),
+  business: v.optional(v.string()),
+  centralDeliveryPoint: v.optional(v.string()),
+  vacant: v.optional(v.string()),
+});
+
+const addressValidationBehaviorValidator = v.union(
+  v.literal("accept"),
+  v.literal("add_unit"),
+  v.literal("verify_unit"),
+  v.literal("confirm"),
+);
+
+const addressSelectionValidator = v.union(
+  v.literal("entered"),
+  v.literal("usps"),
+);
+
 const webhookPaymentStatusValidator = v.union(
   v.literal("paid"),
   v.literal("unpaid"),
@@ -34,7 +60,7 @@ const webhookSecretArgs = {
 
 export const createPendingFromCart = mutation({
   args: {
-    shippingAddress: shippingAddressValidator,
+    shippingAddress: v.optional(shippingAddressValidator),
     currency: v.optional(v.string()),
   },
   handler: async (ctx, { shippingAddress, currency }) => {
@@ -46,7 +72,9 @@ export const createPendingFromCart = mutation({
       (total, item) => total + item.unitPriceCents * item.quantity,
       0,
     );
-    const normalizedShippingAddress = normalizeShippingAddress(shippingAddress);
+    const normalizedShippingAddress = shippingAddress
+      ? normalizeShippingAddress(shippingAddress)
+      : undefined;
     const checkoutAttemptKey = await createCheckoutAttemptKey(cart.lineItems);
     const itemCount = cart.lineItems.reduce(
       (total, item) => total + item.quantity,
@@ -60,7 +88,9 @@ export const createPendingFromCart = mutation({
 
     if (reusableOrder) {
       await ctx.db.patch(reusableOrder._id, {
-        shippingAddress: normalizedShippingAddress,
+        ...(normalizedShippingAddress
+          ? { shippingAddress: normalizedShippingAddress }
+          : {}),
         subtotalCents,
         currency: normalizedCurrency,
         itemCount,
@@ -81,7 +111,9 @@ export const createPendingFromCart = mutation({
     const orderId = await ctx.db.insert("orders", {
       ownerClerkUserId,
       checkoutAttemptKey,
-      shippingAddress: normalizedShippingAddress,
+      ...(normalizedShippingAddress
+        ? { shippingAddress: normalizedShippingAddress }
+        : {}),
       subtotalCents,
       currency: normalizedCurrency,
       paymentStatus: "checkout_pending",
@@ -132,22 +164,173 @@ export const createPendingFromCart = mutation({
   },
 });
 
+export const recordAddressValidation = mutation({
+  args: {
+    processingSecret: v.string(),
+    orderId: v.id("orders"),
+    enteredAddress: shippingAddressValidator,
+    standardizedAddress: v.optional(shippingAddressValidator),
+    dpvConfirmation: v.optional(v.string()),
+    corrections: v.array(addressValidationMessageValidator),
+    warnings: v.array(addressValidationMessageValidator),
+    indicators: addressIndicatorsValidator,
+    addressChanged: v.boolean(),
+    behavior: addressValidationBehaviorValidator,
+  },
+  handler: async (ctx, args) => {
+    requireAddressValidationProcessingSecret(args.processingSecret);
+    const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
+    const order = await requireOwnedOrder(ctx, args.orderId, ownerClerkUserId);
+
+    if (!["checkout_pending", "unpaid"].includes(order.paymentStatus)) {
+      throw new ConvexError("Address can no longer be changed for this order.");
+    }
+
+    const now = Date.now();
+    const enteredAddress = normalizeShippingAddress(args.enteredAddress);
+    const standardizedAddress = args.standardizedAddress
+      ? normalizeShippingAddress(args.standardizedAddress)
+      : undefined;
+
+    return await ctx.db.insert("addressValidations", {
+      ownerClerkUserId,
+      orderId: order._id,
+      enteredAddress,
+      ...(standardizedAddress ? { standardizedAddress } : {}),
+      ...(args.dpvConfirmation
+        ? { dpvConfirmation: normalizeIndicator(args.dpvConfirmation) }
+        : {}),
+      corrections: normalizeValidationMessages(args.corrections),
+      warnings: normalizeValidationMessages(args.warnings),
+      indicators: normalizeAddressIndicators(args.indicators),
+      addressChanged: args.addressChanged,
+      behavior: args.behavior,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const selectValidatedAddress = mutation({
+  args: {
+    processingSecret: v.string(),
+    validationId: v.id("addressValidations"),
+    selection: addressSelectionValidator,
+  },
+  handler: async (ctx, { processingSecret, validationId, selection }) => {
+    requireAddressValidationProcessingSecret(processingSecret);
+    const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
+    const validation = await ctx.db.get(validationId);
+
+    if (!validation || validation.ownerClerkUserId !== ownerClerkUserId) {
+      throw new ConvexError("Address validation not found.");
+    }
+
+    const order = await requireOwnedOrder(
+      ctx,
+      validation.orderId,
+      ownerClerkUserId,
+    );
+
+    if (!["checkout_pending", "unpaid"].includes(order.paymentStatus)) {
+      throw new ConvexError("Address can no longer be changed for this order.");
+    }
+
+    if (selection === "usps" && !validation.standardizedAddress) {
+      throw new ConvexError("USPS did not return a standardized address.");
+    }
+
+    if (validation.behavior === "add_unit") {
+      throw new ConvexError(
+        "Add an apartment or unit number before continuing.",
+      );
+    }
+
+    const selectedAddress =
+      selection === "usps"
+        ? validation.standardizedAddress!
+        : validation.enteredAddress;
+    const now = Date.now();
+
+    await ctx.db.patch(validation._id, {
+      selection,
+      selectedAddress,
+      updatedAt: now,
+    });
+    await ctx.db.patch(order._id, {
+      shippingAddress: selectedAddress,
+      enteredShippingAddress: validation.enteredAddress,
+      addressValidationId: validation._id,
+      addressSelection: selection,
+      updatedAt: now,
+    });
+
+    const addressFingerprint = getAddressFingerprint(selectedAddress);
+    const existingAddress = await ctx.db
+      .query("customerAddresses")
+      .withIndex("by_owner_fingerprint", (q) =>
+        q
+          .eq("ownerClerkUserId", ownerClerkUserId)
+          .eq("addressFingerprint", addressFingerprint),
+      )
+      .unique();
+    const savedAddress = {
+      address: selectedAddress,
+      enteredAddress: validation.enteredAddress,
+      ...(validation.standardizedAddress
+        ? { standardizedAddress: validation.standardizedAddress }
+        : {}),
+      validationId: validation._id,
+      ...(validation.dpvConfirmation
+        ? { dpvConfirmation: validation.dpvConfirmation }
+        : {}),
+      indicators: validation.indicators,
+      selection,
+      lastUsedAt: now,
+      updatedAt: now,
+    };
+
+    if (existingAddress) {
+      await ctx.db.patch(existingAddress._id, savedAddress);
+    } else {
+      await ctx.db.insert("customerAddresses", {
+        ownerClerkUserId,
+        addressFingerprint,
+        ...savedAddress,
+        createdAt: now,
+      });
+    }
+
+    return { orderId: order._id, shippingAddress: selectedAddress };
+  },
+});
+
 export const attachCheckoutSession = mutation({
   args: {
     orderId: v.id("orders"),
     stripeCheckoutSessionId: v.string(),
     stripePaymentIntentId: v.optional(v.string()),
+    replaceExisting: v.optional(v.boolean()),
   },
   handler: async (
     ctx,
-    { orderId, stripeCheckoutSessionId, stripePaymentIntentId },
+    {
+      orderId,
+      stripeCheckoutSessionId,
+      stripePaymentIntentId,
+      replaceExisting = false,
+    },
   ) => {
     const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
     const order = await requireOwnedOrder(ctx, orderId, ownerClerkUserId);
+    const hasDifferentCheckoutSession =
+      order.stripeCheckoutSessionId &&
+      order.stripeCheckoutSessionId !== stripeCheckoutSessionId;
 
     if (
-      order.stripeCheckoutSessionId &&
-      order.stripeCheckoutSessionId !== stripeCheckoutSessionId
+      hasDifferentCheckoutSession &&
+      (!replaceExisting ||
+        !["checkout_pending", "unpaid"].includes(order.paymentStatus))
     ) {
       throw new ConvexError("Order already has a Checkout Session.");
     }
@@ -159,7 +342,11 @@ export const attachCheckoutSession = mutation({
 
     await ctx.db.patch(order._id, {
       stripeCheckoutSessionId,
-      ...(stripePaymentIntentId ? { stripePaymentIntentId } : {}),
+      ...(stripePaymentIntentId
+        ? { stripePaymentIntentId }
+        : replaceExisting && hasDifferentCheckoutSession
+          ? { stripePaymentIntentId: undefined }
+          : {}),
       updatedAt: Date.now(),
     });
   },
@@ -177,6 +364,22 @@ export const mine = query({
       )
       .order("desc")
       .take(50);
+  },
+});
+
+export const savedAddresses = query({
+  args: {},
+  handler: async (ctx) => {
+    const ownerClerkUserId = await requireAuthenticatedClerkUserId(ctx);
+    const savedAddresses = await ctx.db
+      .query("customerAddresses")
+      .withIndex("by_owner_updated_at", (q) =>
+        q.eq("ownerClerkUserId", ownerClerkUserId),
+      )
+      .order("desc")
+      .take(10);
+
+    return savedAddresses.map((savedAddress) => savedAddress.address);
   },
 });
 
@@ -270,7 +473,9 @@ export const recordCheckoutSessionStatus = mutation({
         ? { stripePaymentIntentId: args.paymentIntentId }
         : {}),
       ...(args.shippingAddress
-        ? { shippingAddress: normalizeShippingAddress(args.shippingAddress) }
+        ? order.addressValidationId
+          ? {}
+          : { shippingAddress: normalizeShippingAddress(args.shippingAddress) }
         : {}),
       ...(args.stripeSubtotalCents !== undefined
         ? { subtotalCents: args.stripeSubtotalCents }
@@ -545,6 +750,14 @@ function requireWebhookProcessingSecret(processingSecret: string) {
   }
 }
 
+function requireAddressValidationProcessingSecret(processingSecret: string) {
+  const expectedSecret = process.env.USPS_VALIDATION_PROCESSING_SECRET;
+
+  if (!expectedSecret || processingSecret !== expectedSecret) {
+    throw new ConvexError("Unauthorized address validation processing.");
+  }
+}
+
 function normalizeCurrency(currency: string) {
   const normalizedCurrency = currency.trim().toLowerCase();
 
@@ -643,6 +856,50 @@ function normalizeText(
   }
 
   return trimmed;
+}
+
+function normalizeValidationMessages(
+  messages: Array<{ code: string; text: string }>,
+) {
+  return messages
+    .map((message) => ({
+      code: message.code.trim().slice(0, 40),
+      text: message.text.trim().slice(0, 300),
+    }))
+    .filter((message) => message.code || message.text)
+    .slice(0, 20);
+}
+
+function normalizeAddressIndicators(indicators: {
+  deliveryPoint?: string;
+  carrierRoute?: string;
+  cmra?: string;
+  business?: string;
+  centralDeliveryPoint?: string;
+  vacant?: string;
+}) {
+  return Object.fromEntries(
+    Object.entries(indicators)
+      .filter((entry): entry is [string, string] => Boolean(entry[1]))
+      .map(([key, value]) => [key, normalizeIndicator(value)]),
+  );
+}
+
+function normalizeIndicator(value: string) {
+  return value.trim().toUpperCase().slice(0, 20);
+}
+
+function getAddressFingerprint(address: typeof shippingAddressValidator.type) {
+  return [
+    address.line1,
+    address.line2 ?? "",
+    address.city,
+    address.state,
+    address.postalCode,
+    address.country,
+  ]
+    .map((value) => value.trim().toUpperCase().replace(/[.,]/g, ""))
+    .join("|");
 }
 
 function taxJurisdictionPatch(
