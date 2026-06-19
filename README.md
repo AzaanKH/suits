@@ -1,6 +1,6 @@
 # Arden Tailoring
 
-The application is a Next.js App Router storefront for a custom suit ecommerce brand. Product, category, fabric, customization data, and saved designs are served by Convex. Clerk provides authentication and Stripe Checkout handles authenticated one-time purchases. The previous frontend prototype remains available in Git history.
+The application is a Next.js App Router storefront for a custom suit ecommerce brand. Product, category, fabric, customization data, saved designs, orders, and address validation records are served by Convex. Clerk provides authentication, while Stripe Checkout Sessions power embedded Address and Payment Elements with USPS Addresses 3.0 validation before payment. The previous frontend prototype remains available in Git history.
 
 ## Setup
 
@@ -43,15 +43,17 @@ pnpm convex:dev
 
 The app keeps browsing, product detail, customization, and cart review public. Clerk is required for `/account`, saving a configured design, and starting checkout.
 
-## Stripe Checkout setup
+## Stripe and USPS checkout setup
 
-This storefront uses Stripe Checkout for one-time ecommerce orders. Do not enable Clerk Billing for suit purchases; orders are stored in Convex and Stripe is used only for payment collection.
+This storefront uses Stripe Address and Payment Elements backed by Checkout Sessions. USPS Addresses 3.0 standardizes and checks the shipping address before payment. Orders, saved customer addresses, and USPS validation results are stored in Convex.
 
 Create a Stripe account, use test mode locally, and add:
 
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_WEBHOOK_PROCESSING_SECRET`
+- `STRIPE_AUTOMATIC_TAX_ENABLED=false` until Stripe Tax has a real shipping origin or head-office address
 - `NEXT_PUBLIC_APP_URL=http://localhost:3000`
 
 `STRIPE_WEBHOOK_PROCESSING_SECRET` is a shared server-side secret between the Next.js webhook route and Convex. Generate it with a cryptographically secure source:
@@ -76,6 +78,19 @@ STRIPE_WEBHOOK_PROCESSING_SECRET="generated-secret-value"
 pnpm exec convex env set STRIPE_WEBHOOK_PROCESSING_SECRET "generated-secret-value"
 ```
 
+Create an application in the USPS Developer Portal with access to Addresses 3.0, then add:
+
+- `USPS_CLIENT_ID`
+- `USPS_CLIENT_SECRET`
+- `USPS_API_ENV=test` for the USPS test environment, or omit it for production
+- `USPS_VALIDATION_PROCESSING_SECRET`
+
+Generate `USPS_VALIDATION_PROCESSING_SECRET` the same way as the Stripe processing secret, then set it in both environments:
+
+```bash
+pnpm exec convex env set USPS_VALIDATION_PROCESSING_SECRET "generated-secret-value"
+```
+
 Forward local webhooks with the Stripe CLI:
 
 ```bash
@@ -88,7 +103,7 @@ Copy the printed `whsec_...` value into `STRIPE_WEBHOOK_SECRET`. Restart the Nex
 pnpm dev
 ```
 
-Then sign in with Clerk, add a configured suit to the cart, complete Checkout with Stripe test card `4242 4242 4242 4242`, any future expiry date, any CVC, and any postal code.
+Then sign in with Clerk, add a configured suit to the cart, validate and choose the shipping address, and complete payment with Stripe test card `4242 4242 4242 4242`, any future expiry date, and any CVC.
 
 Successful payment redirects to `/checkout/success?session_id=...`. The cart is cleared only after `/api/stripe/webhook` verifies the Stripe signature and Convex records a paid order. Cancelled or abandoned Checkout Sessions keep the cart available.
 
@@ -106,9 +121,18 @@ Required:
 - `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL`
 - `CLERK_FRONTEND_API_URL` (set in Convex dashboard)
 - `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_WEBHOOK_PROCESSING_SECRET` (also set in Convex)
+- `STRIPE_AUTOMATIC_TAX_ENABLED`
+- `USPS_CLIENT_ID`
+- `USPS_CLIENT_SECRET`
+- `USPS_VALIDATION_PROCESSING_SECRET` (also set in Convex)
+
+Optional:
+
+- `USPS_API_ENV=test` for the USPS test environment; omit it for production
 
 Do not store passwords in Convex. Saved design documents store the Clerk user id for ownership checks and design details only; Clerk profile fields remain in Clerk.
 

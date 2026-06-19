@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import { PageContainer } from "@/components/layout/page-container";
 import { CheckoutPreparation } from "@/features/checkout/components/checkout-preparation";
+import { isCheckoutConfigured } from "@/lib/checkout-config";
 import { isClerkConfigured } from "@/lib/clerk-config";
 
 export const metadata: Metadata = {
@@ -16,13 +17,7 @@ export default async function CheckoutPage() {
     await auth.protect();
   }
 
-  const checkoutEnabled = Boolean(
-    process.env.STRIPE_SECRET_KEY &&
-    process.env.STRIPE_WEBHOOK_SECRET &&
-    process.env.STRIPE_WEBHOOK_PROCESSING_SECRET &&
-    process.env.NEXT_PUBLIC_APP_URL &&
-    process.env.NEXT_PUBLIC_CONVEX_URL,
-  );
+  const checkoutEnabled = isCheckoutConfigured();
 
   return (
     <PageContainer className="py-12 sm:py-16 lg:py-20">

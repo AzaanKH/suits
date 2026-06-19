@@ -8,6 +8,7 @@ import schema from "./schema";
 import { modules } from "./test.setup";
 
 const processingSecret = "test_stripe_processing_secret";
+const addressProcessingSecret = "test_usps_processing_secret";
 
 type TestConfiguration = {
   version: 1;
@@ -42,6 +43,7 @@ const shippingAddress = {
 
 beforeEach(() => {
   process.env.STRIPE_WEBHOOK_PROCESSING_SECRET = processingSecret;
+  process.env.USPS_VALIDATION_PROCESSING_SECRET = addressProcessingSecret;
 });
 
 describe("orders", () => {
@@ -81,6 +83,76 @@ describe("orders", () => {
     });
   });
 
+  it("saves the explicitly selected USPS address and validation result", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_address_validation",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      fitSelection: standardFitSelection,
+      quantity: 1,
+    });
+
+    const order = await user.mutation(api.orders.createPendingFromCart, {
+      currency: "usd",
+    });
+    const standardizedAddress = {
+      ...shippingAddress,
+      line1: "100 MARKET ST",
+      postalCode: "94105-1234",
+    };
+    const validationId = await user.mutation(
+      api.orders.recordAddressValidation,
+      {
+        processingSecret: addressProcessingSecret,
+        orderId: order.orderId,
+        enteredAddress: shippingAddress,
+        standardizedAddress,
+        dpvConfirmation: "Y",
+        corrections: [{ code: "A", text: "Street standardized." }],
+        warnings: [],
+        indicators: {
+          carrierRoute: "C001",
+          cmra: "N",
+          business: "Y",
+          vacant: "N",
+        },
+        addressChanged: true,
+        behavior: "accept",
+      },
+    );
+
+    await user.mutation(api.orders.selectValidatedAddress, {
+      processingSecret: addressProcessingSecret,
+      validationId,
+      selection: "usps",
+    });
+
+    const detail = await user.query(api.orders.detail, {
+      orderId: order.orderId,
+    });
+    const savedAddresses = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("customerAddresses")
+        .withIndex("by_owner_updated_at", (q) =>
+          q.eq("ownerClerkUserId", "user_address_validation"),
+        )
+        .collect();
+    });
+
+    expect(detail.order.shippingAddress).toEqual(standardizedAddress);
+    expect(detail.order.enteredShippingAddress).toEqual(shippingAddress);
+    expect(detail.order.addressSelection).toBe("usps");
+    expect(savedAddresses).toHaveLength(1);
+    expect(savedAddresses[0].dpvConfirmation).toBe("Y");
+    expect(savedAddresses[0].indicators.carrierRoute).toBe("C001");
+  });
+
   it("reuses a pending checkout attempt for the same cart snapshot", async () => {
     const t = convexTest(schema, modules);
     await t.mutation(internal.seed.seed);
@@ -114,7 +186,7 @@ describe("orders", () => {
     const detail = await user.query(api.orders.detail, {
       orderId: firstOrder.orderId,
     });
-    expect(detail.order.shippingAddress.line1).toBe("200 Market Street");
+    expect(detail.order.shippingAddress!.line1).toBe("200 Market Street");
     expect(detail.items).toHaveLength(1);
   });
 
@@ -157,7 +229,7 @@ describe("orders", () => {
     const detail = await user.query(api.orders.detail, {
       orderId: californiaOrder.orderId,
     });
-    expect(detail.order.shippingAddress.state).toBe("NY");
+    expect(detail.order.shippingAddress!.state).toBe("NY");
     expect(detail.order.taxCents).toBeUndefined();
     expect(detail.order.totalCents).toBeUndefined();
   });
@@ -212,6 +284,52 @@ describe("orders", () => {
         orderId: secondOrder.orderId,
       }),
     ).rejects.toThrow("Stripe PaymentIntent is already attached.");
+  });
+
+  it("replaces a stale Checkout Session on a pending order when requested", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const configuration = await buildValidConfiguration(t);
+    const user = t.withIdentity({
+      subject: "user_stale_checkout_session",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    await user.mutation(api.carts.addLine, {
+      configuration,
+      fitSelection: standardFitSelection,
+      quantity: 1,
+    });
+
+    const order = await user.mutation(api.orders.createPendingFromCart, {
+      shippingAddress,
+      currency: "usd",
+    });
+
+    await user.mutation(api.orders.attachCheckoutSession, {
+      orderId: order.orderId,
+      stripeCheckoutSessionId: "cs_test_stale",
+      stripePaymentIntentId: "pi_test_stale",
+    });
+
+    await expect(
+      user.mutation(api.orders.attachCheckoutSession, {
+        orderId: order.orderId,
+        stripeCheckoutSessionId: "cs_test_replacement",
+      }),
+    ).rejects.toThrow("Order already has a Checkout Session.");
+
+    await user.mutation(api.orders.attachCheckoutSession, {
+      orderId: order.orderId,
+      stripeCheckoutSessionId: "cs_test_replacement",
+      replaceExisting: true,
+    });
+
+    const detail = await user.query(api.orders.detail, {
+      orderId: order.orderId,
+    });
+    expect(detail.order.stripeCheckoutSessionId).toBe("cs_test_replacement");
+    expect(detail.order.stripePaymentIntentId).toBeUndefined();
   });
 
   it("processes paid webhooks once and clears the cart after payment", async () => {
@@ -279,7 +397,7 @@ describe("orders", () => {
     });
     expect(detail.order.paymentStatus).toBe("paid");
     expect(detail.order.stripePaymentIntentId).toBe("pi_test_paid");
-    expect(detail.order.shippingAddress.state).toBe("WA");
+    expect(detail.order.shippingAddress!.state).toBe("WA");
     expect(detail.order.subtotalCents).toBe(126500);
     expect(detail.order.taxCents).toBe(8223);
     expect(detail.order.totalCents).toBe(134723);

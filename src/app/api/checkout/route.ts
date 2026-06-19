@@ -2,14 +2,12 @@ import { auth } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { ZodError } from "zod";
 
 import { api } from "../../../../convex/_generated/api";
-import { checkoutPreparationSchema } from "@/features/checkout/schema";
 
 const STRIPE_SUIT_TAX_CODE = "txcd_30011000";
 
-export async function POST(request: Request) {
+export async function POST() {
   const { getToken, userId } = await auth.protect();
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -17,21 +15,8 @@ export async function POST(request: Request) {
     process.env.STRIPE_WEBHOOK_PROCESSING_SECRET;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-  let checkoutPreparation;
-
-  try {
-    checkoutPreparation = checkoutPreparationSchema.parse(await request.json());
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof ZodError
-            ? "Complete the shipping address before payment."
-            : "Invalid checkout request.",
-      },
-      { status: 400 },
-    );
-  }
+  const automaticTaxEnabled =
+    process.env.STRIPE_AUTOMATIC_TAX_ENABLED === "true";
 
   if (
     !stripeSecretKey ||
@@ -62,7 +47,6 @@ export async function POST(request: Request) {
 
   try {
     pendingOrder = await convex.mutation(api.orders.createPendingFromCart, {
-      shippingAddress: checkoutPreparation.shippingAddress,
       currency: "usd",
     });
   } catch (error) {
@@ -82,25 +66,60 @@ export async function POST(request: Request) {
   const stripe = new Stripe(stripeSecretKey);
 
   try {
-    if (pendingOrder.stripeCheckoutSessionId) {
-      const existingSession = await stripe.checkout.sessions.retrieve(
-        pendingOrder.stripeCheckoutSessionId,
-      );
+    let staleCheckoutSessionId: string | undefined;
 
-      if (existingSession.url && existingSession.status === "open") {
-        return NextResponse.json({ url: existingSession.url });
+    if (pendingOrder.stripeCheckoutSessionId) {
+      try {
+        const existingSession = await stripe.checkout.sessions.retrieve(
+          pendingOrder.stripeCheckoutSessionId,
+        );
+
+        if (
+          existingSession.client_secret &&
+          existingSession.status === "open" &&
+          existingSession.ui_mode === "elements"
+        ) {
+          return NextResponse.json({
+            clientSecret: existingSession.client_secret,
+            orderId: pendingOrder.orderId,
+            sessionId: existingSession.id,
+          });
+        }
+
+        staleCheckoutSessionId = existingSession.id;
+
+        if (existingSession.status === "open") {
+          await stripe.checkout.sessions
+            .expire(existingSession.id)
+            .catch((error) => {
+              console.warn(
+                "Unable to expire stale Stripe Checkout Session.",
+                error,
+              );
+            });
+        }
+      } catch (error) {
+        staleCheckoutSessionId = pendingOrder.stripeCheckoutSessionId;
+        console.warn("Unable to retrieve stored Stripe Checkout Session.", {
+          stripeCheckoutSessionId: pendingOrder.stripeCheckoutSessionId,
+          error,
+        });
       }
     }
 
     const session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
+        ui_mode: "elements",
         client_reference_id: userId,
-        customer_email: checkoutPreparation.shippingAddress.email,
         customer_creation: "always",
-        automatic_tax: {
-          enabled: true,
-        },
+        ...(automaticTaxEnabled
+          ? {
+              automatic_tax: {
+                enabled: true,
+              },
+            }
+          : {}),
         shipping_address_collection: {
           allowed_countries: ["US"],
         },
@@ -150,16 +169,19 @@ export async function POST(request: Request) {
             subtotalCents: String(pendingOrder.subtotalCents),
           },
         },
-        success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${appUrl}/checkout/cancel?order_id=${pendingOrder.orderId}`,
+        return_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       },
       {
-        idempotencyKey: pendingOrder.checkoutAttemptKey,
+        idempotencyKey: getStripeCheckoutIdempotencyKey(
+          pendingOrder.checkoutAttemptKey,
+          automaticTaxEnabled,
+          staleCheckoutSessionId,
+        ),
       },
     );
 
-    if (!session.url) {
-      console.error("Stripe Checkout Session did not include a URL.");
+    if (!session.client_secret) {
+      console.error("Stripe Checkout Session did not include a client secret.");
 
       return NextResponse.json(
         { error: "Unable to start payment." },
@@ -174,9 +196,14 @@ export async function POST(request: Request) {
         typeof session.payment_intent === "string"
           ? session.payment_intent
           : undefined,
+      replaceExisting: Boolean(staleCheckoutSessionId),
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({
+      clientSecret: session.client_secret,
+      orderId: pendingOrder.orderId,
+      sessionId: session.id,
+    });
   } catch (error) {
     console.error("Unable to create Stripe Checkout Session.", error);
 
@@ -194,6 +221,18 @@ function summarizeSelections(
     .map((selection) => `${selection.groupLabel}: ${selection.optionLabel}`)
     .join(" / ")
     .slice(0, 500);
+}
+
+function getStripeCheckoutIdempotencyKey(
+  checkoutAttemptKey: string,
+  automaticTaxEnabled: boolean,
+  staleCheckoutSessionId?: string,
+) {
+  const baseKey = `${checkoutAttemptKey}_elements_tax_${automaticTaxEnabled ? "on" : "off"}`;
+
+  return staleCheckoutSessionId
+    ? `${baseKey}_replace_${staleCheckoutSessionId}`
+    : baseKey;
 }
 
 function isAuthenticationError(error: unknown) {

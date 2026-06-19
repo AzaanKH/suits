@@ -75,6 +75,18 @@ export const checkoutPreparationSchema = z.object({
   shippingAddress: shippingAddressSchema,
 });
 
+export const checkoutSessionSchema = z.object({});
+
+export const addressValidationRequestSchema = z.object({
+  orderId: z.string().trim().min(1),
+  shippingAddress: shippingAddressSchema,
+});
+
+export const addressSelectionSchema = z.object({
+  validationId: z.string().trim().min(1),
+  selection: z.enum(["entered", "usps"]),
+});
+
 export type ShippingAddressValues = z.infer<typeof shippingAddressSchema>;
 export type CheckoutPreparationValues = z.infer<
   typeof checkoutPreparationSchema

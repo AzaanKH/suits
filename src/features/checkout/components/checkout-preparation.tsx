@@ -1,11 +1,22 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "convex/react";
-import { CalendarClock, CreditCard, Ruler } from "lucide-react";
+import {
+  CheckoutElementsProvider,
+  ContactDetailsElement,
+  PaymentElement,
+  ShippingAddressElement,
+  useCheckoutElements,
+} from "@stripe/react-stripe-js/checkout";
+import { loadStripe } from "@stripe/stripe-js";
+import type {
+  StripeAddressElementChangeEvent,
+  StripeContactDetailsElementChangeEvent,
+} from "@stripe/stripe-js";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { CalendarClock, Check, CreditCard, Ruler } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Component, useMemo, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
 import { api } from "../../../../convex/_generated/api";
@@ -13,21 +24,10 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { EmptyState } from "@/components/storefront/empty-state";
 import { PriceDisplay } from "@/components/storefront/price-display";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  checkoutPreparationSchema,
-  defaultShippingAddressValues,
-  type CheckoutPreparationValues,
-} from "@/features/checkout/schema";
+import type { ShippingAddressValues } from "@/features/checkout/schema";
+import type { AddressValidationResult } from "@/lib/usps-addresses";
 
 type CheckoutPreparationProps = {
   clerkConfigured: boolean;
@@ -52,25 +52,39 @@ type CheckoutLineItem = {
   measurementAppointmentRequired?: boolean;
 };
 
+type ValidationResponse = AddressValidationResult & {
+  validationId: Id<"addressValidations">;
+};
+
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : Promise.resolve(null);
+
 export function CheckoutPreparation({
   clerkConfigured,
   checkoutEnabled,
 }: CheckoutPreparationProps) {
-  const cart = useQuery(api.carts.forCheckout, clerkConfigured ? {} : "skip");
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const cart = useQuery(
+    api.carts.forCheckout,
+    clerkConfigured && isAuthenticated ? {} : "skip",
+  );
   const profiles = useQuery(
     api.measurementProfiles.mine,
-    clerkConfigured ? {} : "skip",
+    clerkConfigured && isAuthenticated ? {} : "skip",
+  );
+  const savedAddresses = useQuery(
+    api.orders.savedAddresses,
+    clerkConfigured && isAuthenticated ? {} : "skip",
   );
   const setMeasurementChoice = useMutation(api.carts.setLineMeasurementChoice);
   const [busyLineId, setBusyLineId] = useState<string | null>(null);
-  const [startingPayment, setStartingPayment] = useState(false);
-  const form = useForm<CheckoutPreparationValues>({
-    resolver: zodResolver(checkoutPreparationSchema),
-    defaultValues: {
-      shippingAddress: defaultShippingAddressValues,
-    },
-    mode: "onBlur",
-  });
+  const [startingCheckout, setStartingCheckout] = useState(false);
+  const [checkoutSession, setCheckoutSession] = useState<{
+    clientSecret: string;
+    orderId: Id<"orders">;
+    sessionId: string;
+  } | null>(null);
 
   if (!clerkConfigured) {
     return (
@@ -86,13 +100,31 @@ export function CheckoutPreparation({
     return (
       <EmptyState
         title="Payment setup required."
-        description="Add Stripe, Convex, and app URL environment variables before payment can begin."
+        description="Add Stripe, USPS, Convex, and app URL environment variables before payment can begin."
         action={{ label: "Return to cart", href: "/cart" }}
       />
     );
   }
 
-  if (cart === undefined || profiles === undefined) {
+  if (authLoading) {
+    return <CheckoutSkeleton />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <EmptyState
+        title="Sign in required."
+        description="Sign in before preparing checkout."
+        action={{ label: "Sign in", href: "/sign-in" }}
+      />
+    );
+  }
+
+  if (
+    cart === undefined ||
+    profiles === undefined ||
+    savedAddresses === undefined
+  ) {
     return <CheckoutSkeleton />;
   }
 
@@ -126,32 +158,46 @@ export function CheckoutPreparation({
     }
   }
 
-  async function handleSubmit(values: CheckoutPreparationValues) {
+  async function startCheckout() {
     if (incompleteFitLines.length > 0) {
       toast.error("Complete fit details for every suit.");
       return;
     }
 
-    setStartingPayment(true);
+    setStartingCheckout(true);
 
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({}),
       });
-      const data = (await response.json()) as { url?: string; error?: string };
+      const data = (await response.json()) as {
+        clientSecret?: string;
+        orderId?: Id<"orders">;
+        sessionId?: string;
+        error?: string;
+      };
 
-      if (!response.ok || !data.url) {
+      if (
+        !response.ok ||
+        !data.clientSecret ||
+        !data.orderId ||
+        !data.sessionId
+      ) {
         toast.error(data.error ?? "Unable to start checkout.");
         return;
       }
 
-      window.location.assign(data.url);
+      setCheckoutSession({
+        clientSecret: data.clientSecret,
+        orderId: data.orderId,
+        sessionId: data.sessionId,
+      });
     } catch {
       toast.error("Unable to start checkout.");
     } finally {
-      setStartingPayment(false);
+      setStartingCheckout(false);
     }
   }
 
@@ -206,7 +252,9 @@ export function CheckoutPreparation({
                       id={`measurement-${item.lineId}`}
                       className="form-control mt-2 rounded-lg py-2"
                       value={measurementValue(item)}
-                      disabled={busyLineId === item.lineId}
+                      disabled={
+                        busyLineId === item.lineId || Boolean(checkoutSession)
+                      }
                       onChange={(event) =>
                         handleMeasurementChange(item.lineId, event.target.value)
                       }
@@ -241,90 +289,61 @@ export function CheckoutPreparation({
 
         <section>
           <h2 className="text-ink font-serif text-4xl leading-none">
-            Shipping address
+            Shipping and payment
           </h2>
-          <Form {...form}>
-            <form
-              className="mt-5 grid gap-4"
-              onSubmit={form.handleSubmit(handleSubmit)}
-              noValidate
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <CheckoutInput
-                  name="shippingAddress.fullName"
-                  label="Full name"
-                  control={form.control}
-                  required
-                />
-                <CheckoutInput
-                  name="shippingAddress.email"
-                  label="Email"
-                  type="email"
-                  control={form.control}
-                  required
-                />
-                <CheckoutInput
-                  name="shippingAddress.phone"
-                  label="Phone"
-                  type="tel"
-                  control={form.control}
-                  required
-                />
-                <CheckoutInput
-                  name="shippingAddress.line1"
-                  label="Address line 1"
-                  control={form.control}
-                  required
-                />
-                <CheckoutInput
-                  name="shippingAddress.line2"
-                  label="Address line 2"
-                  control={form.control}
-                />
-                <CheckoutInput
-                  name="shippingAddress.city"
-                  label="City"
-                  control={form.control}
-                  required
-                />
-                <CheckoutInput
-                  name="shippingAddress.state"
-                  label="State / region"
-                  control={form.control}
-                  required
-                />
-                <CheckoutInput
-                  name="shippingAddress.postalCode"
-                  label="Postal code"
-                  control={form.control}
-                  required
-                />
-                <CheckoutInput
-                  name="shippingAddress.country"
-                  label="Country"
-                  control={form.control}
-                  required
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          {checkoutSession ? (
+            <div className="mt-5">
+              <CheckoutProviderBoundary
+                key={checkoutSession.sessionId}
+                onReset={() => setCheckoutSession(null)}
+              >
+                <CheckoutElementsProvider
+                  stripe={stripePromise}
+                  options={{
+                    clientSecret: checkoutSession.clientSecret,
+                    elementsOptions: {
+                      appearance: {
+                        theme: "stripe",
+                        variables: {
+                          colorPrimary: "#17201b",
+                          colorText: "#17201b",
+                          borderRadius: "8px",
+                          fontFamily: "Manrope, sans-serif",
+                        },
+                      },
+                    },
+                  }}
+                >
+                  <StripeCheckoutForm
+                    orderId={checkoutSession.orderId}
+                    savedAddresses={savedAddresses}
+                  />
+                </CheckoutElementsProvider>
+              </CheckoutProviderBoundary>
+            </div>
+          ) : (
+            <div className="border-border mt-5 border-y py-6">
+              <p className="text-muted-foreground max-w-2xl text-sm leading-6">
+                Stripe securely collects contact, shipping, and payment details.
+                USPS checks deliverability before payment.
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                 <Link className="text-link" href="/cart">
                   Return to cart
                 </Link>
                 <Button
-                  type="submit"
-                  disabled={
-                    startingPayment ||
-                    incompleteFitLines.length > 0 ||
-                    form.formState.isSubmitting
-                  }
+                  type="button"
+                  disabled={startingCheckout || incompleteFitLines.length > 0}
+                  onClick={startCheckout}
                 >
                   <CreditCard aria-hidden="true" />
-                  {startingPayment ? "Starting payment" : "Continue to payment"}
+                  {startingCheckout
+                    ? "Starting secure checkout"
+                    : "Enter shipping details"}
                 </Button>
               </div>
-            </form>
-          </Form>
+            </div>
+          )}
         </section>
       </div>
 
@@ -352,9 +371,8 @@ export function CheckoutPreparation({
           <PriceDisplay priceCents={cart.subtotalCents} />
         </div>
         <p className="text-muted-foreground mt-3 text-sm leading-6">
-          Stripe Tax calculates sales tax from the shipping address entered
-          during payment. Delivery is arranged by our tailoring team after
-          payment.
+          Stripe Tax calculates sales tax after the shipping address is
+          validated. Delivery is arranged by our tailoring team after payment.
         </p>
         {incompleteFitLines.length > 0 ? (
           <p className="text-destructive mt-4 text-sm font-medium">
@@ -368,49 +386,556 @@ export function CheckoutPreparation({
   );
 }
 
-function CheckoutInput({
-  control,
-  name,
-  label,
-  type = "text",
-  required = false,
+class CheckoutProviderBoundary extends Component<
+  { children: ReactNode; onReset: () => void },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error("Unable to load Stripe checkout elements.", error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="border-border bg-stone border p-5 sm:p-6">
+          <h3 className="text-ink font-serif text-3xl">
+            Payment form could not load.
+          </h3>
+          <p className="text-muted-foreground mt-3 text-sm leading-6">
+            Check that the Stripe publishable key and secret key are from the
+            same Stripe account and mode, then start checkout again.
+          </p>
+          <p className="text-destructive mt-3 text-sm">
+            {this.state.error.message}
+          </p>
+          <Button className="mt-5" type="button" onClick={this.props.onReset}>
+            Start checkout again
+          </Button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function StripeCheckoutForm({
+  orderId,
+  savedAddresses,
 }: {
-  control: ReturnType<typeof useForm<CheckoutPreparationValues>>["control"];
-  name:
-    | "shippingAddress.fullName"
-    | "shippingAddress.email"
-    | "shippingAddress.phone"
-    | "shippingAddress.line1"
-    | "shippingAddress.line2"
-    | "shippingAddress.city"
-    | "shippingAddress.state"
-    | "shippingAddress.postalCode"
-    | "shippingAddress.country";
-  label: string;
-  type?: string;
-  required?: boolean;
+  orderId: Id<"orders">;
+  savedAddresses: ShippingAddressValues[];
+}) {
+  const checkoutState = useCheckoutElements();
+  const applyingSelection = useRef(false);
+  const paymentSectionRef = useRef<HTMLDivElement | null>(null);
+  const [address, setAddress] = useState<ShippingAddressValues | null>(null);
+  const [addressComplete, setAddressComplete] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailComplete, setEmailComplete] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [validation, setValidation] = useState<ValidationResponse | null>(null);
+  const [selected, setSelected] = useState(false);
+  const [addressElementHidden, setAddressElementHidden] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const addressContacts = useMemo(
+    () =>
+      savedAddresses.map((savedAddress) => ({
+        name: savedAddress.fullName,
+        address: {
+          line1: savedAddress.line1,
+          ...(savedAddress.line2 ? { line2: savedAddress.line2 } : {}),
+          city: savedAddress.city,
+          state: savedAddress.state,
+          postal_code: savedAddress.postalCode,
+          country: "US",
+        },
+      })),
+    [savedAddresses],
+  );
+
+  if (checkoutState.type === "loading") {
+    return <Skeleton className="h-96 rounded-lg" />;
+  }
+
+  if (checkoutState.type === "error") {
+    return (
+      <p className="text-destructive text-sm">{checkoutState.error.message}</p>
+    );
+  }
+
+  const { checkout } = checkoutState;
+
+  function handleAddressChange(event: StripeAddressElementChangeEvent) {
+    setAddressComplete(event.complete);
+    setAddress(
+      event.complete
+        ? {
+            fullName: event.value.name,
+            email,
+            phone,
+            line1: event.value.address.line1,
+            line2: event.value.address.line2 ?? "",
+            city: event.value.address.city,
+            state: event.value.address.state,
+            postalCode: event.value.address.postal_code,
+            country:
+              event.value.address.country === "US"
+                ? "United States"
+                : event.value.address.country,
+          }
+        : null,
+    );
+
+    if (!applyingSelection.current) {
+      setValidation(null);
+      setSelected(false);
+    }
+  }
+
+  function handleContactChange(event: StripeContactDetailsElementChangeEvent) {
+    setEmail(event.value.email);
+    setEmailComplete(event.complete);
+    setAddress((current) =>
+      current ? { ...current, email: event.value.email } : current,
+    );
+    setValidation(null);
+    setSelected(false);
+    setAddressElementHidden(false);
+  }
+
+  function handlePhoneChange(value: string) {
+    const formattedPhone = formatUsPhoneNumber(value);
+    setPhone(formattedPhone);
+    setAddress((current) =>
+      current ? { ...current, phone: formattedPhone } : current,
+    );
+    setValidation(null);
+    setSelected(false);
+    setAddressElementHidden(false);
+  }
+
+  async function validateAddress() {
+    if (
+      !addressComplete ||
+      !emailComplete ||
+      getPhoneDigits(phone).length < 10 ||
+      !address
+    ) {
+      toast.error("Complete contact and shipping details first.");
+      return;
+    }
+
+    const shippingAddress = {
+      ...address,
+      email,
+      phone,
+    };
+    setValidating(true);
+
+    try {
+      const response = await fetch("/api/address/validate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ orderId, shippingAddress }),
+      });
+      const data = (await response.json()) as ValidationResponse & {
+        error?: string;
+      };
+
+      if (!response.ok || !data.validationId) {
+        toast.error(data.error ?? "USPS could not validate this address.");
+        return;
+      }
+
+      setAddress(shippingAddress);
+      setValidation(data);
+      setSelected(false);
+
+      if (data.behavior === "accept" && !data.addressChanged) {
+        await selectAddress("entered", data, shippingAddress);
+      }
+    } catch {
+      toast.error("USPS address validation is unavailable.");
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  async function selectAddress(
+    selection: "entered" | "usps",
+    currentValidation = validation,
+    enteredAddress = address,
+  ) {
+    if (!currentValidation || !enteredAddress) {
+      return;
+    }
+
+    setSelecting(true);
+
+    try {
+      const response = await fetch("/api/address/select", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          validationId: currentValidation.validationId,
+          selection,
+        }),
+      });
+      const data = (await response.json()) as {
+        shippingAddress?: ShippingAddressValues;
+        error?: string;
+      };
+
+      if (!response.ok || !data.shippingAddress) {
+        toast.error(data.error ?? "Unable to save the selected address.");
+        return;
+      }
+
+      applyingSelection.current = true;
+      flushSync(() => {
+        setAddressElementHidden(true);
+      });
+      const updateResult = await checkout.updateShippingAddress({
+        name: data.shippingAddress.fullName,
+        address: {
+          line1: data.shippingAddress.line1,
+          line2: data.shippingAddress.line2 || null,
+          city: data.shippingAddress.city,
+          state: data.shippingAddress.state,
+          postal_code: data.shippingAddress.postalCode,
+          country: "US",
+        },
+      });
+      applyingSelection.current = false;
+
+      if (updateResult.type === "error") {
+        setAddressElementHidden(false);
+        toast.error(updateResult.error.message);
+        return;
+      }
+
+      const phoneResult = await checkout.updatePhoneNumber(
+        data.shippingAddress.phone,
+      );
+
+      if (phoneResult.type === "error") {
+        setAddressElementHidden(false);
+        toast.error("Unable to save the phone number with Stripe.");
+        return;
+      }
+
+      setAddress(data.shippingAddress);
+      setSelected(true);
+      toast.success("Shipping address saved.");
+      window.setTimeout(() => {
+        paymentSectionRef.current?.scrollIntoView({
+          block: "start",
+          behavior: "smooth",
+        });
+      }, 50);
+    } catch {
+      applyingSelection.current = false;
+      setAddressElementHidden(false);
+      toast.error("Unable to save the selected address.");
+    } finally {
+      setSelecting(false);
+    }
+  }
+
+  function changeSelectedAddress() {
+    setSelected(false);
+    setValidation(null);
+    setAddressElementHidden(false);
+  }
+
+  async function confirmPayment(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!selected) {
+      toast.error("Validate and choose a shipping address first.");
+      return;
+    }
+
+    setPaying(true);
+
+    try {
+      const result = await checkout.confirm();
+
+      if (result.type === "error") {
+        toast.error(result.error.message);
+      }
+    } catch {
+      toast.error("Unable to process payment.");
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  return (
+    <form className="grid gap-7" onSubmit={confirmPayment}>
+      <div>
+        <h3 className="text-ink font-serif text-3xl">Contact details</h3>
+        <div className="mt-4">
+          <ContactDetailsElement onChange={handleContactChange} />
+        </div>
+        <div className="mt-4">
+          <label className="text-sm leading-none font-medium" htmlFor="phone">
+            Phone
+          </label>
+          <Input
+            id="phone"
+            className="bg-background mt-2 h-12 rounded-lg border-[#e4e0d8] px-4 text-base shadow-sm md:text-base"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="(425) 233-5486"
+            value={phone}
+            required
+            onChange={(event) => handlePhoneChange(event.target.value)}
+          />
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-ink font-serif text-3xl">Shipping address</h3>
+        {selected && address ? (
+          <SelectedAddressCard
+            address={address}
+            onChange={changeSelectedAddress}
+          />
+        ) : addressElementHidden ? (
+          <Skeleton className="mt-4 h-32 rounded-lg" />
+        ) : (
+          <>
+            <div className="mt-4">
+              <ShippingAddressElement
+                options={{
+                  contacts: addressContacts,
+                  display: { name: "full" },
+                }}
+                onChange={handleAddressChange}
+              />
+            </div>
+            <Button
+              className="mt-4"
+              type="button"
+              variant="outline"
+              disabled={
+                validating ||
+                selecting ||
+                !addressComplete ||
+                !emailComplete ||
+                getPhoneDigits(phone).length < 10
+              }
+              onClick={validateAddress}
+            >
+              <Check aria-hidden="true" />
+              {validating || selecting
+                ? "Checking address"
+                : "Continue to payment"}
+            </Button>
+          </>
+        )}
+      </div>
+
+      {validation && address ? (
+        <AddressReview
+          enteredAddress={address}
+          validation={validation}
+          busy={selecting}
+          selected={selected}
+          onSelect={selectAddress}
+        />
+      ) : null}
+
+      {selected ? (
+        <div ref={paymentSectionRef} className="scroll-mt-24">
+          <h3 className="text-ink font-serif text-3xl">Payment</h3>
+          <div className="mt-4">
+            <PaymentElement options={{ layout: "accordion" }} />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link className="text-link" href="/cart">
+          Return to cart
+        </Link>
+        <Button type="submit" disabled={!selected || paying}>
+          <CreditCard aria-hidden="true" />
+          {paying ? "Processing payment" : "Pay securely"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function AddressReview({
+  enteredAddress,
+  validation,
+  busy,
+  selected,
+  onSelect,
+}: {
+  enteredAddress: ShippingAddressValues;
+  validation: ValidationResponse;
+  busy: boolean;
+  selected: boolean;
+  onSelect: (selection: "entered" | "usps") => void;
+}) {
+  const message = {
+    accept: validation.addressChanged
+      ? "USPS found a standardized version of this address."
+      : "USPS confirmed this delivery address.",
+    add_unit:
+      "USPS found the building, but an apartment or unit number is required. Edit the address above and validate it again.",
+    verify_unit:
+      "USPS found the address, but could not confirm the apartment or unit. Verify it before continuing.",
+    confirm:
+      "USPS could not confirm delivery. Correct the address or explicitly keep what you entered.",
+  }[validation.behavior];
+
+  return (
+    <section className="border-border bg-stone border p-5 sm:p-6">
+      <h3 className="text-ink font-serif text-3xl">Review address</h3>
+      <p className="text-muted-foreground mt-2 text-sm leading-6">{message}</p>
+
+      {validation.addressChanged && validation.standardizedAddress ? (
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <AddressCard label="You entered" address={enteredAddress} />
+          <AddressCard
+            label="USPS recommends"
+            address={validation.standardizedAddress}
+          />
+        </div>
+      ) : (
+        <div className="mt-5">
+          <AddressCard label="Delivery address" address={enteredAddress} />
+        </div>
+      )}
+
+      {validation.corrections.length > 0 || validation.warnings.length > 0 ? (
+        <ul className="text-muted-foreground mt-4 grid gap-1 text-sm">
+          {[...validation.corrections, ...validation.warnings].map(
+            (item, index) => (
+              <li key={`${item.code}-${index}`}>{item.text || item.code}</li>
+            ),
+          )}
+        </ul>
+      ) : null}
+
+      {validation.behavior !== "add_unit" && !selected ? (
+        <div className="mt-5 flex flex-wrap gap-3">
+          {validation.standardizedAddress && validation.addressChanged ? (
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => onSelect("usps")}
+            >
+              Use USPS address
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant={
+              validation.standardizedAddress && validation.addressChanged
+                ? "outline"
+                : "default"
+            }
+            disabled={busy}
+            onClick={() => onSelect("entered")}
+          >
+            {validation.behavior === "confirm"
+              ? "Keep entered address"
+              : validation.behavior === "verify_unit"
+                ? "Confirm entered unit"
+                : "Use this address"}
+          </Button>
+        </div>
+      ) : null}
+
+      {selected ? (
+        <p className="text-ink mt-5 inline-flex items-center gap-2 text-sm font-semibold">
+          <Check aria-hidden="true" className="size-4" />
+          Address confirmed
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function SelectedAddressCard({
+  address,
+  onChange,
+}: {
+  address: ShippingAddressValues;
+  onChange: () => void;
 }) {
   return (
-    <FormField
-      control={control}
-      name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>
-            {label}
-            {required ? (
-              <span className="text-destructive ml-1" aria-hidden="true">
-                *
-              </span>
-            ) : null}
-          </FormLabel>
-          <FormControl>
-            <Input type={type} required={required} {...field} />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
+    <div className="border-border bg-background mt-4 flex items-start justify-between gap-4 rounded-lg border p-4 shadow-sm">
+      <address className="text-muted-foreground text-sm leading-6 not-italic">
+        <span className="text-ink block font-semibold">{address.fullName}</span>
+        <span className="block">{address.line1}</span>
+        {address.line2 ? <span className="block">{address.line2}</span> : null}
+        <span className="block">
+          {address.city}, {address.state} {address.postalCode} US
+        </span>
+      </address>
+      <Button type="button" variant="ghost" onClick={onChange}>
+        Change
+      </Button>
+    </div>
+  );
+}
+
+function getPhoneDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function formatUsPhoneNumber(value: string) {
+  const digits = getPhoneDigits(value).slice(0, 10);
+
+  if (digits.length <= 3) {
+    return digits;
+  }
+
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  }
+
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function AddressCard({
+  label,
+  address,
+}: {
+  label: string;
+  address: ShippingAddressValues;
+}) {
+  return (
+    <div className="border-border bg-background border p-4">
+      <p className="text-xs font-semibold tracking-[0.12em] uppercase">
+        {label}
+      </p>
+      <address className="text-muted-foreground mt-3 text-sm leading-6 not-italic">
+        <span className="text-ink block font-semibold">{address.fullName}</span>
+        <span className="block">{address.line1}</span>
+        {address.line2 ? <span className="block">{address.line2}</span> : null}
+        <span className="block">
+          {address.city}, {address.state} {address.postalCode}
+        </span>
+      </address>
+    </div>
   );
 }
 

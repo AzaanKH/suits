@@ -6,7 +6,8 @@ import { NextResponse } from "next/server";
 const isProtectedRoute = createRouteMatcher([
   "/account(.*)",
   "/checkout(.*)",
-  "/api/checkout",
+  "/api/address(.*)",
+  "/api/checkout(.*)",
 ]);
 const clerkConfigured = Boolean(
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY,

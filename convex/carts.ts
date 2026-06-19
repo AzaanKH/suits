@@ -139,7 +139,7 @@ export const forCheckout = query({
     const cart = await getCart(ctx, ownerClerkUserId);
 
     if (!cart || cart.lineItems.length === 0) {
-      throw new ConvexError("Cart is empty.");
+      return toCartResponse(null);
     }
 
     const canonicalLineItems = await Promise.all(

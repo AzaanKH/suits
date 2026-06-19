@@ -28,6 +28,20 @@ const standardFitSelection = {
 };
 
 describe("carts", () => {
+  it("returns an empty checkout cart instead of throwing", async () => {
+    const t = convexTest(schema, modules);
+    const user = t.withIdentity({
+      subject: "user_empty_checkout_cart",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+
+    const cart = await user.query(api.carts.forCheckout, {});
+
+    expect(cart.lineItems).toHaveLength(0);
+    expect(cart.itemCount).toBe(0);
+    expect(cart.subtotalCents).toBe(0);
+  });
+
   it("revalidates configured suit pricing on the server", async () => {
     const t = convexTest(schema, modules);
     await t.mutation(internal.seed.seed);

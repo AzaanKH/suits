@@ -6,6 +6,7 @@ import { CartSyncProvider } from "@/components/cart/cart-sync-provider";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Toaster } from "@/components/ui/sonner";
+import { isCheckoutConfigured } from "@/lib/checkout-config";
 import { isClerkConfigured } from "@/lib/clerk-config";
 
 import { ConvexClientProvider } from "./convex-client-provider";
@@ -35,13 +36,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const checkoutEnabled = Boolean(
-    process.env.STRIPE_SECRET_KEY &&
-    process.env.STRIPE_WEBHOOK_SECRET &&
-    process.env.STRIPE_WEBHOOK_PROCESSING_SECRET &&
-    process.env.NEXT_PUBLIC_APP_URL &&
-    process.env.NEXT_PUBLIC_CONVEX_URL,
-  );
+  const checkoutEnabled = isCheckoutConfigured();
   const content = (
     <ConvexClientProvider>
       <Header checkoutEnabled={checkoutEnabled} />
