@@ -5,6 +5,7 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { clearCartForOwner, getCheckoutCartForUser } from "./carts";
+import { getAddressFingerprint } from "../src/lib/address-fingerprint";
 import { getUsStateSalesTaxDetails } from "../src/lib/sales-tax";
 
 const shippingAddressValidator = v.object({
@@ -887,19 +888,6 @@ function normalizeAddressIndicators(indicators: {
 
 function normalizeIndicator(value: string) {
   return value.trim().toUpperCase().slice(0, 20);
-}
-
-function getAddressFingerprint(address: typeof shippingAddressValidator.type) {
-  return [
-    address.line1,
-    address.line2 ?? "",
-    address.city,
-    address.state,
-    address.postalCode,
-    address.country,
-  ]
-    .map((value) => value.trim().toUpperCase().replace(/[.,]/g, ""))
-    .join("|");
 }
 
 function taxJurisdictionPatch(

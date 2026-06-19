@@ -7,7 +7,7 @@ import { api } from "../../../../convex/_generated/api";
 
 const STRIPE_SUIT_TAX_CODE = "txcd_30011000";
 
-export async function POST(request: Request) {
+export async function POST() {
   const { getToken, userId } = await auth.protect();
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -17,7 +17,6 @@ export async function POST(request: Request) {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
   const automaticTaxEnabled =
     process.env.STRIPE_AUTOMATIC_TAX_ENABLED === "true";
-  await request.json().catch(() => ({}));
 
   if (
     !stripeSecretKey ||

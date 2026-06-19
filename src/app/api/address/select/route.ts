@@ -49,6 +49,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
+    const isConvexBusinessError =
+      error instanceof Error && /Uncaught ConvexError:/.test(error.message);
+
     return NextResponse.json(
       {
         error:
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
             ? getConvexErrorMessage(error)
             : "Unable to save the selected address.",
       },
-      { status: 400 },
+      { status: isConvexBusinessError ? 400 : 502 },
     );
   }
 }

@@ -1,8 +1,17 @@
 import type { ShippingAddressValues } from "@/features/checkout/schema";
+import { getAddressFingerprint } from "@/lib/address-fingerprint";
 
 const USPS_PRODUCTION_URL = "https://apis.usps.com";
 const USPS_TEST_URL = "https://apis-tem.usps.com";
 const TOKEN_REFRESH_BUFFER_MS = 60_000;
+const USPS_REQUEST_TIMEOUT_MS = 8_000;
+
+export class UspsAddressValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UspsAddressValidationError";
+  }
+}
 
 type UspsTokenResponse = {
   access_token?: string;
@@ -78,7 +87,7 @@ export async function validateUspsAddress(
     url.searchParams.set("ZIPPlus4", zipPlus4);
   }
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: {
       accept: "application/json",
       authorization: `Bearer ${accessToken}`,
@@ -88,9 +97,14 @@ export async function validateUspsAddress(
   const data = (await response.json().catch(() => ({}))) as UspsAddressResponse;
 
   if (!response.ok) {
-    throw new Error(
-      data.error?.message ?? "USPS could not validate this address.",
-    );
+    const message =
+      data.error?.message ?? "USPS could not validate this address.";
+
+    if (response.status >= 400 && response.status < 500) {
+      throw new UspsAddressValidationError(message);
+    }
+
+    throw new Error(message);
   }
 
   const standardizedAddress = toStandardizedAddress(enteredAddress, data);
@@ -114,8 +128,8 @@ export async function validateUspsAddress(
       vacant: cleanOptional(data.additionalInfo?.vacant),
     },
     addressChanged: standardizedAddress
-      ? addressFingerprint(enteredAddress) !==
-        addressFingerprint(standardizedAddress)
+      ? getAddressFingerprint(enteredAddress) !==
+        getAddressFingerprint(standardizedAddress)
       : false,
     behavior: getCheckoutBehavior(dpvConfirmation),
   };
@@ -179,16 +193,19 @@ async function getUspsAccessToken() {
     throw new Error("USPS address validation is not configured.");
   }
 
-  const response = await fetch(`${getUspsBaseUrl()}/oauth2/v3/token`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: "client_credentials",
-    }),
-    cache: "no-store",
-  });
+  const response = await fetchWithTimeout(
+    `${getUspsBaseUrl()}/oauth2/v3/token`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "client_credentials",
+      }),
+      cache: "no-store",
+    },
+  );
   const data = (await response.json().catch(() => ({}))) as UspsTokenResponse;
 
   if (!response.ok || !data.access_token) {
@@ -228,15 +245,16 @@ function cleanOptional(value?: string | null) {
   return cleaned || undefined;
 }
 
-function addressFingerprint(address: ShippingAddressValues) {
-  return [
-    address.line1,
-    address.line2 ?? "",
-    address.city,
-    address.state,
-    address.postalCode,
-    address.country,
-  ]
-    .map((part) => part.trim().toUpperCase().replace(/[.,]/g, ""))
-    .join("|");
+async function fetchWithTimeout(input: URL | string, init: RequestInit = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    USPS_REQUEST_TIMEOUT_MS,
+  );
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }

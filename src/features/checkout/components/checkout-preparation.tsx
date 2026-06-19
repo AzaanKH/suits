@@ -666,10 +666,16 @@ function StripeCheckoutForm({
     }
 
     setPaying(true);
-    const result = await checkout.confirm();
 
-    if (result.type === "error") {
-      toast.error(result.error.message);
+    try {
+      const result = await checkout.confirm();
+
+      if (result.type === "error") {
+        toast.error(result.error.message);
+      }
+    } catch {
+      toast.error("Unable to process payment.");
+    } finally {
       setPaying(false);
     }
   }

@@ -5,7 +5,10 @@ import { NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { addressValidationRequestSchema } from "@/features/checkout/schema";
-import { validateUspsAddress } from "@/lib/usps-addresses";
+import {
+  UspsAddressValidationError,
+  validateUspsAddress,
+} from "@/lib/usps-addresses";
 
 export async function POST(request: Request) {
   const { getToken } = await auth.protect();
@@ -65,6 +68,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ validationId, ...result });
   } catch (error) {
     console.error("USPS address validation failed.", error);
+    const isValidationError =
+      error instanceof UspsAddressValidationError ||
+      (error instanceof Error &&
+        /Uncaught ConvexError:/.test(error.message) &&
+        !/Unauthorized address validation processing/i.test(error.message));
 
     return NextResponse.json(
       {
@@ -73,7 +81,7 @@ export async function POST(request: Request) {
             ? getAddressValidationErrorMessage(error)
             : "USPS could not validate this address.",
       },
-      { status: 422 },
+      { status: isValidationError ? 422 : 502 },
     );
   }
 }

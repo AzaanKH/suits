@@ -1,6 +1,6 @@
 # Arden Tailoring
 
-The application is a Next.js App Router storefront for a custom suit ecommerce brand. Product, category, fabric, customization data, and saved designs are served by Convex. Clerk provides authentication and Stripe Checkout handles authenticated one-time purchases. The previous frontend prototype remains available in Git history.
+The application is a Next.js App Router storefront for a custom suit ecommerce brand. Product, category, fabric, customization data, saved designs, orders, and address validation records are served by Convex. Clerk provides authentication, while Stripe Checkout Sessions power embedded Address and Payment Elements with USPS Addresses 3.0 validation before payment. The previous frontend prototype remains available in Git history.
 
 ## Setup
 
@@ -128,8 +128,11 @@ Required:
 - `STRIPE_AUTOMATIC_TAX_ENABLED`
 - `USPS_CLIENT_ID`
 - `USPS_CLIENT_SECRET`
-- `USPS_API_ENV` (optional, use `test` for the USPS test environment)
 - `USPS_VALIDATION_PROCESSING_SECRET` (also set in Convex)
+
+Optional:
+
+- `USPS_API_ENV=test` for the USPS test environment; omit it for production
 
 Do not store passwords in Convex. Saved design documents store the Clerk user id for ownership checks and design details only; Clerk profile fields remain in Clerk.
 
