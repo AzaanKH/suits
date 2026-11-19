@@ -1,58 +1,46 @@
-# 3D Asset Performance Report
+# 3D Performance Report
 
-Measured on the Blender-generated modular assets in `public/models/suit-configurator` after running `pnpm assets:3d:generate && pnpm assets:3d:validate`.
+Measured on the studio assets on November 19, 2026. Byte counts come from the files in `public/models/suit-studio`. Triangle counts come from `assets/suit-studio/parts.json`, which `pnpm assets:studio:build` writes.
 
-## Asset Size Baseline
+## Transfer
 
-Before the 3D configurator, the customizer loaded no `.glb` assets.
+Both 3D surfaces load the same files, once per session (drei caches them).
 
-| Asset set                     |  Before |         After |
-| ----------------------------- | ------: | ------------: |
-| 3D assets on disk             | 0 bytes | 852,112 bytes |
-| Default 3D selection transfer | 0 bytes | 276,108 bytes |
+| Asset                                     |         Bytes |
+| ----------------------------------------- | ------------: |
+| `arden-tailoring-optimized.glb` (Meshopt) |     2,650,228 |
+| `textures/wool-albedo.webp`               |       712,456 |
+| `textures/single-normal.webp`             |       883,448 |
+| `textures/double-normal.webp`             |     1,206,356 |
+| `textures/dinner-normal.webp`             |     1,179,388 |
+| **Total**                                 | **6,631,876** |
 
-The default selection transfer is `base/mannequin.glb`, `jackets/single-breasted-two-button.glb`, `lapels/notch-lapel.glb`, `buttons/horn-buttons.glb`, `pockets/straight-flap-pockets.glb`, and `trousers/side-adjusters.glb`.
+The uncompressed source GLB (11,459,064 bytes) lives in `assets/suit-studio/` and is not deployed.
 
-## Generated Asset Sizes
+## Geometry
 
-| Asset                                    |   Bytes |
-| ---------------------------------------- | ------: |
-| `base/mannequin.glb`                     |  79,000 |
-| `buttons/covered-buttons.glb`            | 115,784 |
-| `buttons/horn-buttons.glb`               |  93,372 |
-| `buttons/smoked-pearl-buttons.glb`       |  93,492 |
-| `jackets/double-breasted-six-button.glb` |  46,868 |
-| `jackets/single-breasted-one-button.glb` |  36,732 |
-| `jackets/single-breasted-two-button.glb` |  36,732 |
-| `lapels/notch-lapel.glb`                 |  19,848 |
-| `lapels/peak-lapel.glb`                  |  20,044 |
-| `lapels/shawl-lapel.glb`                 |  15,368 |
-| `pockets/jetted-pockets.glb`             |  10,884 |
-| `pockets/patch-pockets.glb`              |  10,808 |
-| `pockets/slanted-flap-pockets.glb`       |  11,020 |
-| `pockets/straight-flap-pockets.glb`      |  10,912 |
-| `trousers/belt-loops.glb`                |  49,528 |
-| `trousers/brace-buttons.glb`             |  51,828 |
-| `trousers/side-adjusters.glb`            |  36,244 |
-| `trousers/single-pleat-trousers.glb`     |  36,152 |
-| `vests/matching-waistcoat.glb`           |  77,496 |
+| Group                                 |   Triangles |
+| ------------------------------------- | ----------: |
+| `single_*` block                      |     191,584 |
+| `double_*` block                      |     106,784 |
+| `dinner_*` block                      |     134,576 |
+| Shared (trousers, waistcoat, details) |      81,004 |
+| **Loaded**                            | **513,948** |
 
-## Runtime Measurements
+Only one jacket block is visible at a time, so about 190k–270k triangles render. All three blocks still download and stay in GPU memory.
 
-The 3D preview records browser performance entries:
+## Runtime behavior
 
-- `suit-3d-initial-load`: starts when the 3D tab mounts and ends after the selected GLBs resolve and the scene commits.
-- `suit-3d-first-orbit-response`: starts on first orbit interaction and ends on the first orbit change event.
+- Both canvases use `frameloop="demand"` and render only when something changes. The studio switches to a continuous loop only while the turntable runs.
+- Low-memory, low-core, data-saver, and slow-connection devices get a lower device pixel ratio cap (1.5 instead of 2) and, in the studio, a 512px contact shadow instead of 1024px.
+- The studio builds three-mesh-bvh bounds trees (drei `Bvh`) for pointer raycasts. This is a one-time cost after load.
+- No WebGL means the 2D preview or a message. A runtime error offers a retry and the 2D preview.
 
-The preview also displays the measured load and first orbit response values in the 3D panel footer when available.
+## Improvement candidates
 
-## Desktop And Mobile Behavior
+In order of expected payoff:
 
-- Desktop uses antialiasing and a device pixel ratio up to 1.5.
-- Mobile, low-memory, low-core, data-saver, slow-connection, or reduced-motion contexts use simplified rendering: DPR 1, lower power preference, and antialiasing disabled.
-- If WebGL is unavailable, the 3D panel shows the 2D preview fallback and leaves the rest of the customizer usable.
-- Scene instances borrow loader-cached geometry without disposing shared resources. Runtime materials and textures dispose independently when no longer used.
-
-## Compression Decision
-
-No Draco, Meshopt, or KTX2 compression is enabled because the current geometry-only default selection is 276,108 bytes. Re-evaluate compression after denser production meshes or texture payloads exist.
+1. **Split the GLB per jacket block.** Load `single` first and the others on demand. This cuts first-load geometry by roughly 45% and frees GPU memory for blocks the customer never picks.
+2. **KTX2 textures.** WebP decodes to full RGBA in GPU memory. KTX2/Basis stays compressed on the GPU, which matters most on phones for the three 1.5k normal maps.
+3. **Reduce `single_body`** (110k triangles). A decimated LOD for the preview panel would keep the studio sharp while lightening the default page.
+4. **Measure on a real mid-range phone.** These numbers are file measurements, not field timings. Record time to first frame and orbit frame rate before setting budgets.

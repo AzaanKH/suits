@@ -1,5 +1,7 @@
 # Research for a fully customizable 3D suit
 
+> **Update, November 19, 2026:** the modular per-part GLB pipeline described under the repository inspection (`generate-suit-blender-assets.py`, `asset-contract.ts`, the asset manifest) has been removed. The app now uses the single studio GLB. See [3d-suit-configurator.md](3d-suit-configurator.md).
+
 Researched October 3, 2026. This is a proposed production approach, not a claim that the current model implements these capabilities. Tool comparisons below are recommendations based on the cited documentation, not comparative benchmarks.
 
 Use Blender to prepare the interactive suit assets, and keep the existing Three.js / React Three Fiber viewer. For a suit that must also correspond to real sewing patterns and realistic drape, author the garment in CLO before preparing it in Blender. Blender alone is a practical route for a visual configurator, provided the model receives careful garment modeling and visual review.
