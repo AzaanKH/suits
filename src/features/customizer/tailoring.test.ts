@@ -8,7 +8,7 @@ import {
   tailoringSignature,
   hasTailoringRequests,
 } from "./tailoring";
-import { getSuit3dAssetSelection } from "./three-d/asset-contract";
+import { getSuit3dSelection } from "./three-d/suit-selection";
 import type { CustomizerConfiguration } from "./types";
 
 const primary = {
@@ -49,7 +49,7 @@ describe("maker-neutral tailoring", () => {
       },
     };
     expect(tailoringValidationError(tailoring, primary)).toBeNull();
-    const selection = getSuit3dAssetSelection({ ...configuration, tailoring });
+    const selection = getSuit3dSelection({ ...configuration, tailoring });
     expect(selection.trouserDetails).toEqual({
       waist: "belt-loops",
       pleats: "double",
@@ -118,15 +118,15 @@ describe("maker-neutral tailoring", () => {
     };
     expect(tailoringValidationError(tailoring, selectedOptionCodes)).toBeNull();
     expect(
-      getSuit3dAssetSelection({
+      getSuit3dSelection({
         ...configuration,
         selectedOptionCodes,
         tailoring,
-      }).assets.vest?.code,
+      }).selectedCodes.vest,
     ).toBe("matching-waistcoat");
   });
   it("keeps per-garment fabric requests independent", () => {
-    const result = getSuit3dAssetSelection({
+    const result = getSuit3dSelection({
       ...configuration,
       tailoring: {
         ...emptyTailoring(),

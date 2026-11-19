@@ -16,7 +16,7 @@ Base garment meshes and garment normal maps are adapted from **Men’s Suit 3**,
 
 Changes: relaxed sleeve pose, revised waist and leg proportions, open quarters, subdivision, named separate garment regions, material replacement, lapel and pocket variants, additional buttons, optional waistcoat and trouser details. These are visualization assets, not cutting patterns or validated fit simulation.
 
-The original OBJ files and normal maps are retained to reproduce the conversion. `scripts/build-suit-studio.py` builds the editable `arden-studio.blend` and exports `public/models/suit-studio/arden-tailoring.glb`. The old schematic model is not used by this viewer.
+The original OBJ files and normal maps are retained to reproduce the conversion. `scripts/build-suit-studio.py` builds the editable `arden-studio.blend` and exports the raw `assets/suit-studio/arden-tailoring.glb` and `parts.json` inventory. The old schematic model is not used by this viewer.
 
 ## Cloth and design concept
 
@@ -28,7 +28,7 @@ The woven color texture is used with the original garment normal maps. It is an 
 
 ## Rebuild
 
-1. Run Blender in background mode with `--python scripts/build-suit-studio.py` from the repository root. This produces the editable Blender file, raw GLB, part inventory, and an offline review render.
+1. Run `pnpm assets:studio:build` (Blender in background mode) from the repository root. This produces the editable Blender file, raw GLB, part inventory, and an offline review render.
 2. Run `pnpm assets:studio:textures` to produce the WebP textures from retained source PNGs.
 3. Run `pnpm assets:studio:compress` to generate the Meshopt GLB used by the viewer. Named meshes remain separate so garment swaps continue to work.
 

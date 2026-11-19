@@ -37,9 +37,9 @@ import {
 import type { CustomizerCatalog, CustomizerConfiguration } from "../types";
 import { tailoringRows } from "../tailoring";
 import {
-  getSuit3dAssetSelection,
-  type Suit3dAssetSelection,
-} from "./asset-contract";
+  getSuit3dSelection,
+  type Suit3dSelection,
+} from "./suit-selection";
 import { getSuit3dCapability } from "./device-support";
 
 const MODEL = "/models/suit-studio/arden-tailoring-optimized.glb?v=3";
@@ -64,7 +64,7 @@ export function Suit3dPreview({ configuration, fallback }: Props) {
   const [ready, setReady] = useState(false);
   const [cameraRevision, setCameraRevision] = useState(0);
   const selection = useMemo(
-    () => getSuit3dAssetSelection(configuration),
+    () => getSuit3dSelection(configuration),
     [configuration],
   );
   const onReady = useCallback(() => setReady(true), []);
@@ -271,7 +271,7 @@ function TailoredSuit({
   configuration,
   onReady,
 }: {
-  selection: Suit3dAssetSelection;
+  selection: Suit3dSelection;
   configuration: CustomizerConfiguration;
   onReady: () => void;
 }) {
@@ -315,7 +315,7 @@ function TailoredSuit({
           : selection.selectedCodes.pockets === "slanted-flap-pockets"
             ? "slanted"
             : "flap";
-    const vest = Boolean(selection.assets.vest);
+    const vest = Boolean(selection.selectedCodes.vest);
     const waist =
       selection.trouserDetails?.waist ?? selection.selectedCodes.trousers;
     const pleats =
@@ -382,7 +382,7 @@ function TailoredSuit({
 }
 
 function createMaterials(
-  selection: Suit3dAssetSelection,
+  selection: Suit3dSelection,
   maps: { wool: Texture; single: Texture; double: Texture; dinner: Texture },
 ): Record<string, Material> {
   const cloth = (color: string, normal: Texture = maps.single, satin = false) =>

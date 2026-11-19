@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState, type KeyboardEvent } from "react";
-import { SUIT_3D_PRODUCT_SLUG } from "../three-d/asset-contract";
+import { SUIT_3D_PRODUCT_SLUG } from "../three-d/suit-selection";
 import { TailoringSummary } from "./tailoring-details";
 import { createConfigurationSummary } from "../serialization";
 import type { CustomizerCatalog, CustomizerConfiguration } from "../types";

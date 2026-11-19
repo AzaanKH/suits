@@ -63,7 +63,7 @@ import type {
   CustomizerOptionGroup,
 } from "@/features/customizer/types";
 import "./suit-studio.css";
-import { FABRIC_MATERIALS } from "../three-d/asset-contract";
+import { FABRIC_MATERIALS } from "../three-d/suit-selection";
 import { calculateConfigurationPrice } from "@/features/customizer/pricing";
 import { createConfigurationSummary } from "@/features/customizer/serialization";
 import { PageContainer } from "@/components/layout/page-container";

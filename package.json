@@ -14,13 +14,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "assets:3d:generate": "node scripts/generate-suit-poc-assets.mjs",
-    "assets:3d:poc": "pnpm assets:3d:generate",
-    "assets:3d:validate": "node scripts/validate-suit-3d-assets.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "assets:studio:build": "blender --background --python scripts/build-suit-studio.py",
     "assets:studio:textures": "node scripts/optimize-suit-studio.mjs",
-    "assets:studio:compress": "pnpm dlx @gltf-transform/cli@4.4.0 meshopt public/models/suit-studio/arden-tailoring.glb public/models/suit-studio/arden-tailoring-optimized.glb"
+    "assets:studio:compress": "pnpm dlx @gltf-transform/cli@4.4.0 meshopt assets/suit-studio/arden-tailoring.glb public/models/suit-studio/arden-tailoring-optimized.glb"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

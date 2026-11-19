@@ -1,19 +1,6 @@
 import type { CustomizerConfiguration } from "@/features/customizer/types";
 
-import assetManifest from "./asset-manifest.json";
-
 export const SUIT_3D_PRODUCT_SLUG = "house-navy-hopsack-suit";
-
-export type Suit3dMaterialSlotName = "fabric" | "button" | "lining";
-
-export type Suit3dModelAsset = {
-  code: string;
-  label: string;
-  url: string;
-  rootNodeName: string;
-  meshNames: string[];
-  materialSlots?: Partial<Record<Suit3dMaterialSlotName, string[]>>;
-};
 
 export type Suit3dMaterial = {
   code: string;
@@ -24,18 +11,9 @@ export type Suit3dMaterial = {
   metalness: number;
 };
 
-export type Suit3dAssetSelection = {
+export type Suit3dSelection = {
   supportedProduct: boolean;
   productSlug: string;
-  assets: {
-    base: Suit3dModelAsset;
-    jacket: Suit3dModelAsset;
-    lapel: Suit3dModelAsset;
-    buttons: Suit3dModelAsset;
-    pockets: Suit3dModelAsset;
-    trousers: Suit3dModelAsset;
-    vest: Suit3dModelAsset | null;
-  };
   fabricMaterial: Suit3dMaterial;
   trouserMaterial: Suit3dMaterial;
   vestMaterial: Suit3dMaterial;
@@ -54,30 +32,29 @@ export type Suit3dAssetSelection = {
   };
 };
 
-type Suit3dManifestAsset = Omit<Suit3dModelAsset, "url"> & {
-  path: string;
-};
-
-type Suit3dAssetManifest = {
-  base: Suit3dManifestAsset;
-  jackets: Record<string, Suit3dManifestAsset>;
-  lapels: Record<string, Suit3dManifestAsset>;
-  buttons: Record<string, Suit3dManifestAsset>;
-  pockets: Record<string, Suit3dManifestAsset>;
-  trousers: Record<string, Suit3dManifestAsset>;
-  vests: Record<string, Suit3dManifestAsset>;
-};
-
-const typedAssetManifest = assetManifest as Suit3dAssetManifest;
-const modelRoot = "/models/suit-configurator";
-
-export const BASE_BODY_ASSET = withModelUrl(typedAssetManifest.base);
-export const JACKET_ASSETS = mapManifestAssets(typedAssetManifest.jackets);
-export const LAPEL_ASSETS = mapManifestAssets(typedAssetManifest.lapels);
-export const BUTTON_ASSETS = mapManifestAssets(typedAssetManifest.buttons);
-export const POCKET_ASSETS = mapManifestAssets(typedAssetManifest.pockets);
-export const TROUSER_ASSETS = mapManifestAssets(typedAssetManifest.trousers);
-export const VEST_ASSETS = mapManifestAssets(typedAssetManifest.vests);
+/** Option codes the studio model can display. Others fall back to the defaults below. */
+const SUPPORTED_CODES = {
+  jacket: [
+    "single-breasted-two-button",
+    "single-breasted-one-button",
+    "double-breasted-six-button",
+  ],
+  lapel: ["notch-lapel", "peak-lapel", "shawl-lapel"],
+  buttons: ["horn-buttons", "smoked-pearl-buttons", "covered-buttons"],
+  pockets: [
+    "straight-flap-pockets",
+    "slanted-flap-pockets",
+    "patch-pockets",
+    "jetted-pockets",
+  ],
+  trousers: [
+    "side-adjusters",
+    "belt-loops",
+    "single-pleat-trousers",
+    "brace-buttons",
+  ],
+  vest: ["matching-waistcoat"],
+} as const;
 
 export const FABRIC_MATERIALS = {
   "navy-hopsack": {
@@ -178,43 +155,43 @@ const fallbackCodes = {
   lining: "midnight-bemberg",
 } as const;
 
-export function getSuit3dAssetSelection(
+export function getSuit3dSelection(
   configuration: CustomizerConfiguration,
-): Suit3dAssetSelection {
+): Suit3dSelection {
   const jacketCode = getSupportedSelection(
     configuration,
     "jacket-style",
-    JACKET_ASSETS,
+    SUPPORTED_CODES.jacket,
     fallbackCodes.jacket,
   );
   const lapelCode = getSupportedSelection(
     configuration,
     "lapel",
-    LAPEL_ASSETS,
+    SUPPORTED_CODES.lapel,
     fallbackCodes.lapel,
   );
   const buttonCode = getSupportedSelection(
     configuration,
     "buttons",
-    BUTTON_ASSETS,
+    SUPPORTED_CODES.buttons,
     fallbackCodes.buttons,
   );
   const pocketCode = getSupportedSelection(
     configuration,
     "pockets",
-    POCKET_ASSETS,
+    SUPPORTED_CODES.pockets,
     fallbackCodes.pockets,
   );
   const trouserCode = getSupportedSelection(
     configuration,
     "trousers",
-    TROUSER_ASSETS,
+    SUPPORTED_CODES.trousers,
     fallbackCodes.trousers,
   );
   const referenceVestCode = getSupportedOptionalSelection(
     configuration,
     "extras",
-    VEST_ASSETS,
+    SUPPORTED_CODES.vest,
   );
   const vestCode =
     configuration.tailoring?.choices["waistcoat-presence"] === "yes"
@@ -288,15 +265,6 @@ export function getSuit3dAssetSelection(
   return {
     supportedProduct: configuration.productSlug === SUIT_3D_PRODUCT_SLUG,
     productSlug: configuration.productSlug,
-    assets: {
-      base: BASE_BODY_ASSET,
-      jacket: JACKET_ASSETS[jacketCode],
-      lapel: LAPEL_ASSETS[lapelCode],
-      buttons: BUTTON_ASSETS[buttonCode],
-      pockets: POCKET_ASSETS[pocketCode],
-      trousers: TROUSER_ASSETS[trouserCode],
-      vest: vestCode ? VEST_ASSETS[vestCode] : null,
-    },
     fabricMaterial,
     trouserMaterial,
     vestMaterial,
@@ -316,56 +284,26 @@ export function getSuit3dAssetSelection(
   };
 }
 
-export function getSuit3dAssetUrls(selection: Suit3dAssetSelection) {
-  return Array.from(
-    new Set([
-      selection.assets.base.url,
-      selection.assets.jacket.url,
-      selection.assets.lapel.url,
-      selection.assets.buttons.url,
-      selection.assets.pockets.url,
-      selection.assets.trousers.url,
-      selection.assets.vest?.url,
-    ]),
-  ).filter((url): url is string => Boolean(url));
-}
-
-function withModelUrl(asset: Suit3dManifestAsset): Suit3dModelAsset {
-  const { path, ...modelAsset } = asset;
-
-  return {
-    ...modelAsset,
-    url: `${modelRoot}/${path}`,
-  };
-}
-
-function mapManifestAssets(assets: Record<string, Suit3dManifestAsset>) {
-  return Object.fromEntries(
-    Object.entries(assets).map(([code, asset]) => [code, withModelUrl(asset)]),
-  ) as Record<string, Suit3dModelAsset>;
-}
-
-function getSupportedSelection<T extends Record<string, unknown>>(
+function getSupportedSelection<T extends string>(
   configuration: CustomizerConfiguration,
   groupCode: keyof CustomizerConfiguration["selectedOptionCodes"],
-  supportedOptions: T,
-  fallbackCode: Extract<keyof T, string>,
-): Extract<keyof T, string> {
+  supportedCodes: readonly T[],
+  fallbackCode: T,
+): T {
   return (
-    configuration.selectedOptionCodes[groupCode]?.find(
-      (code): code is Extract<keyof T, string> => code in supportedOptions,
-    ) ?? fallbackCode
+    getSupportedOptionalSelection(configuration, groupCode, supportedCodes) ??
+    fallbackCode
   );
 }
 
-function getSupportedOptionalSelection<T extends Record<string, unknown>>(
+function getSupportedOptionalSelection<T extends string>(
   configuration: CustomizerConfiguration,
   groupCode: keyof CustomizerConfiguration["selectedOptionCodes"],
-  supportedOptions: T,
-): Extract<keyof T, string> | null {
+  supportedCodes: readonly T[],
+): T | null {
   return (
-    configuration.selectedOptionCodes[groupCode]?.find(
-      (code): code is Extract<keyof T, string> => code in supportedOptions,
+    configuration.selectedOptionCodes[groupCode]?.find((code): code is T =>
+      (supportedCodes as readonly string[]).includes(code),
     ) ?? null
   );
 }

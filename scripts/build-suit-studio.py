@@ -7,7 +7,7 @@ from pathlib import Path
 from mathutils import Vector
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=ROOT/'assets/suit-studio/source'
-OUT=ROOT/'public/models/suit-studio'
+OUT=ROOT/'assets/suit-studio'
 OUT.mkdir(parents=True,exist_ok=True)
 bpy.ops.object.select_all(action='SELECT');bpy.ops.object.delete(use_global=False)
 
