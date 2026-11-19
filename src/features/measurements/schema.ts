@@ -25,7 +25,8 @@ export const measurementFields = [
   {
     name: "shoulderWidth",
     label: "Shoulder width",
-    instruction: "Measure straight across from shoulder point to shoulder point.",
+    instruction:
+      "Measure straight across from shoulder point to shoulder point.",
   },
   {
     name: "sleeveLength",
@@ -86,7 +87,10 @@ export const measurementProfileSchema = z
     bodyMeasurements: z.object(
       Object.fromEntries(
         measurementFields.map((field) => [field.name, numericMeasurement]),
-      ) as Record<(typeof measurementFields)[number]["name"], typeof numericMeasurement>,
+      ) as Record<
+        (typeof measurementFields)[number]["name"],
+        typeof numericMeasurement
+      >,
     ),
     fitPreferences: z.object({
       jacketFit: z.enum(jacketFits),
@@ -113,9 +117,7 @@ export const measurementProfileSchema = z
       }
     }
 
-    if (
-      value.bodyMeasurements.inseam >= value.bodyMeasurements.outseam
-    ) {
+    if (value.bodyMeasurements.inseam >= value.bodyMeasurements.outseam) {
       ctx.addIssue({
         code: "custom",
         path: ["bodyMeasurements", "inseam"],

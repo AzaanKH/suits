@@ -6,36 +6,36 @@ Measured on the Blender-generated modular assets in `public/models/suit-configur
 
 Before the 3D configurator, the customizer loaded no `.glb` assets.
 
-| Asset set | Before | After |
-| --- | ---: | ---: |
-| 3D assets on disk | 0 bytes | 852,112 bytes |
+| Asset set                     |  Before |         After |
+| ----------------------------- | ------: | ------------: |
+| 3D assets on disk             | 0 bytes | 852,112 bytes |
 | Default 3D selection transfer | 0 bytes | 276,108 bytes |
 
 The default selection transfer is `base/mannequin.glb`, `jackets/single-breasted-two-button.glb`, `lapels/notch-lapel.glb`, `buttons/horn-buttons.glb`, `pockets/straight-flap-pockets.glb`, and `trousers/side-adjusters.glb`.
 
 ## Generated Asset Sizes
 
-| Asset | Bytes |
-| --- | ---: |
-| `base/mannequin.glb` | 79,000 |
-| `buttons/covered-buttons.glb` | 115,784 |
-| `buttons/horn-buttons.glb` | 93,372 |
-| `buttons/smoked-pearl-buttons.glb` | 93,492 |
-| `jackets/double-breasted-six-button.glb` | 46,868 |
-| `jackets/single-breasted-one-button.glb` | 36,732 |
-| `jackets/single-breasted-two-button.glb` | 36,732 |
-| `lapels/notch-lapel.glb` | 19,848 |
-| `lapels/peak-lapel.glb` | 20,044 |
-| `lapels/shawl-lapel.glb` | 15,368 |
-| `pockets/jetted-pockets.glb` | 10,884 |
-| `pockets/patch-pockets.glb` | 10,808 |
-| `pockets/slanted-flap-pockets.glb` | 11,020 |
-| `pockets/straight-flap-pockets.glb` | 10,912 |
-| `trousers/belt-loops.glb` | 49,528 |
-| `trousers/brace-buttons.glb` | 51,828 |
-| `trousers/side-adjusters.glb` | 36,244 |
-| `trousers/single-pleat-trousers.glb` | 36,152 |
-| `vests/matching-waistcoat.glb` | 77,496 |
+| Asset                                    |   Bytes |
+| ---------------------------------------- | ------: |
+| `base/mannequin.glb`                     |  79,000 |
+| `buttons/covered-buttons.glb`            | 115,784 |
+| `buttons/horn-buttons.glb`               |  93,372 |
+| `buttons/smoked-pearl-buttons.glb`       |  93,492 |
+| `jackets/double-breasted-six-button.glb` |  46,868 |
+| `jackets/single-breasted-one-button.glb` |  36,732 |
+| `jackets/single-breasted-two-button.glb` |  36,732 |
+| `lapels/notch-lapel.glb`                 |  19,848 |
+| `lapels/peak-lapel.glb`                  |  20,044 |
+| `lapels/shawl-lapel.glb`                 |  15,368 |
+| `pockets/jetted-pockets.glb`             |  10,884 |
+| `pockets/patch-pockets.glb`              |  10,808 |
+| `pockets/slanted-flap-pockets.glb`       |  11,020 |
+| `pockets/straight-flap-pockets.glb`      |  10,912 |
+| `trousers/belt-loops.glb`                |  49,528 |
+| `trousers/brace-buttons.glb`             |  51,828 |
+| `trousers/side-adjusters.glb`            |  36,244 |
+| `trousers/single-pleat-trousers.glb`     |  36,152 |
+| `vests/matching-waistcoat.glb`           |  77,496 |
 
 ## Runtime Measurements
 

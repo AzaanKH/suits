@@ -54,11 +54,11 @@ The runtime loads only the base mannequin plus the assets selected by the active
 
 Meshes that receive runtime colors must use these material names in Blender:
 
-| Slot                 | Runtime use                       |
-| -------------------- | --------------------------------- |
+| Slot                  | Runtime use                                     |
+| --------------------- | ----------------------------------------------- |
 | `Fabric_OverrideSlot` | Jacket, lapel, pocket, trouser, and vest fabric |
 | `Button_OverrideSlot` | Jacket buttons, brace buttons, and vest buttons |
-| `Lining_OverrideSlot` | Jacket and waistcoat lining surfaces |
+| `Lining_OverrideSlot` | Jacket and waistcoat lining surfaces            |
 
 The scene also falls back to material-name detection for future assets, but explicit `materialSlots` in the manifest are preferred because they are validated.
 
@@ -66,27 +66,27 @@ The scene also falls back to material-name detection for future assets, but expl
 
 The source of truth is `src/features/customizer/three-d/asset-manifest.json`. The validator checks each GLB for the root node, required mesh nodes, and expected material slots.
 
-| Option code | GLB | Required mesh names |
-| --- | --- | --- |
-| `house-mannequin-base` | `base/mannequin.glb` | `Mannequin_Base`, `Mannequin_Head`, `Mannequin_Stand` |
+| Option code                  | GLB                                      | Required mesh names                                                                                                                                      |
+| ---------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `house-mannequin-base`       | `base/mannequin.glb`                     | `Mannequin_Base`, `Mannequin_Head`, `Mannequin_Stand`                                                                                                    |
 | `single-breasted-two-button` | `jackets/single-breasted-two-button.glb` | `Jacket_SingleBreastedTwoButton`, `Sleeve_Left_SingleBreastedTwoButton`, `Sleeve_Right_SingleBreastedTwoButton`, `Lining_Jacket_SingleBreastedTwoButton` |
 | `single-breasted-one-button` | `jackets/single-breasted-one-button.glb` | `Jacket_SingleBreastedOneButton`, `Sleeve_Left_SingleBreastedOneButton`, `Sleeve_Right_SingleBreastedOneButton`, `Lining_Jacket_SingleBreastedOneButton` |
 | `double-breasted-six-button` | `jackets/double-breasted-six-button.glb` | `Jacket_DoubleBreastedSixButton`, `Sleeve_Left_DoubleBreastedSixButton`, `Sleeve_Right_DoubleBreastedSixButton`, `Lining_Jacket_DoubleBreastedSixButton` |
-| `notch-lapel` | `lapels/notch-lapel.glb` | `Lapel_Left_Notch`, `Lapel_Right_Notch` |
-| `peak-lapel` | `lapels/peak-lapel.glb` | `Lapel_Left_Peak`, `Lapel_Right_Peak` |
-| `shawl-lapel` | `lapels/shawl-lapel.glb` | `Lapel_Left_Shawl`, `Lapel_Right_Shawl` |
-| `horn-buttons` | `buttons/horn-buttons.glb` | `Buttons_Horn_1`, `Buttons_Horn_2` |
-| `smoked-pearl-buttons` | `buttons/smoked-pearl-buttons.glb` | `Buttons_SmokedPearl_1`, `Buttons_SmokedPearl_2` |
-| `covered-buttons` | `buttons/covered-buttons.glb` | `Buttons_Covered_1`, `Buttons_Covered_2`, `Buttons_Covered_3`, `Buttons_Covered_4` |
-| `straight-flap-pockets` | `pockets/straight-flap-pockets.glb` | `Pocket_Left_StraightFlap`, `Pocket_Right_StraightFlap` |
-| `slanted-flap-pockets` | `pockets/slanted-flap-pockets.glb` | `Pocket_Left_SlantedFlap`, `Pocket_Right_SlantedFlap` |
-| `patch-pockets` | `pockets/patch-pockets.glb` | `Pocket_Left_Patch`, `Pocket_Right_Patch` |
-| `jetted-pockets` | `pockets/jetted-pockets.glb` | `Pocket_Left_Jetted`, `Pocket_Right_Jetted` |
-| `side-adjusters` | `trousers/side-adjusters.glb` | `Trouser_Left_SideAdjusters`, `Trouser_Right_SideAdjusters`, `Waistband_SideAdjusters` |
-| `belt-loops` | `trousers/belt-loops.glb` | `Trouser_Left_BeltLoops`, `Trouser_Right_BeltLoops`, `Waistband_BeltLoops`, `BeltLoop_Left_BeltLoops`, `BeltLoop_Right_BeltLoops` |
-| `single-pleat-trousers` | `trousers/single-pleat-trousers.glb` | `Trouser_Left_SinglePleat`, `Trouser_Right_SinglePleat`, `Waistband_SinglePleat`, `Pleat_Left_SinglePleat`, `Pleat_Right_SinglePleat` |
-| `brace-buttons` | `trousers/brace-buttons.glb` | `Trouser_Left_BraceButtons`, `Trouser_Right_BraceButtons`, `Waistband_BraceButtons`, `BraceButton_Left_BraceButtons`, `BraceButton_Right_BraceButtons` |
-| `matching-waistcoat` | `vests/matching-waistcoat.glb` | `Vest_MatchingWaistcoat`, `Vest_Lining_MatchingWaistcoat`, `Vest_Button_1`, `Vest_Button_2`, `Vest_Button_3`, `Vest_Button_4`, `Vest_Button_5` |
+| `notch-lapel`                | `lapels/notch-lapel.glb`                 | `Lapel_Left_Notch`, `Lapel_Right_Notch`                                                                                                                  |
+| `peak-lapel`                 | `lapels/peak-lapel.glb`                  | `Lapel_Left_Peak`, `Lapel_Right_Peak`                                                                                                                    |
+| `shawl-lapel`                | `lapels/shawl-lapel.glb`                 | `Lapel_Left_Shawl`, `Lapel_Right_Shawl`                                                                                                                  |
+| `horn-buttons`               | `buttons/horn-buttons.glb`               | `Buttons_Horn_1`, `Buttons_Horn_2`                                                                                                                       |
+| `smoked-pearl-buttons`       | `buttons/smoked-pearl-buttons.glb`       | `Buttons_SmokedPearl_1`, `Buttons_SmokedPearl_2`                                                                                                         |
+| `covered-buttons`            | `buttons/covered-buttons.glb`            | `Buttons_Covered_1`, `Buttons_Covered_2`, `Buttons_Covered_3`, `Buttons_Covered_4`                                                                       |
+| `straight-flap-pockets`      | `pockets/straight-flap-pockets.glb`      | `Pocket_Left_StraightFlap`, `Pocket_Right_StraightFlap`                                                                                                  |
+| `slanted-flap-pockets`       | `pockets/slanted-flap-pockets.glb`       | `Pocket_Left_SlantedFlap`, `Pocket_Right_SlantedFlap`                                                                                                    |
+| `patch-pockets`              | `pockets/patch-pockets.glb`              | `Pocket_Left_Patch`, `Pocket_Right_Patch`                                                                                                                |
+| `jetted-pockets`             | `pockets/jetted-pockets.glb`             | `Pocket_Left_Jetted`, `Pocket_Right_Jetted`                                                                                                              |
+| `side-adjusters`             | `trousers/side-adjusters.glb`            | `Trouser_Left_SideAdjusters`, `Trouser_Right_SideAdjusters`, `Waistband_SideAdjusters`                                                                   |
+| `belt-loops`                 | `trousers/belt-loops.glb`                | `Trouser_Left_BeltLoops`, `Trouser_Right_BeltLoops`, `Waistband_BeltLoops`, `BeltLoop_Left_BeltLoops`, `BeltLoop_Right_BeltLoops`                        |
+| `single-pleat-trousers`      | `trousers/single-pleat-trousers.glb`     | `Trouser_Left_SinglePleat`, `Trouser_Right_SinglePleat`, `Waistband_SinglePleat`, `Pleat_Left_SinglePleat`, `Pleat_Right_SinglePleat`                    |
+| `brace-buttons`              | `trousers/brace-buttons.glb`             | `Trouser_Left_BraceButtons`, `Trouser_Right_BraceButtons`, `Waistband_BraceButtons`, `BraceButton_Left_BraceButtons`, `BraceButton_Right_BraceButtons`   |
+| `matching-waistcoat`         | `vests/matching-waistcoat.glb`           | `Vest_MatchingWaistcoat`, `Vest_Lining_MatchingWaistcoat`, `Vest_Button_1`, `Vest_Button_2`, `Vest_Button_3`, `Vest_Button_4`, `Vest_Button_5`           |
 
 ## Blender Workflow
 

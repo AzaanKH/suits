@@ -1,11 +1,7 @@
 import { cn } from "@/lib/utils";
 
 export type OrderPaymentStatusValue =
-  | "checkout_pending"
-  | "failed"
-  | "paid"
-  | "refunded"
-  | "unpaid";
+  "checkout_pending" | "failed" | "paid" | "refunded" | "unpaid";
 
 type OrderPaymentStatusProps = {
   status: OrderPaymentStatusValue;

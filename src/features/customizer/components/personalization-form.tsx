@@ -185,9 +185,7 @@ function TailoringNotesFields({
             maxLength={freeformMaxLength}
             placeholder="Add specific requests, such as cleaner trouser break, sleeve length preference, or extra room in one area."
             className="form-control min-h-28 resize-y rounded-lg"
-            onChange={(event) =>
-              handleFreeformNotesChange(event.target.value)
-            }
+            onChange={(event) => handleFreeformNotesChange(event.target.value)}
           />
         </FormControl>
       </div>
