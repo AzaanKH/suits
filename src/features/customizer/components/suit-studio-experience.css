@@ -1,0 +1,344 @@
+/* Full-screen studio. Covers the site header so the scene owns the viewport. */
+.suit-atelier {
+  --atelier-ink: #182638;
+  --atelier-muted: #68717a;
+  --atelier-surface: rgb(255 255 255 / 0.9);
+  --atelier-rule: #d9dde1;
+  --atelier-accent: #b08a4f;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  color: var(--atelier-ink);
+  background: #ebe4d9;
+  overscroll-behavior: contain;
+}
+.suit-atelier[data-mood="daylight"] {
+  background: #eef0f1;
+}
+.suit-atelier[data-mood="evening"] {
+  background: #1b212b;
+}
+.suit-atelier.is-message {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #fff;
+}
+
+.atelier-scene {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+
+.atelier-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--atelier-ink);
+  color: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+.atelier-tooltip[data-visible="true"] {
+  opacity: 1;
+}
+@media (hover: none) {
+  .atelier-tooltip {
+    display: none;
+  }
+}
+
+/* Top bar */
+.atelier-bar {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  pointer-events: none;
+}
+.atelier-bar > * {
+  pointer-events: auto;
+}
+.atelier-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 11px;
+  border-radius: 999px;
+  background: var(--atelier-surface);
+  backdrop-filter: blur(12px);
+  font-size: 12px;
+  transition:
+    background-color 150ms ease-out,
+    transform 120ms ease-out;
+}
+.atelier-back:active {
+  transform: scale(0.97);
+}
+.atelier-title p:first-child {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.atelier-price {
+  margin-top: 4px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--atelier-muted);
+}
+.suit-atelier[data-mood="evening"] .atelier-title {
+  color: #eef0f3;
+}
+.suit-atelier[data-mood="evening"] .atelier-price {
+  color: #aab3bf;
+}
+
+/* Scene tools */
+.atelier-tools {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.atelier-moods {
+  display: flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--atelier-surface);
+  backdrop-filter: blur(12px);
+}
+.atelier-moods button {
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--atelier-muted);
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+.atelier-moods button[aria-pressed="true"] {
+  background: var(--atelier-ink);
+  color: #fff;
+}
+.atelier-icon-button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--atelier-surface);
+  backdrop-filter: blur(12px);
+  color: var(--atelier-ink);
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out,
+    transform 120ms ease-out;
+}
+.atelier-icon-button:active,
+.atelier-moods button:active {
+  transform: scale(0.96);
+}
+.atelier-icon-button[aria-pressed="true"] {
+  background: var(--atelier-ink);
+  color: #fff;
+}
+@media (hover: hover) {
+  .atelier-moods button:not([aria-pressed="true"]):hover {
+    color: var(--atelier-ink);
+  }
+  .atelier-back:hover,
+  .atelier-icon-button:not([aria-pressed="true"]):hover {
+    background: #fff;
+  }
+}
+
+/* Options panel */
+.atelier-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2;
+  width: clamp(340px, 30vw, 440px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: var(--atelier-surface);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 1px 2px rgb(24 38 56 / 0.06),
+    0 18px 40px rgb(24 38 56 / 0.12);
+}
+.atelier-steps {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--atelier-rule);
+}
+.atelier-steps button {
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--atelier-muted);
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+.atelier-steps button[aria-current="step"] {
+  background: var(--atelier-ink);
+  color: #fff;
+}
+@media (hover: hover) {
+  .atelier-steps button:not([aria-current]):hover {
+    color: var(--atelier-ink);
+    background: rgb(24 38 56 / 0.06);
+  }
+}
+.atelier-panel-heading {
+  padding: 20px 22px 4px;
+}
+.atelier-panel-heading h1 {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 34px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 500;
+}
+.atelier-panel-heading p {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--atelier-muted);
+}
+.atelier-options {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 22px 20px;
+}
+/* The panel is narrower than the customizer column; one option per row reads better. */
+.atelier-options .grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.atelier-options .studio-fabric-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.atelier-panel-actions {
+  display: flex;
+  gap: 8px;
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--atelier-rule);
+}
+.atelier-primary,
+.atelier-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  transition:
+    background-color 150ms ease-out,
+    transform 120ms ease-out;
+}
+.atelier-primary {
+  flex: 1;
+  background: var(--atelier-ink);
+  color: #fff;
+}
+.atelier-secondary {
+  border: 1px solid var(--atelier-rule);
+}
+.atelier-primary:active,
+.atelier-secondary:active {
+  transform: scale(0.98);
+}
+
+/* Phones and narrow tablets: options become a bottom sheet. */
+@media (max-width: 899px) {
+  .atelier-bar {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+  }
+  .atelier-title p:first-child {
+    font-size: 20px;
+  }
+  .atelier-tools {
+    top: 64px;
+    bottom: auto;
+    left: 12px;
+  }
+  .atelier-tools.is-panel-closed {
+    top: auto;
+    bottom: 16px;
+  }
+  .atelier-moods button {
+    padding: 6px 10px;
+  }
+  .atelier-panel {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 48svh;
+    border-radius: 16px;
+  }
+  .atelier-steps {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 12px 12px 10px;
+  }
+  .atelier-steps button {
+    flex: none;
+  }
+  .atelier-panel-heading {
+    padding: 12px 16px 0;
+  }
+  .atelier-panel-heading h1 {
+    font-size: 26px;
+  }
+  .atelier-panel-heading p {
+    display: none;
+  }
+  .atelier-options {
+    padding: 12px 16px;
+  }
+  .atelier-options .studio-fabric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .atelier-panel-actions {
+    padding: 10px 12px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atelier-tooltip,
+  .atelier-back,
+  .atelier-icon-button,
+  .atelier-moods button,
+  .atelier-primary,
+  .atelier-secondary {
+    transition: none;
+  }
+}

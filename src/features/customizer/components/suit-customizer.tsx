@@ -18,7 +18,7 @@ import {
   Ruler,
   RotateCcw,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -47,28 +47,23 @@ import {
   CartActionButton,
   type CartEditContext,
 } from "@/components/cart/cart-action-button";
-import {
-  buildCustomizerCatalog,
-  getUnavailableReason,
-} from "@/features/customizer/compatibility";
+import {} from "@/features/customizer/compatibility";
 import {
   CUSTOMIZER_STEPS,
-  getGroupSelectionMode,
   getStepIndex,
   type CustomizerGroupCode,
 } from "@/features/customizer/steps";
 import type {
   CustomizerCatalog,
   CustomizerConfiguration,
-  CustomizerOptionGroup,
 } from "@/features/customizer/types";
 import "./suit-studio.css";
-import { FABRIC_MATERIALS } from "../three-d/suit-selection";
+import { useCustomizerCatalog } from "../use-customizer-catalog";
 import { calculateConfigurationPrice } from "@/features/customizer/pricing";
 import { createConfigurationSummary } from "@/features/customizer/serialization";
 import { PageContainer } from "@/components/layout/page-container";
 import { CustomizerPreview } from "./customizer-preview";
-import { OptionCard } from "./option-card";
+import { FabricStep, OptionGroupStep } from "./option-steps";
 import { PersonalizationForm } from "./personalization-form";
 import { SaveDesignButton } from "./save-design-button";
 import { StepNavigation } from "./step-navigation";
@@ -102,7 +97,7 @@ export function SuitCustomizer({
       ? "authenticated"
       : "guest";
   const { isAuthenticated } = useConvexAuth();
-  const customizerData = useQuery(api.products.customizer, { productSlug });
+  const { customizerData, catalog } = useCustomizerCatalog(productSlug);
   const savedDesign = useQuery(
     api.savedDesigns.get,
     designId && isAuthenticated
@@ -135,7 +130,6 @@ export function SuitCustomizer({
   const configuration = useCustomizerStore((state) => state.configuration);
   const currentStepCode = useCustomizerStore((state) => state.currentStepCode);
   const dirty = useCustomizerStore((state) => state.dirty);
-  const initialize = useCustomizerStore((state) => state.initialize);
   const loadConfiguration = useCustomizerStore(
     (state) => state.loadConfiguration,
   );
@@ -143,23 +137,6 @@ export function SuitCustomizer({
   const goBack = useCustomizerStore((state) => state.goBack);
   const goNext = useCustomizerStore((state) => state.goNext);
   const reset = useCustomizerStore((state) => state.reset);
-
-  const catalog = useMemo(() => {
-    if (!customizerData?.product) {
-      return null;
-    }
-
-    return buildCustomizerCatalog(
-      customizerData.product,
-      customizerData.options,
-    );
-  }, [customizerData]);
-
-  useEffect(() => {
-    if (catalog) {
-      initialize(catalog);
-    }
-  }, [catalog, initialize]);
 
   useEffect(() => {
     if (!catalog || !designId || savedDesign === undefined) {
@@ -534,106 +511,6 @@ function StepContent({
       configuration={configuration}
       catalog={catalog}
     />
-  );
-}
-
-function FabricStep({
-  catalog,
-  configuration,
-}: {
-  catalog: CustomizerCatalog;
-  configuration: CustomizerConfiguration;
-}) {
-  const selectFabric = useCustomizerStore((state) => state.selectFabric);
-
-  return (
-    <div className="studio-fabric-grid">
-      {catalog.fabricOptions.map((fabric) => (
-        <OptionCard
-          key={fabric.code}
-          label={fabric.name}
-          description={`${fabric.mill} / ${fabric.composition} / ${fabric.weight}. ${fabric.description}`}
-          image={fabric.imageReference}
-          swatchColor={
-            FABRIC_MATERIALS[fabric.code as keyof typeof FABRIC_MATERIALS]
-              ?.color
-          }
-          meta={fabric.seasonality}
-          priceModifierCents={fabric.priceModifierCents}
-          selected={configuration.fabricCode === fabric.code}
-          onSelect={() => selectFabric(catalog, fabric.code)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function OptionGroupStep({
-  catalog,
-  configuration,
-  group,
-}: {
-  catalog: CustomizerCatalog;
-  configuration: CustomizerConfiguration;
-  group: CustomizerOptionGroup;
-}) {
-  const selectOption = useCustomizerStore((state) => state.selectOption);
-  const toggleOption = useCustomizerStore((state) => state.toggleOption);
-  const updatePersonalization = useCustomizerStore(
-    (state) => state.updatePersonalization,
-  );
-  const selectedCodes = configuration.selectedOptionCodes[group.code] ?? [];
-  const multiple = getGroupSelectionMode(group.code) === "multiple";
-  const monogramEnabled =
-    group.code === "extras" && selectedCodes.includes("personal-monogram");
-
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        {group.options.map((option) => {
-          const disabledReason = getUnavailableReason(option, configuration);
-          const selected = selectedCodes.includes(option.code);
-
-          return (
-            <OptionCard
-              key={option.code}
-              label={option.label}
-              description={option.description}
-              priceModifierCents={option.priceModifierCents}
-              selected={selected}
-              disabled={Boolean(disabledReason)}
-              disabledReason={disabledReason}
-              onSelect={() => {
-                if (multiple) {
-                  toggleOption(catalog, group.code, option.code);
-                } else {
-                  selectOption(catalog, group.code, option.code);
-                }
-              }}
-            />
-          );
-        })}
-      </div>
-      {group.code === "extras" ? (
-        <Card className="rounded-lg">
-          <CardHeader>
-            <CardTitle className="font-serif text-3xl leading-none">
-              Personal details
-            </CardTitle>
-            <CardDescription>
-              Add initials or notes for the tailoring team.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PersonalizationForm
-              personalization={configuration.personalization}
-              monogramEnabled={monogramEnabled}
-              onChange={updatePersonalization}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
-    </div>
   );
 }
 

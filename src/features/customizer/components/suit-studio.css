@@ -497,3 +497,43 @@ body:has(.suit-studio) footer {
   text-align: left;
   font-size: 11px;
 }
+
+/* Entry point to the full-screen studio (/studio/[productSlug]). */
+.studio-open-link {
+  position: absolute;
+  right: 28px;
+  bottom: 43px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 30px;
+  border: 1px solid #ccd2d7;
+  font-size: 11px;
+  color: #182638;
+  background: rgb(255 255 255 / 0.7);
+  transition:
+    background-color 150ms ease-out,
+    transform 120ms ease-out;
+}
+.studio-open-link:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) {
+  .studio-open-link:hover {
+    background: #fff;
+  }
+}
+@media (max-width: 1023px) {
+  .studio-open-link {
+    top: 52px;
+    right: 16px;
+    bottom: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-open-link {
+    transition: none;
+  }
+}
