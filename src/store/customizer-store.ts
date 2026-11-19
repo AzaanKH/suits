@@ -1,6 +1,10 @@
 "use client";
 
 import { create } from "zustand";
+import {
+  normalizeTailoring,
+  type TailoringSpecification,
+} from "@/features/customizer/tailoring";
 
 import {
   getDefaultConfiguration,
@@ -49,6 +53,7 @@ type CustomizerState = {
   updatePersonalization: (
     personalization: Partial<CustomizerPersonalization>,
   ) => void;
+  updateTailoring: (tailoring: TailoringSpecification) => void;
   reset: (catalog: CustomizerCatalog) => void;
   markClean: () => void;
 };
@@ -186,6 +191,21 @@ export const useCustomizerStore = create<CustomizerState>((set) => ({
         dirty: true,
       };
     }),
+  updateTailoring: (tailoring) =>
+    set((state) =>
+      state.configuration
+        ? {
+            configuration: {
+              ...state.configuration,
+              tailoring: normalizeTailoring(
+                tailoring,
+                state.configuration.selectedOptionCodes,
+              ),
+            },
+            dirty: true,
+          }
+        : {},
+    ),
   reset: (catalog) =>
     set(() => ({
       activeProductSlug: catalog.product.slug,

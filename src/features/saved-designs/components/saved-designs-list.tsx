@@ -1,5 +1,7 @@
 "use client";
 
+import { hasTailoringRequests } from "@/features/customizer/tailoring";
+
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Copy, Eye, PencilRuler, Trash2 } from "lucide-react";
@@ -139,7 +141,11 @@ export function SavedDesignsList({ clerkConfigured }: SavedDesignsListProps) {
                 {design.name}
               </CardTitle>
               <p className="text-muted-foreground text-sm">
-                {design.productName} / {formatCurrency(design.priceCents)}
+                {design.productName} /{" "}
+                {hasTailoringRequests(design.configuration.tailoring)
+                  ? "Quote required · reference "
+                  : ""}
+                {formatCurrency(design.priceCents)}
               </p>
             </CardHeader>
             <CardContent>

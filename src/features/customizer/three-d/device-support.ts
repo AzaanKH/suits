@@ -30,10 +30,6 @@ export function getSuit3dCapability(): Suit3dCapability {
   }
 
   const navigatorWithSignals = window.navigator as NavigatorWithSignals;
-  const reducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
-  ).matches;
-  const narrowViewport = window.matchMedia("(max-width: 767px)").matches;
   const lowMemory =
     typeof navigatorWithSignals.deviceMemory === "number" &&
     navigatorWithSignals.deviceMemory <= 4;
@@ -44,13 +40,7 @@ export function getSuit3dCapability(): Suit3dCapability {
   const slowConnection =
     navigatorWithSignals.connection?.effectiveType === "slow-2g" ||
     navigatorWithSignals.connection?.effectiveType === "2g";
-  const simplified =
-    reducedMotion ||
-    narrowViewport ||
-    lowMemory ||
-    lowCoreCount ||
-    saveData ||
-    slowConnection;
+  const simplified = lowMemory || lowCoreCount || saveData || slowConnection;
 
   return {
     supported: true,

@@ -1,3 +1,4 @@
+import { tailoringValidator } from "./tailoringValidation";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -25,6 +26,7 @@ const savedConfiguration = v.object({
   productSlug: v.string(),
   fabricCode: v.string(),
   selectedOptionCodes: v.record(v.string(), v.array(v.string())),
+  tailoring: v.optional(tailoringValidator),
   personalization,
 });
 

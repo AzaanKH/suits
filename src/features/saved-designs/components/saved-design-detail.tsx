@@ -1,5 +1,8 @@
 "use client";
 
+import { hasTailoringRequests } from "@/features/customizer/tailoring";
+import { TailoringSummary } from "@/features/customizer/components/tailoring-details";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -59,9 +62,7 @@ export function SavedDesignDetail({
   const convexDesignId = designId as Id<"savedDesigns">;
   const design = useQuery(
     api.savedDesigns.get,
-    clerkConfigured && isAuthenticated
-      ? { designId: convexDesignId }
-      : "skip",
+    clerkConfigured && isAuthenticated ? { designId: convexDesignId } : "skip",
   );
   const renameDesign = useMutation(api.savedDesigns.rename);
   const duplicateDesign = useMutation(api.savedDesigns.duplicate);
@@ -206,7 +207,11 @@ export function SavedDesignDetail({
                 {design.name}
               </CardTitle>
               <p className="text-muted-foreground text-sm">
-                {design.productName} / {formatCurrency(design.priceCents)}
+                {design.productName} /{" "}
+                {hasTailoringRequests(design.configuration.tailoring)
+                  ? "Quote required · reference "
+                  : ""}
+                {formatCurrency(design.priceCents)}
               </p>
             </CardHeader>
             <CardContent>
@@ -293,6 +298,9 @@ export function SavedDesignDetail({
                 ))}
               </div>
 
+              <TailoringSummary
+                specification={design.configuration.tailoring}
+              />
               <Separator className="my-6" />
 
               <dl className="grid gap-4 text-sm sm:grid-cols-2">

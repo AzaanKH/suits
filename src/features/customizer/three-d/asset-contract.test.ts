@@ -37,6 +37,9 @@ describe("3D asset contract", () => {
       jacket: "double-breasted-six-button",
       lapel: "peak-lapel",
       buttons: "smoked-pearl-buttons",
+      pockets: "jetted-pockets",
+      trousers: "single-pleat-trousers",
+      vest: null,
     });
     expect(selection.assets.jacket).toMatchObject({
       url: "/models/suit-configurator/jackets/double-breasted-six-button.glb",
@@ -50,6 +53,13 @@ describe("3D asset contract", () => {
       "Buttons_SmokedPearl_1",
       "Buttons_SmokedPearl_2",
     ]);
+    expect(selection.assets.pockets).toMatchObject({
+      url: "/models/suit-configurator/pockets/jetted-pockets.glb",
+      rootNodeName: "Pockets_Jetted_Root",
+    });
+    expect(selection.assets.trousers.meshNames).toContain(
+      "Trouser_Left_SinglePleat",
+    );
   });
 
   it("keeps covered buttons in the selected fabric material", () => {
@@ -75,11 +85,31 @@ describe("3D asset contract", () => {
       selectedOptionCodes: {
         ...baseConfiguration.selectedOptionCodes,
         lapel: ["unknown-lapel"],
+        pockets: ["unknown-pockets"],
+        trousers: ["unknown-trousers"],
       },
     });
 
     expect(selection.supportedProduct).toBe(false);
     expect(selection.selectedCodes.lapel).toBe("notch-lapel");
+    expect(selection.selectedCodes.pockets).toBe("straight-flap-pockets");
+    expect(selection.selectedCodes.trousers).toBe("side-adjusters");
+  });
+
+  it("adds the matching waistcoat when the vest extra is selected", () => {
+    const selection = getSuit3dAssetSelection({
+      ...baseConfiguration,
+      selectedOptionCodes: {
+        ...baseConfiguration.selectedOptionCodes,
+        extras: ["matching-waistcoat", "personal-monogram"],
+      },
+    });
+
+    expect(selection.selectedCodes.vest).toBe("matching-waistcoat");
+    expect(selection.assets.vest).toMatchObject({
+      url: "/models/suit-configurator/vests/matching-waistcoat.glb",
+      rootNodeName: "Vest_MatchingWaistcoat_Root",
+    });
   });
 
   it("returns each selected asset URL once", () => {
@@ -90,6 +120,31 @@ describe("3D asset contract", () => {
       "/models/suit-configurator/jackets/double-breasted-six-button.glb",
       "/models/suit-configurator/lapels/peak-lapel.glb",
       "/models/suit-configurator/buttons/smoked-pearl-buttons.glb",
+      "/models/suit-configurator/pockets/jetted-pockets.glb",
+      "/models/suit-configurator/trousers/single-pleat-trousers.glb",
+    ]);
+  });
+
+  it("includes optional vest assets in preload URLs", () => {
+    const selection = getSuit3dAssetSelection({
+      ...baseConfiguration,
+      selectedOptionCodes: {
+        ...baseConfiguration.selectedOptionCodes,
+        extras: ["matching-waistcoat"],
+      },
+    });
+
+    expect(getSuit3dAssetUrls(selection)).toContain(
+      "/models/suit-configurator/vests/matching-waistcoat.glb",
+    );
+    expect(getSuit3dAssetUrls(selection)).toEqual([
+      "/models/suit-configurator/base/mannequin.glb",
+      "/models/suit-configurator/jackets/double-breasted-six-button.glb",
+      "/models/suit-configurator/lapels/peak-lapel.glb",
+      "/models/suit-configurator/buttons/smoked-pearl-buttons.glb",
+      "/models/suit-configurator/pockets/jetted-pockets.glb",
+      "/models/suit-configurator/trousers/single-pleat-trousers.glb",
+      "/models/suit-configurator/vests/matching-waistcoat.glb",
     ]);
   });
 });

@@ -1,27 +1,31 @@
-# 3D Suit Configurator Proof Of Concept
+# 3D Suit Configurator Assets
 
-The first 3D pass is scoped to `house-navy-hopsack-suit`. It is a client-only preview island that reads the same Zustand customizer state as the 2D selector and never calculates pricing.
+The 3D preview is scoped to `house-navy-hopsack-suit`. It is a client-only preview island that reads the same Zustand customizer state as the 2D selector and never calculates pricing. The asset set is geometry-first and intentionally stylized for a fast, editorial tailoring preview: shaped jacket shells, bent sleeves, tapered trousers, layered lapels, pockets, buttons, and an optional waistcoat.
 
-The preview is hidden by default behind `ENABLE_3D_CONFIGURATOR=true`. Keep this flag off until production-quality GLB assets replace the generated proof meshes.
-
-## Production GLB Assets Required
-
-This scaffold is not ready to expose to customers until real modular `.glb` assets are supplied. The generated proof files in `public/models/suit-configurator` exist only to validate loading, state mapping, fallback behavior, and performance measurement.
-
-Before enabling `ENABLE_3D_CONFIGURATOR=true`, replace the proof files with production-quality assets that satisfy the named mesh contract below.
+The preview is enabled by default for the supported House Suit; set `ENABLE_3D_CONFIGURATOR=false` to disable it, and the asset set covers the modular suit pieces needed by the customizer: mannequin, jacket shell, lapels, buttons, pockets, trousers, and the optional matching waistcoat.
 
 ## Runtime Contract
 
-- The 2D customizer remains the default preview.
-- The 3D tab is rendered only when `ENABLE_3D_CONFIGURATOR=true`.
-- The 3D bundle is lazy-loaded only after the user selects the `3D` preview tab.
+- The House Suit opens in 3D by default; unsupported products use 2D.
+- The 3D tab is available for supported products unless `ENABLE_3D_CONFIGURATOR=false`.
+- The 3D bundle loads when its tab is active, including the initial supported-product view.
 - Unsupported products, missing WebGL, reduced device capacity, or runtime errors fall back to the existing 2D preview.
 - The scene reads `useCustomizerStore()` for the active configuration and uses `src/features/customizer/three-d/asset-contract.ts` to map stable option codes to GLB assets and materials.
+- Asset metadata is centralized in `src/features/customizer/three-d/asset-manifest.json` so the app, Blender generator, and validator share the same mesh contract.
 - Business pricing stays in `src/features/customizer/pricing.ts`; the 3D scene receives only visual asset and material selections.
 
 ## Asset Layout
 
 ```text
+assets/suit-configurator/blender/
+  base/mannequin.blend
+  jackets/*.blend
+  lapels/*.blend
+  buttons/*.blend
+  pockets/*.blend
+  trousers/*.blend
+  vests/*.blend
+
 public/models/suit-configurator/
   base/mannequin.glb
   jackets/single-breasted-two-button.glb
@@ -33,43 +37,73 @@ public/models/suit-configurator/
   buttons/horn-buttons.glb
   buttons/smoked-pearl-buttons.glb
   buttons/covered-buttons.glb
+  pockets/straight-flap-pockets.glb
+  pockets/slanted-flap-pockets.glb
+  pockets/patch-pockets.glb
+  pockets/jetted-pockets.glb
+  trousers/side-adjusters.glb
+  trousers/belt-loops.glb
+  trousers/single-pleat-trousers.glb
+  trousers/brace-buttons.glb
+  vests/matching-waistcoat.glb
 ```
 
-The proof loads only the base mannequin plus the currently selected jacket, lapel, and button asset. Fabric changes reuse the selected geometry and swap materials in React Three Fiber.
+The runtime loads only the base mannequin plus the assets selected by the active configuration. Fabric changes reuse selected geometry and swap materials in React Three Fiber.
+
+## Material Slots
+
+Meshes that receive runtime colors must use these material names in Blender:
+
+| Slot                 | Runtime use                       |
+| -------------------- | --------------------------------- |
+| `Fabric_OverrideSlot` | Jacket, lapel, pocket, trouser, and vest fabric |
+| `Button_OverrideSlot` | Jacket buttons, brace buttons, and vest buttons |
+| `Lining_OverrideSlot` | Jacket and waistcoat lining surfaces |
+
+The scene also falls back to material-name detection for future assets, but explicit `materialSlots` in the manifest are preferred because they are validated.
 
 ## Named Meshes
 
-| Option code                  | GLB                                      | Required mesh names                                                                                             |
-| ---------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `house-mannequin-base`       | `base/mannequin.glb`                     | `Mannequin_Base`, `Mannequin_Head`, `Mannequin_Stand`                                                           |
-| `single-breasted-two-button` | `jackets/single-breasted-two-button.glb` | `Jacket_SingleBreastedTwoButton`, `Sleeve_Left_SingleBreastedTwoButton`, `Sleeve_Right_SingleBreastedTwoButton` |
-| `single-breasted-one-button` | `jackets/single-breasted-one-button.glb` | `Jacket_SingleBreastedOneButton`, `Sleeve_Left_SingleBreastedOneButton`, `Sleeve_Right_SingleBreastedOneButton` |
-| `double-breasted-six-button` | `jackets/double-breasted-six-button.glb` | `Jacket_DoubleBreastedSixButton`, `Sleeve_Left_DoubleBreastedSixButton`, `Sleeve_Right_DoubleBreastedSixButton` |
-| `notch-lapel`                | `lapels/notch-lapel.glb`                 | `Lapel_Left_Notch`, `Lapel_Right_Notch`                                                                         |
-| `peak-lapel`                 | `lapels/peak-lapel.glb`                  | `Lapel_Left_Peak`, `Lapel_Right_Peak`                                                                           |
-| `shawl-lapel`                | `lapels/shawl-lapel.glb`                 | `Lapel_Left_Shawl`, `Lapel_Right_Shawl`                                                                         |
-| `horn-buttons`               | `buttons/horn-buttons.glb`               | `Buttons_Horn_1`, `Buttons_Horn_2`                                                                              |
-| `smoked-pearl-buttons`       | `buttons/smoked-pearl-buttons.glb`       | `Buttons_SmokedPearl_1`, `Buttons_SmokedPearl_2`                                                                |
-| `covered-buttons`            | `buttons/covered-buttons.glb`            | `Buttons_Covered_1`, `Buttons_Covered_2`, `Buttons_Covered_3`, `Buttons_Covered_4`                              |
+The source of truth is `src/features/customizer/three-d/asset-manifest.json`. The validator checks each GLB for the root node, required mesh nodes, and expected material slots.
 
-## Blender Export Workflow
+| Option code | GLB | Required mesh names |
+| --- | --- | --- |
+| `house-mannequin-base` | `base/mannequin.glb` | `Mannequin_Base`, `Mannequin_Head`, `Mannequin_Stand` |
+| `single-breasted-two-button` | `jackets/single-breasted-two-button.glb` | `Jacket_SingleBreastedTwoButton`, `Sleeve_Left_SingleBreastedTwoButton`, `Sleeve_Right_SingleBreastedTwoButton`, `Lining_Jacket_SingleBreastedTwoButton` |
+| `single-breasted-one-button` | `jackets/single-breasted-one-button.glb` | `Jacket_SingleBreastedOneButton`, `Sleeve_Left_SingleBreastedOneButton`, `Sleeve_Right_SingleBreastedOneButton`, `Lining_Jacket_SingleBreastedOneButton` |
+| `double-breasted-six-button` | `jackets/double-breasted-six-button.glb` | `Jacket_DoubleBreastedSixButton`, `Sleeve_Left_DoubleBreastedSixButton`, `Sleeve_Right_DoubleBreastedSixButton`, `Lining_Jacket_DoubleBreastedSixButton` |
+| `notch-lapel` | `lapels/notch-lapel.glb` | `Lapel_Left_Notch`, `Lapel_Right_Notch` |
+| `peak-lapel` | `lapels/peak-lapel.glb` | `Lapel_Left_Peak`, `Lapel_Right_Peak` |
+| `shawl-lapel` | `lapels/shawl-lapel.glb` | `Lapel_Left_Shawl`, `Lapel_Right_Shawl` |
+| `horn-buttons` | `buttons/horn-buttons.glb` | `Buttons_Horn_1`, `Buttons_Horn_2` |
+| `smoked-pearl-buttons` | `buttons/smoked-pearl-buttons.glb` | `Buttons_SmokedPearl_1`, `Buttons_SmokedPearl_2` |
+| `covered-buttons` | `buttons/covered-buttons.glb` | `Buttons_Covered_1`, `Buttons_Covered_2`, `Buttons_Covered_3`, `Buttons_Covered_4` |
+| `straight-flap-pockets` | `pockets/straight-flap-pockets.glb` | `Pocket_Left_StraightFlap`, `Pocket_Right_StraightFlap` |
+| `slanted-flap-pockets` | `pockets/slanted-flap-pockets.glb` | `Pocket_Left_SlantedFlap`, `Pocket_Right_SlantedFlap` |
+| `patch-pockets` | `pockets/patch-pockets.glb` | `Pocket_Left_Patch`, `Pocket_Right_Patch` |
+| `jetted-pockets` | `pockets/jetted-pockets.glb` | `Pocket_Left_Jetted`, `Pocket_Right_Jetted` |
+| `side-adjusters` | `trousers/side-adjusters.glb` | `Trouser_Left_SideAdjusters`, `Trouser_Right_SideAdjusters`, `Waistband_SideAdjusters` |
+| `belt-loops` | `trousers/belt-loops.glb` | `Trouser_Left_BeltLoops`, `Trouser_Right_BeltLoops`, `Waistband_BeltLoops`, `BeltLoop_Left_BeltLoops`, `BeltLoop_Right_BeltLoops` |
+| `single-pleat-trousers` | `trousers/single-pleat-trousers.glb` | `Trouser_Left_SinglePleat`, `Trouser_Right_SinglePleat`, `Waistband_SinglePleat`, `Pleat_Left_SinglePleat`, `Pleat_Right_SinglePleat` |
+| `brace-buttons` | `trousers/brace-buttons.glb` | `Trouser_Left_BraceButtons`, `Trouser_Right_BraceButtons`, `Waistband_BraceButtons`, `BraceButton_Left_BraceButtons`, `BraceButton_Right_BraceButtons` |
+| `matching-waistcoat` | `vests/matching-waistcoat.glb` | `Vest_MatchingWaistcoat`, `Vest_Lining_MatchingWaistcoat`, `Vest_Button_1`, `Vest_Button_2`, `Vest_Button_3`, `Vest_Button_4`, `Vest_Button_5` |
 
-1. Model each suit component as a separate collection matching the modular asset type: `base`, `jacket`, `lapel`, or `buttons`.
-2. Name every renderable mesh exactly as listed in the contract. Keep parent collection names aligned with `rootNodeName` values in `asset-contract.ts`.
-3. Apply transforms before export: `Ctrl+A` then rotation, scale, and location where appropriate.
-4. Keep origin points consistent at world center so modular files align when loaded together.
-5. Use a shared material slot named `Fabric_OverrideSlot` for jacket and lapel meshes that should receive runtime fabric color.
-6. Use a shared material slot named `Button_OverrideSlot` for button meshes that should receive runtime button material.
-7. Reduce polygon count before export where silhouette quality is unchanged. Prefer clean topology and normal smoothing over dense subdivision.
-8. Compress raster textures before export. Prefer 1K textures for proof assets and only use 2K where close-up detail requires it.
-9. Evaluate KTX2 textures once real fabric textures are introduced. Keep the proof color-only until texture benchmarks justify the payload.
-10. Export as glTF binary (`.glb`) with selected objects only, visible objects only, +Y up, and no embedded cameras or lights.
-11. Run `pnpm assets:3d:poc` only to regenerate placeholder proof assets. Production Blender exports should replace the matching files directly.
+## Blender Workflow
 
-## Compression Plan
+1. Edit `src/features/customizer/three-d/asset-manifest.json` first when adding or renaming an asset.
+2. Run `pnpm assets:3d:generate` to create `.blend` source files and exported `.glb` files from Blender.
+3. Run `pnpm assets:3d:validate` to verify source files, exported root nodes, required mesh names, and material slots.
+4. Keep origins aligned at world center so modular GLBs stack without per-option transforms.
+5. Apply transforms before export. The generator does this automatically for generated meshes.
+6. Export glTF binary (`.glb`) with selected objects only, visible objects only, no cameras, and no lights.
+7. Keep the geometry color-only until fabric textures justify the extra payload.
 
-- Current proof assets are uncompressed GLB files because they are geometry-only and small.
-- Evaluate Draco and Meshopt after real Blender assets land. Benchmark both with the same selected default load set and compare:
+## Visual Quality And Compression
+
+- The Blender source uses layered, reusable geometry rather than primitive boxes so each option remains swappable without a monolithic model.
+- Runtime materials add a small procedural weave texture and studio lighting while keeping the GLBs texture-free and fast to load.
+- Current Blender assets are uncompressed GLB files because the selected load path remains small enough without a decode cost.
+- Evaluate Draco and Meshopt after real fabric textures or denser production meshes land. Benchmark both with the same selected default load set and compare:
   - initial 3D tab time to first rendered frame,
   - total transferred bytes,
   - decode time on a mid-range mobile device,
@@ -78,4 +112,6 @@ The proof loads only the base mannequin plus the currently selected jacket, lape
 
 ## Incremental Scope
 
-After this proof is stable, add trousers, pockets, vest options, lining, and additional fabrics as separate GLB modules. Add environment maps, camera presets, and screenshot generation after the expanded asset contract remains stable.
+Future improvements can add real cloth topology, fabric normal/roughness maps, lining choices, cuff buttonhole geometry, monogram placement, environment maps, camera presets, and screenshot generation. Keep each addition modular and update the manifest before changing runtime loading behavior.
+
+See [Broad tailoring catalog](tailoring-catalog.md) for the new Details step, maker-review requirements, and precise preview coverage.

@@ -1,6 +1,10 @@
 import type { CustomizerConfiguration } from "@/features/customizer/types";
 
+import assetManifest from "./asset-manifest.json";
+
 export const SUIT_3D_PRODUCT_SLUG = "house-navy-hopsack-suit";
+
+export type Suit3dMaterialSlotName = "fabric" | "button" | "lining";
 
 export type Suit3dModelAsset = {
   code: string;
@@ -8,6 +12,7 @@ export type Suit3dModelAsset = {
   url: string;
   rootNodeName: string;
   meshNames: string[];
+  materialSlots?: Partial<Record<Suit3dMaterialSlotName, string[]>>;
 };
 
 export type Suit3dMaterial = {
@@ -27,122 +32,59 @@ export type Suit3dAssetSelection = {
     jacket: Suit3dModelAsset;
     lapel: Suit3dModelAsset;
     buttons: Suit3dModelAsset;
+    pockets: Suit3dModelAsset;
+    trousers: Suit3dModelAsset;
+    vest: Suit3dModelAsset | null;
   };
   fabricMaterial: Suit3dMaterial;
+  trouserMaterial: Suit3dMaterial;
+  vestMaterial: Suit3dMaterial;
+  lapelMaterial: Suit3dMaterial;
+  trouserDetails: { waist: string; pleats: string } | null;
   buttonMaterial: Suit3dMaterial;
+  liningMaterial: Suit3dMaterial;
   selectedCodes: {
     fabric: string;
     jacket: string;
     lapel: string;
     buttons: string;
+    pockets: string;
+    trousers: string;
+    vest: string | null;
   };
 };
 
-const modelRoot = "/models/suit-configurator";
-
-export const BASE_BODY_ASSET: Suit3dModelAsset = {
-  code: "house-mannequin-base",
-  label: "Base mannequin",
-  url: `${modelRoot}/base/mannequin.glb`,
-  rootNodeName: "HouseSuit_Base_Mannequin",
-  meshNames: ["Mannequin_Base", "Mannequin_Head", "Mannequin_Stand"],
+type Suit3dManifestAsset = Omit<Suit3dModelAsset, "url"> & {
+  path: string;
 };
 
-export const JACKET_ASSETS = {
-  "single-breasted-two-button": {
-    code: "single-breasted-two-button",
-    label: "Two-button single-breasted",
-    url: `${modelRoot}/jackets/single-breasted-two-button.glb`,
-    rootNodeName: "Jacket_SingleBreastedTwoButton_Root",
-    meshNames: [
-      "Jacket_SingleBreastedTwoButton",
-      "Sleeve_Left_SingleBreastedTwoButton",
-      "Sleeve_Right_SingleBreastedTwoButton",
-    ],
-  },
-  "single-breasted-one-button": {
-    code: "single-breasted-one-button",
-    label: "One-button evening",
-    url: `${modelRoot}/jackets/single-breasted-one-button.glb`,
-    rootNodeName: "Jacket_SingleBreastedOneButton_Root",
-    meshNames: [
-      "Jacket_SingleBreastedOneButton",
-      "Sleeve_Left_SingleBreastedOneButton",
-      "Sleeve_Right_SingleBreastedOneButton",
-    ],
-  },
-  "double-breasted-six-button": {
-    code: "double-breasted-six-button",
-    label: "Six-button double-breasted",
-    url: `${modelRoot}/jackets/double-breasted-six-button.glb`,
-    rootNodeName: "Jacket_DoubleBreastedSixButton_Root",
-    meshNames: [
-      "Jacket_DoubleBreastedSixButton",
-      "Sleeve_Left_DoubleBreastedSixButton",
-      "Sleeve_Right_DoubleBreastedSixButton",
-    ],
-  },
-} satisfies Record<string, Suit3dModelAsset>;
+type Suit3dAssetManifest = {
+  base: Suit3dManifestAsset;
+  jackets: Record<string, Suit3dManifestAsset>;
+  lapels: Record<string, Suit3dManifestAsset>;
+  buttons: Record<string, Suit3dManifestAsset>;
+  pockets: Record<string, Suit3dManifestAsset>;
+  trousers: Record<string, Suit3dManifestAsset>;
+  vests: Record<string, Suit3dManifestAsset>;
+};
 
-export const LAPEL_ASSETS = {
-  "notch-lapel": {
-    code: "notch-lapel",
-    label: "Notch lapel",
-    url: `${modelRoot}/lapels/notch-lapel.glb`,
-    rootNodeName: "Lapel_Notch_Root",
-    meshNames: ["Lapel_Left_Notch", "Lapel_Right_Notch"],
-  },
-  "peak-lapel": {
-    code: "peak-lapel",
-    label: "Peak lapel",
-    url: `${modelRoot}/lapels/peak-lapel.glb`,
-    rootNodeName: "Lapel_Peak_Root",
-    meshNames: ["Lapel_Left_Peak", "Lapel_Right_Peak"],
-  },
-  "shawl-lapel": {
-    code: "shawl-lapel",
-    label: "Shawl lapel",
-    url: `${modelRoot}/lapels/shawl-lapel.glb`,
-    rootNodeName: "Lapel_Shawl_Root",
-    meshNames: ["Lapel_Left_Shawl", "Lapel_Right_Shawl"],
-  },
-} satisfies Record<string, Suit3dModelAsset>;
+const typedAssetManifest = assetManifest as Suit3dAssetManifest;
+const modelRoot = "/models/suit-configurator";
 
-export const BUTTON_ASSETS = {
-  "horn-buttons": {
-    code: "horn-buttons",
-    label: "Dark horn",
-    url: `${modelRoot}/buttons/horn-buttons.glb`,
-    rootNodeName: "Buttons_Horn_Root",
-    meshNames: ["Buttons_Horn_1", "Buttons_Horn_2"],
-  },
-  "smoked-pearl-buttons": {
-    code: "smoked-pearl-buttons",
-    label: "Smoked pearl",
-    url: `${modelRoot}/buttons/smoked-pearl-buttons.glb`,
-    rootNodeName: "Buttons_SmokedPearl_Root",
-    meshNames: ["Buttons_SmokedPearl_1", "Buttons_SmokedPearl_2"],
-  },
-  "covered-buttons": {
-    code: "covered-buttons",
-    label: "Self-covered",
-    url: `${modelRoot}/buttons/covered-buttons.glb`,
-    rootNodeName: "Buttons_Covered_Root",
-    meshNames: [
-      "Buttons_Covered_1",
-      "Buttons_Covered_2",
-      "Buttons_Covered_3",
-      "Buttons_Covered_4",
-    ],
-  },
-} satisfies Record<string, Suit3dModelAsset>;
+export const BASE_BODY_ASSET = withModelUrl(typedAssetManifest.base);
+export const JACKET_ASSETS = mapManifestAssets(typedAssetManifest.jackets);
+export const LAPEL_ASSETS = mapManifestAssets(typedAssetManifest.lapels);
+export const BUTTON_ASSETS = mapManifestAssets(typedAssetManifest.buttons);
+export const POCKET_ASSETS = mapManifestAssets(typedAssetManifest.pockets);
+export const TROUSER_ASSETS = mapManifestAssets(typedAssetManifest.trousers);
+export const VEST_ASSETS = mapManifestAssets(typedAssetManifest.vests);
 
 export const FABRIC_MATERIALS = {
   "navy-hopsack": {
     code: "navy-hopsack",
     label: "Midnight Navy",
     materialName: "Fabric_MidnightNavyHopsack",
-    color: "#17213b",
+    color: "#344860",
     roughness: 0.82,
     metalness: 0.02,
   },
@@ -215,11 +157,25 @@ export const BUTTON_MATERIALS = {
   },
 } satisfies Record<string, Suit3dMaterial>;
 
+export const LINING_MATERIALS = {
+  "midnight-bemberg": {
+    code: "midnight-bemberg",
+    label: "Midnight lining",
+    materialName: "Lining_MidnightBemberg",
+    color: "#111827",
+    roughness: 0.62,
+    metalness: 0.01,
+  },
+} satisfies Record<string, Suit3dMaterial>;
+
 const fallbackCodes = {
   jacket: "single-breasted-two-button",
   lapel: "notch-lapel",
   buttons: "horn-buttons",
+  pockets: "straight-flap-pockets",
+  trousers: "side-adjusters",
   fabric: "navy-hopsack",
+  lining: "midnight-bemberg",
 } as const;
 
 export function getSuit3dAssetSelection(
@@ -243,18 +199,91 @@ export function getSuit3dAssetSelection(
     BUTTON_ASSETS,
     fallbackCodes.buttons,
   );
+  const pocketCode = getSupportedSelection(
+    configuration,
+    "pockets",
+    POCKET_ASSETS,
+    fallbackCodes.pockets,
+  );
+  const trouserCode = getSupportedSelection(
+    configuration,
+    "trousers",
+    TROUSER_ASSETS,
+    fallbackCodes.trousers,
+  );
+  const referenceVestCode = getSupportedOptionalSelection(
+    configuration,
+    "extras",
+    VEST_ASSETS,
+  );
+  const vestCode =
+    configuration.tailoring?.choices["waistcoat-presence"] === "yes"
+      ? "matching-waistcoat"
+      : configuration.tailoring?.choices["waistcoat-presence"] === "no"
+        ? null
+        : referenceVestCode;
   const fabricMaterial =
     getKnownMaterial(FABRIC_MATERIALS, configuration.fabricCode) ??
     FABRIC_MATERIALS[fallbackCodes.fabric];
+  const configuredButtonMaterial =
+    getKnownMaterial(BUTTON_MATERIALS, buttonCode) ??
+    BUTTON_MATERIALS[fallbackCodes.buttons];
   const buttonMaterial =
     buttonCode === "covered-buttons"
       ? {
-          ...BUTTON_MATERIALS[buttonCode],
+          ...configuredButtonMaterial,
           color: fabricMaterial.color,
           roughness: fabricMaterial.roughness,
           metalness: fabricMaterial.metalness,
         }
-      : BUTTON_MATERIALS[buttonCode];
+      : configuredButtonMaterial;
+  const requests = configuration.tailoring?.choices ?? {};
+  const liningColors: Record<string, string> = {
+    navy: "#111827",
+    burgundy: "#602d3e",
+    ivory: "#e1d6be",
+    black: "#161616",
+    forest: "#244438",
+  };
+  const liningMaterial =
+    requests["lining-color"] && liningColors[requests["lining-color"]]
+      ? {
+          ...LINING_MATERIALS[fallbackCodes.lining],
+          code: requests["lining-color"],
+          color: liningColors[requests["lining-color"]],
+        }
+      : LINING_MATERIALS[fallbackCodes.lining];
+  const trouserMaterial =
+    getKnownMaterial(FABRIC_MATERIALS, requests["trouser-cloth"]) ??
+    fabricMaterial;
+  const vestMaterial =
+    getKnownMaterial(FABRIC_MATERIALS, requests["waistcoat-cloth"]) ??
+    fabricMaterial;
+  const facing = requests["lapel-facing"];
+  const lapelMaterial =
+    facing && facing !== "self"
+      ? {
+          ...fabricMaterial,
+          code: facing,
+          materialName: "Facing_" + facing,
+          color: facing === "midnight-satin" ? "#111829" : "#151515",
+          roughness: facing.includes("satin") ? 0.3 : 0.65,
+          metalness: 0,
+        }
+      : fabricMaterial;
+  const trouserDetails =
+    requests["waist-treatment"] || requests.pleats
+      ? {
+          waist:
+            requests["waist-treatment"] ??
+            (trouserCode === "belt-loops" || trouserCode === "side-adjusters"
+              ? trouserCode
+              : "plain"),
+          pleats:
+            requests.pleats ??
+            (trouserCode === "single-pleat-trousers" ? "single" : "flat"),
+        }
+      : null;
 
   return {
     supportedProduct: configuration.productSlug === SUIT_3D_PRODUCT_SLUG,
@@ -264,14 +293,25 @@ export function getSuit3dAssetSelection(
       jacket: JACKET_ASSETS[jacketCode],
       lapel: LAPEL_ASSETS[lapelCode],
       buttons: BUTTON_ASSETS[buttonCode],
+      pockets: POCKET_ASSETS[pocketCode],
+      trousers: TROUSER_ASSETS[trouserCode],
+      vest: vestCode ? VEST_ASSETS[vestCode] : null,
     },
     fabricMaterial,
+    trouserMaterial,
+    vestMaterial,
+    lapelMaterial,
+    trouserDetails,
     buttonMaterial,
+    liningMaterial,
     selectedCodes: {
       fabric: fabricMaterial.code,
       jacket: jacketCode,
       lapel: lapelCode,
       buttons: buttonCode,
+      pockets: pocketCode,
+      trousers: trouserCode,
+      vest: vestCode,
     },
   };
 }
@@ -283,8 +323,26 @@ export function getSuit3dAssetUrls(selection: Suit3dAssetSelection) {
       selection.assets.jacket.url,
       selection.assets.lapel.url,
       selection.assets.buttons.url,
+      selection.assets.pockets.url,
+      selection.assets.trousers.url,
+      selection.assets.vest?.url,
     ]),
-  );
+  ).filter((url): url is string => Boolean(url));
+}
+
+function withModelUrl(asset: Suit3dManifestAsset): Suit3dModelAsset {
+  const { path, ...modelAsset } = asset;
+
+  return {
+    ...modelAsset,
+    url: `${modelRoot}/${path}`,
+  };
+}
+
+function mapManifestAssets(assets: Record<string, Suit3dManifestAsset>) {
+  return Object.fromEntries(
+    Object.entries(assets).map(([code, asset]) => [code, withModelUrl(asset)]),
+  ) as Record<string, Suit3dModelAsset>;
 }
 
 function getSupportedSelection<T extends Record<string, unknown>>(
@@ -297,6 +355,18 @@ function getSupportedSelection<T extends Record<string, unknown>>(
     configuration.selectedOptionCodes[groupCode]?.find(
       (code): code is Extract<keyof T, string> => code in supportedOptions,
     ) ?? fallbackCode
+  );
+}
+
+function getSupportedOptionalSelection<T extends Record<string, unknown>>(
+  configuration: CustomizerConfiguration,
+  groupCode: keyof CustomizerConfiguration["selectedOptionCodes"],
+  supportedOptions: T,
+): Extract<keyof T, string> | null {
+  return (
+    configuration.selectedOptionCodes[groupCode]?.find(
+      (code): code is Extract<keyof T, string> => code in supportedOptions,
+    ) ?? null
   );
 }
 

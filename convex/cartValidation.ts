@@ -1,3 +1,9 @@
+import {
+  tailoringValidationError,
+  hasTailoringRequests,
+  type TailoringSpecification,
+} from "../src/features/customizer/tailoring";
+import { tailoringValidator } from "./tailoringValidation";
 import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -14,6 +20,7 @@ export const configurationValidator = v.object({
   productSlug: v.string(),
   fabricCode: v.string(),
   selectedOptionCodes: v.record(v.string(), v.array(v.string())),
+  tailoring: v.optional(tailoringValidator),
   personalization: personalizationValidator,
 });
 
@@ -31,6 +38,7 @@ export type CartConfiguration = {
   productSlug: string;
   fabricCode: string;
   selectedOptionCodes: Record<string, string[]>;
+  tailoring?: TailoringSpecification;
   personalization: {
     monogramText: string;
     notes: string;
@@ -97,6 +105,15 @@ export async function validateConfigurationSnapshot(
   }
 
   validatePersonalization(configuration);
+  const tailoringError = tailoringValidationError(
+    configuration.tailoring,
+    configuration.selectedOptionCodes,
+  );
+  if (tailoringError) throw new ConvexError(tailoringError);
+  if (hasTailoringRequests(configuration.tailoring))
+    throw new ConvexError(
+      "Tailoring requests require a maker quote before adding to cart.",
+    );
 
   const selections: ValidatedConfiguration["selections"] = [
     {
@@ -343,7 +360,7 @@ function getUnavailableReason(
     const selectedCodes =
       groupCode === "fabric"
         ? [configuration.fabricCode]
-        : configuration.selectedOptionCodes[groupCode] ?? [];
+        : (configuration.selectedOptionCodes[groupCode] ?? []);
     const hasMatchingSelection = optionCodes.some((code) =>
       selectedCodes.includes(code),
     );

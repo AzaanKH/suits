@@ -1,0 +1,350 @@
+{
+  "single_button_0": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "single_button_1": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "single_button_2": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "single_button_3": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "single_button_4": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "single_button_5": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "single_shirt_7": {
+    "vertices": 11416,
+    "triangles": 22272
+  },
+  "single_buttonhole": {
+    "vertices": 120,
+    "triangles": 192
+  },
+  "single_button_10": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "single_button_11": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "trousers": {
+    "vertices": 32311,
+    "triangles": 64256
+  },
+  "single_cuff_13": {
+    "vertices": 1248,
+    "triangles": 2304
+  },
+  "single_cuff_14": {
+    "vertices": 1248,
+    "triangles": 2304
+  },
+  "single_collar": {
+    "vertices": 2105,
+    "triangles": 4032
+  },
+  "single_body": {
+    "vertices": 55746,
+    "triangles": 110272
+  },
+  "single_lapel_notch": {
+    "vertices": 5525,
+    "triangles": 10560
+  },
+  "single_breast": {
+    "vertices": 2158,
+    "triangles": 4192
+  },
+  "single_pocket_flap": {
+    "vertices": 1394,
+    "triangles": 2624
+  },
+  "single_lapel_peak": {
+    "vertices": 5525,
+    "triangles": 10560
+  },
+  "single_lapel_shawl": {
+    "vertices": 5525,
+    "triangles": 10560
+  },
+  "single_pocket_slanted": {
+    "vertices": 1394,
+    "triangles": 2624
+  },
+  "single_pocket_welt": {
+    "vertices": 1394,
+    "triangles": 2624
+  },
+  "single_pocket_patch": {
+    "vertices": 1394,
+    "triangles": 2624
+  },
+  "double_button_1": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_2": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_3": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_4": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_5": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_6": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_7": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_8": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_9": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_10": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_collar": {
+    "vertices": 1821,
+    "triangles": 3456
+  },
+  "double_shirt_13": {
+    "vertices": 1765,
+    "triangles": 3328
+  },
+  "double_shirt_14": {
+    "vertices": 7808,
+    "triangles": 15168
+  },
+  "double_cuff_15": {
+    "vertices": 1248,
+    "triangles": 2304
+  },
+  "double_cuff_16": {
+    "vertices": 1248,
+    "triangles": 2304
+  },
+  "double_body": {
+    "vertices": 20151,
+    "triangles": 39680
+  },
+  "double_lapel_notch": {
+    "vertices": 4230,
+    "triangles": 8096
+  },
+  "double_lapel_peak": {
+    "vertices": 4230,
+    "triangles": 8096
+  },
+  "double_lapel_shawl": {
+    "vertices": 4230,
+    "triangles": 8096
+  },
+  "dinner_button_0": {
+    "vertices": 839,
+    "triangles": 1648
+  },
+  "dinner_button_1": {
+    "vertices": 839,
+    "triangles": 1648
+  },
+  "dinner_button_2": {
+    "vertices": 839,
+    "triangles": 1648
+  },
+  "dinner_button_3": {
+    "vertices": 839,
+    "triangles": 1648
+  },
+  "dinner_button_4": {
+    "vertices": 839,
+    "triangles": 1648
+  },
+  "dinner_button_5": {
+    "vertices": 839,
+    "triangles": 1648
+  },
+  "dinner_button_6": {
+    "vertices": 839,
+    "triangles": 1648
+  },
+  "dinner_button_7": {
+    "vertices": 839,
+    "triangles": 1648
+  },
+  "dinner_shirt_11": {
+    "vertices": 3213,
+    "triangles": 6208
+  },
+  "dinner_shirt_12": {
+    "vertices": 7825,
+    "triangles": 15168
+  },
+  "dinner_button_14": {
+    "vertices": 839,
+    "triangles": 1648
+  },
+  "dinner_pocket_flap": {
+    "vertices": 2226,
+    "triangles": 4352
+  },
+  "dinner_body": {
+    "vertices": 30546,
+    "triangles": 60160
+  },
+  "dinner_cuff": {
+    "vertices": 1584,
+    "triangles": 2880
+  },
+  "dinner_breast": {
+    "vertices": 812,
+    "triangles": 1536
+  },
+  "dinner_lapel_shawl": {
+    "vertices": 8481,
+    "triangles": 16384
+  },
+  "dinner_pocket_slanted": {
+    "vertices": 2226,
+    "triangles": 4352
+  },
+  "dinner_pocket_welt": {
+    "vertices": 2226,
+    "triangles": 4352
+  },
+  "dinner_pocket_patch": {
+    "vertices": 2226,
+    "triangles": 4352
+  },
+  "double_pocket_flap": {
+    "vertices": 1394,
+    "triangles": 2624
+  },
+  "double_pocket_welt": {
+    "vertices": 1394,
+    "triangles": 2624
+  },
+  "double_pocket_patch": {
+    "vertices": 1394,
+    "triangles": 2624
+  },
+  "double_pocket_slanted": {
+    "vertices": 1394,
+    "triangles": 2624
+  },
+  "double_button_upper_9": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "double_button_upper_10": {
+    "vertices": 249,
+    "triangles": 480
+  },
+  "waistcoat": {
+    "vertices": 8112,
+    "triangles": 12168
+  },
+  "shirt_button_0": {
+    "vertices": 86,
+    "triangles": 168
+  },
+  "shirt_button_1": {
+    "vertices": 86,
+    "triangles": 168
+  },
+  "shirt_button_2": {
+    "vertices": 86,
+    "triangles": 168
+  },
+  "vest_button_0": {
+    "vertices": 86,
+    "triangles": 168
+  },
+  "vest_button_1": {
+    "vertices": 86,
+    "triangles": 168
+  },
+  "vest_button_2": {
+    "vertices": 86,
+    "triangles": 168
+  },
+  "vest_button_3": {
+    "vertices": 86,
+    "triangles": 168
+  },
+  "vest_button_4": {
+    "vertices": 86,
+    "triangles": 168
+  },
+  "pleat_-1_0": {
+    "vertices": 250,
+    "triangles": 480
+  },
+  "pleat_-1_1": {
+    "vertices": 250,
+    "triangles": 480
+  },
+  "pleat_1_0": {
+    "vertices": 250,
+    "triangles": 480
+  },
+  "pleat_1_1": {
+    "vertices": 250,
+    "triangles": 480
+  },
+  "waist_loop_0": {
+    "vertices": 96,
+    "triangles": 188
+  },
+  "waist_loop_1": {
+    "vertices": 96,
+    "triangles": 188
+  },
+  "waist_loop_2": {
+    "vertices": 96,
+    "triangles": 188
+  },
+  "waist_loop_3": {
+    "vertices": 96,
+    "triangles": 188
+  },
+  "waist_loop_4": {
+    "vertices": 96,
+    "triangles": 188
+  },
+  "waist_adjuster_-1": {
+    "vertices": 96,
+    "triangles": 188
+  },
+  "waist_adjuster_1": {
+    "vertices": 96,
+    "triangles": 188
+  }
+}

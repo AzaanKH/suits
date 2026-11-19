@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, Ruler, Truck } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Palette,
+  ReceiptText,
+  Ruler,
+  ShoppingBag,
+  Truck,
+} from "lucide-react";
 import { useQuery } from "convex/react";
 
 import { api } from "../../../convex/_generated/api";
@@ -10,6 +19,24 @@ import { EmptyState } from "@/components/storefront/empty-state";
 import { ProductImageGallery } from "@/components/storefront/product-image-gallery";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatBasePrice, formatPriceModifier } from "@/lib/product-format";
+
+const purchasePath = [
+  {
+    icon: Palette,
+    title: "Customize details",
+    description: "Choose cloth, lapel, pockets, buttons, trousers, and extras.",
+  },
+  {
+    icon: Ruler,
+    title: "Select fit",
+    description: "Use standard sizing or a made-to-measure profile.",
+  },
+  {
+    icon: ShoppingBag,
+    title: "Review and cart",
+    description: "Confirm the full configuration before checkout.",
+  },
+];
 
 export function ProductDetail({ slug }: { slug: string }) {
   const product = useQuery(api.products.bySlug, { slug });
@@ -65,7 +92,50 @@ export function ProductDetail({ slug }: { slug: string }) {
               {product.fullDescription}
             </p>
 
-            <div className="border-border mt-8 grid gap-4 border-y py-6 sm:grid-cols-2">
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {purchasePath.map(({ icon: Icon, title, description }) => (
+                <div className="border-border border-t pt-4" key={title}>
+                  <Icon
+                    aria-hidden="true"
+                    className="text-accent-strong mt-0.5 size-5 shrink-0"
+                  />
+                  <p className="text-ink mt-3 text-sm font-bold">{title}</p>
+                  <p className="text-muted-foreground mt-1 text-sm leading-5">
+                    {description}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-border mt-8 grid gap-4 border-y py-6 sm:grid-cols-3">
+              <div className="flex gap-3">
+                <Truck
+                  aria-hidden="true"
+                  className="text-accent-strong mt-0.5 size-5 shrink-0"
+                />
+                <div>
+                  <p className="text-ink text-sm font-bold">
+                    Delivered in 4-6 weeks
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-sm leading-5">
+                    Timing is confirmed after fit review.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <ReceiptText
+                  aria-hidden="true"
+                  className="text-accent-strong mt-0.5 size-5 shrink-0"
+                />
+                <div>
+                  <p className="text-ink text-sm font-bold">
+                    Live price review
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-sm leading-5">
+                    See base price and modifiers before cart.
+                  </p>
+                </div>
+              </div>
               <div className="flex gap-3">
                 <Ruler
                   aria-hidden="true"
@@ -74,33 +144,24 @@ export function ProductDetail({ slug }: { slug: string }) {
                 <div>
                   <p className="text-ink text-sm font-bold">Fit your way</p>
                   <p className="text-muted-foreground mt-1 text-sm leading-5">
-                    Order standard sizing or made to measure.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <Truck
-                  aria-hidden="true"
-                  className="text-accent-strong mt-0.5 size-5 shrink-0"
-                />
-                <div>
-                  <p className="text-ink text-sm font-bold">
-              Delivered in 4-6 weeks
-                  </p>
-                  <p className="text-muted-foreground mt-1 text-sm leading-5">
-                    Timing is confirmed after fit review.
+                    Standard sizing or made to measure.
                   </p>
                 </div>
               </div>
             </div>
 
-            <Link
-              className="button-primary mt-8 w-full sm:w-auto"
-              href={`/customize/${product.slug}`}
-            >
-              Begin customization
-              <ArrowRight aria-hidden="true" className="size-4" />
-            </Link>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                className="button-primary w-full sm:w-auto"
+                href={`/customize/${product.slug}`}
+              >
+                Begin customization
+                <ArrowRight aria-hidden="true" className="size-4" />
+              </Link>
+              <Link className="button-secondary w-full sm:w-auto" href="/shop">
+                Compare suits
+              </Link>
+            </div>
             <p className="text-muted-foreground mt-3 text-xs leading-5">
               Customize details online, then choose Standard Fit or Made to
               Measure before adding to cart.

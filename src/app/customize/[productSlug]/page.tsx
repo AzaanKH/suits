@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default async function CustomizePage({ params }: CustomizePageProps) {
   const { productSlug } = await params;
   const threeDimensionalPreviewEnabled =
-    process.env.ENABLE_3D_CONFIGURATOR === "true";
+    process.env.ENABLE_3D_CONFIGURATOR !== "false";
 
   return (
     <SuitCustomizer

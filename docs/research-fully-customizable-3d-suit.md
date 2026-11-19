@@ -1,0 +1,81 @@
+# Research for a fully customizable 3D suit
+
+Researched October 3, 2026. This is a proposed production approach, not a claim that the current model implements these capabilities. Tool comparisons below are recommendations based on the cited documentation, not comparative benchmarks.
+
+Use Blender to prepare the interactive suit assets, and keep the existing Three.js / React Three Fiber viewer. For a suit that must also correspond to real sewing patterns and realistic drape, author the garment in CLO before preparing it in Blender. Blender alone is a practical route for a visual configurator, provided the model receives careful garment modeling and visual review.
+
+“Fully customizable” needs a defined catalog. It should mean every supported design, material, construction, and measurement choice is represented consistently in the preview and order. It cannot mean every imaginable shape or combination is automatically sewable. Proper Cloth explicitly limits custom orders to its supported options. [Proper Cloth's customization policy](https://propercloth.com/reference/special-request-for-new-design-options/)
+
+There are three different deliverables:
+
+- A style preview shows the selected fabric, lapels, pockets, buttons, and other details on a reference body.
+- A measurement preview changes proportions within a tested range. It illustrates sizing without proving fit.
+- A fit and production system modifies sewing patterns, accounts for ease and fabric mechanics, and validates the garment on the intended body. This requires patternmaking expertise and sample validation.
+
+| Tool | Recommended role | Limits and selection criteria |
+| --- | --- | --- |
+| Blender | Model editing, separate parts, UV mapping, material preparation, shape controls, automated exports | Best fit for this project's asset preparation. It does not supply the suit catalog, tailoring rules, or a browser configurator by itself. |
+| CLO | Pattern-based suit authoring, sewn garment simulation, reusable garment blocks | Preferred addition when clothing construction and drape matter. Keep native pattern files as well as web exports. Licensing and automation arrangements need checking for the intended deployment. |
+| Marvelous Designer | Simulated clothing asset creation and mesh preparation | A credible alternative for an artist creating visual garments. I would evaluate CLO first for a tailoring and production workflow. |
+| Browzwear VStitcher | Pattern development, grading, fit review, and production documentation | Consider when a manufacturer already uses it or needs its production workflow. It does not remove the need for our customer-facing application. |
+| Three.js / React Three Fiber | Interactive browser display, material changes, geometry selection, camera controls | Already present in this repository. It consumes prepared assets; exporting a garment does not export a tailoring application. |
+
+Blender documents glTF export and shape-key animation. CLO documents both custom modular blocks and GLB export with multiple objects, thickness, and UV options. Marvelous Designer documents simulation and retopology improvements. Browzwear documents pattern drafting, grading, simulation, and tech packs. [Blender exporter](https://docs.blender.org/manual/en/4.4/addons/import_export/scene_gltf2.html), [CLO blocks](https://support.clo3d.com/hc/en-us/articles/115015824287-Create-Custom-Blocks), [CLO export](https://support.clo3d.com/hc/en-us/articles/360051525034-glTF-2-0-GLTF-GLB-File), [Marvelous Designer](https://www.marvelousdesigner.com/support/news/view/3e260cf8818a4ebf8d0639f1c610ab79), [VStitcher](https://browzwear.com/products/v-stitcher)
+
+The following is a proposed catalog assembled from tailoring references. Availability, dimensions, and allowed combinations must be confirmed with the actual maker. The implementation column is an engineering recommendation.
+
+| Suit area | Choices to support | Recommended representation |
+| --- | --- | --- |
+| Outer fabric | Fabric identity, color, weave, stripe/check repeat, composition, weight; matching or separate fabrics for each garment | Per-garment material assignments and fabric metadata. Different drape families may also need different simulated shapes. |
+| Jacket front | Single or double breasted, button arrangement, fastening position, front opening and hem shape | Coordinated front assemblies with matching buttons, buttonholes, facings, and lapels |
+| Lapels and collar | Notch, peak, shawl; width, gorge position, roll; contrasting facing and undercollar | Front-compatible geometry families, restricted shape controls, separate facing materials |
+| Shoulders and sleeves | Soft or structured shoulder, sleeve-head treatment, sleeve length and taper | Coordinated shoulder, armhole, and sleeve shapes; shared deformation controls |
+| Jacket pockets | Flap, jetted, patch; straight or slanted; ticket pocket; breast pocket | Body-compatible pocket assemblies and correct openings in the jacket |
+| Jacket back | No vent, center vent, side vents; length and waist shaping | Back panel variants with real overlap and interior surfaces |
+| Buttons and buttonholes | Material, color, size; front arrangement; sleeve count, spacing, working buttonholes, contrast thread | Instanced buttons on attachment points; stitch textures or geometry; cuff variants when openings matter |
+| Jacket interior | Full, partial, or unlined; lining fabric; interior pocket layout; seam finishing | Interior geometry variants and materials, visible in an open-jacket inspection view |
+| Internal construction | Fused, half canvas, full canvas; padding and interlining options where offered | Production specifications; explanatory cutaway and distinct drape only when modeled or simulated |
+| Trouser front | Flat front, single or double pleats, pleat direction; crease | Front/upper-leg geometry variants coordinated with the waistband |
+| Trouser waist | Rise, waistband height and extension, belt loops, side adjusters, brace buttons, closure | Independent choices resolved into compatible waistband and upper-trouser assemblies |
+| Trouser pockets and fly | Front and rear pocket styles, coin pocket, zip or button fly | Pocket and fly assemblies, including openings where visible |
+| Trouser leg and hem | Taper, width, length, break, plain hem, turn-ups and turn-up depth | Restricted shape controls and hem variants; show a shoe reference when previewing break |
+| Waistcoat | Single/double breasted, neckline, lapels, button arrangement, pockets, pointed/straight hem, back fabric, adjuster | Waistcoat body families, coordinated details, separate front/back materials |
+| Finishing | Pick stitching, edge distance, monogram text/font/thread/position, contrast buttonholes, formalwear facing and trouser braid | Surface-bound text, normal maps or stitch geometry, separate trim materials |
+| Measurements | Chest, waist, seat, shoulders, shoulder slope, posture, jacket/sleeve length, trouser rise/thigh/knee/hem/inseam | Separate body and garment measurement records; tested visual shape controls or a pattern-driven fitting process |
+
+Suitsupply supports fabrics, lapels, closures, shoulder types, waistband details, buttons, and canvas options. Proper Cloth's product configurators document lining, vents, pockets, sleeve buttons, fly, waist closure, pleats, and hem options. Waistcoat references document neckline, fastening, lapels, pockets, and back treatments. [Suitsupply](https://suitsupply.com/en-us/journal/custom-made.html), [Proper Cloth linen suit options](https://propercloth.com/tailored-clothing/navy-glen-plaid-irish-linen-bedford-suit-503.html), [Proper Cloth suit details](https://propercloth.com/tailored-clothing/Black-Stretch-Wooster-Suit-20681.html), [waistcoat options](https://www.anatolys.com/pages/mtm-waistcoat-options), [custom waistcoats](https://www.40colori.com/pages/custom-waistcoats), [shoulder slope](https://propercloth.com/reference/how-jacket-shoulder-slope-should-fit/)
+
+An independently selectable part does not always need an independent mesh. A lapel is continuous with the jacket front, and a welt pocket needs an opening. Detached pieces laid over an unchanged jacket can leave gaps, intersections, or unrealistic edges. Use separate geometry where the construction permits it and coordinated replacement assemblies where it does not.
+
+The proposed workflow is:
+
+1. Agree on the maker's option codes, measurement definitions, dimension limits, fabrics, and compatibility rules. Separate preferences from manufacturing restrictions. For example, a particular maker's tuxedo rules should not become universal restrictions on all suits.
+2. Obtain an original or appropriately licensed garment pattern and reference measurements. Build one accurate jacket, trouser, and waistcoat on a shared reference body. Use CLO for pattern sewing and offline drape simulation when available; a skilled Blender garment model is sufficient for a visual-only starting point.
+3. Create garment families before detail variants. Single-breasted and double-breasted fronts should have their own validated assemblies. Coordinate the collar, lapel roll, button stance, front overlap, and lining. Simulate cloth as an assembled garment before preparing pieces for web use.
+4. Prepare editable Blender masters. Maintain consistent units, pose, origins, normals, seam boundaries, and attachment points. Keep semantic names for parts and materials. Weld continuous visible surfaces where required; retain separate selection identifiers or masks for parts that share geometry.
+5. Build independent configuration fields. Trouser pleats, waist treatment, brace buttons, pockets, and hem must not be mutually exclusive values in one field. Resolve those selections into compatible assets. Separate button material from button arrangement and separate lining coverage from lining fabric.
+6. Use materials for surface changes, replacement geometry for structural changes, and restricted shape keys for continuous changes. A lapel width control must update neighboring geometry and attached details. Shape keys move existing vertices; they cannot add new topology. [Blender shape-key workflow](https://docs.blender.org/UATEST/manual/en/dev/animation/shape_keys/workflow.html)
+7. UV-map fabric at a known real-world repeat size and grain direction. Author or capture base-color, normal, and roughness maps. Add sheen where useful. Review checks and stripes at seams and pockets. A fabric color change is independent of its bending, stretch, and weight. Three.js supports fabric sheen, but its more complex physical material has a rendering cost. [Three.js material documentation](https://threejs.org/docs/pages/MeshPhysicalMaterial.html)
+8. Export optimized GLB assets and reusable textures. Bake unsupported procedural materials. Blender scripts, constraints, modifiers, and cloth solvers do not become executable browser controls simply by exporting GLB. Export supported geometry, materials, rigging, and shape targets, then implement the controls in the application. [glTF specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html)
+9. Connect configuration state to the viewer, compatibility checks, pricing, and the final order specification. Save stable option IDs and asset/catalog versions. Reject unsupported combinations explicitly instead of silently displaying a different garment.
+10. Validate the final assets in the actual browser viewer. Inspect front, rear, sides, interior, and detail close-ups; test extreme shape combinations and garment layering. Benchmark transfer size, first interaction, texture memory, draw calls, and orbit response on representative mobile devices. Set budgets after this first realistic sample. Three.js supports Draco, Meshopt, and KTX2 loading, with the appropriate decoders configured. [Three.js GLTFLoader](https://threejs.org/docs/pages/GLTFLoader.html)
+
+Start with offline simulation and instant browser material/part changes. Re-simulating tailored cloth for every slider movement adds substantial work. If actual body-specific fit becomes a requirement, add a separate process that adjusts patterns, simulates the assembled garment, and returns a cached result. CLO exposes automation scenarios, but that documentation alone does not establish a licensed, headless web service for our use. [CLO API scenarios](https://developer.clo3d.com/scenario.html)
+
+Fit accuracy depends on the body, patterns, ease, construction, and measured fabric properties. CLO describes measuring fabric stretch and bending for simulation. A beautiful model or an avatar resized to chest/waist measurements alone is insufficient evidence of fit. Treat visual sizing as approximate until the full process is checked against real garments. [CLO virtual fabrics](https://support.clo3d.com/hc/en-us/articles/115013660747-How-accurate-are-virtual-fabrics)
+
+The repository inspection found a useful prototype:
+
+- Blender 5.1.2 is installed and responds to the command-line version check.
+- `scripts/generate-suit-blender-assets.py` already creates editable Blender files and modular GLBs. The current geometry is generated from lofts, prisms, and other mesh helpers; it is not a pattern-derived garment workflow.
+- `src/features/customizer/three-d/asset-manifest.json` records named parts and material slots.
+- `src/features/customizer/three-d/asset-contract.ts` selects jacket, lapel, button, pocket, trouser, and waistcoat assets. The 3D preview is scoped to one product slug.
+- The trouser selector chooses a whole trouser asset from options such as side adjusters, belt loops, single pleats, and brace buttons. Those need separate fields to allow independent combinations.
+- One shared outer-fabric material is applied across the selected garments. Lining currently resolves to one fixed material. Separate garment and detail assignments are needed for independent fabrics and facings.
+- The renderer generates a generic weave texture. Production fabric identity needs appropriate texture maps and UVs.
+- The inspected preview has no measurement-driven morph controls or monogram rendering. The configuration already stores monogram text, which can support the latter.
+- Existing validators check asset names and slots. Production validation should also cover compatibility, visible seams, texture scale, shape extremes, and browser appearance.
+
+The recommended first implementation is one carefully reviewed suit family with independent lapel, pocket, button, lining, trouser waist, pleat, hem, and waistcoat selections. Verify it in plain fabric and a check or stripe, since patterned cloth exposes scale and alignment problems. Then expand the catalog using the same contracts. The main production risk is creating and validating good garment assets; installing another renderer will not solve that.
+
+This research did not modify application code or regenerate the existing models. A maker-approved pattern, intended realism level, and whether body-specific fit is required remain product inputs for the modeling phase.

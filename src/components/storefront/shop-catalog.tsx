@@ -22,20 +22,24 @@ export function ShopCatalog() {
       : { categorySlug: selectedFilter, sort },
   );
   const filters = [{ slug: "all", name: "All suits" }, ...(categories ?? [])];
+  const selectedFilterName =
+    filters.find((filter) => filter.slug === selectedFilter)?.name ??
+    "All suits";
 
   return (
     <>
-      <div className="border-border mt-10 flex flex-col gap-5 border-y py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div
-          className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold tracking-[0.1em] uppercase"
+          className="flex flex-wrap gap-2"
           aria-label="Filter suits by category"
           role="group"
         >
           {filters.map((filter) => (
             <button
               className={cn(
-                "hover:text-ink transition-colors",
-                selectedFilter === filter.slug && "text-ink",
+                "border-border text-muted-foreground hover:border-ink/40 hover:text-ink min-h-10 border px-4 text-xs font-bold tracking-[0.08em] uppercase transition-colors",
+                selectedFilter === filter.slug &&
+                  "border-ink bg-ink text-ivory hover:text-ivory",
               )}
               type="button"
               aria-pressed={selectedFilter === filter.slug}
@@ -46,8 +50,8 @@ export function ShopCatalog() {
             </button>
           ))}
         </div>
-        <label className="text-muted-foreground flex items-center gap-3 text-xs font-bold tracking-[0.1em] uppercase">
-          Sort
+        <label className="text-muted-foreground flex flex-col gap-2 text-xs font-bold tracking-[0.1em] uppercase sm:min-w-56">
+          Sort suits
           <select
             className="border-border bg-background text-ink min-h-10 border px-3 text-xs font-bold tracking-[0.08em] uppercase"
             value={sort}
@@ -59,15 +63,16 @@ export function ShopCatalog() {
           </select>
         </label>
       </div>
-      <div className="text-muted-foreground mt-6 flex items-center justify-between text-sm">
+      <div className="border-border text-muted-foreground mt-6 flex flex-col gap-2 border-t pt-5 text-sm sm:flex-row sm:items-center sm:justify-between">
         {products === undefined ? (
           <p aria-live="polite">Loading suits...</p>
         ) : (
-          <p>
-            {products.length} {products.length === 1 ? "suit" : "suits"}
+          <p aria-live="polite">
+            Showing {products.length} {products.length === 1 ? "suit" : "suits"}{" "}
+            in {selectedFilterName.toLowerCase()}
           </p>
         )}
-        <p className="hidden sm:block">Standard fit or made to measure</p>
+        <p>Open details or customize directly from any suit.</p>
       </div>
       {products === undefined ? (
         <ProductGridSkeleton className="mt-7" />

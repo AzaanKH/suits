@@ -2,6 +2,7 @@
 
 import { Show, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, UserRound, X } from "lucide-react";
 import { useState } from "react";
 
@@ -17,6 +18,23 @@ const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 export function Header({ checkoutEnabled }: { checkoutEnabled: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  if (pathname?.startsWith("/customize/")) {
+    return (
+      <header className="studio-header">
+        <Link href="/" className="studio-brand" aria-label="Arden home">
+          ARDEN
+        </Link>
+        <nav aria-label="Primary">
+          <Link href="/shop">Shop</Link>
+          <Link href="/account/designs" prefetch={false}>
+            Saved designs
+          </Link>
+          <CartSheet checkoutEnabled={checkoutEnabled} />
+        </nav>
+      </header>
+    );
+  }
 
   return (
     <header className="border-border/80 bg-background/95 sticky top-0 z-50 border-b backdrop-blur">

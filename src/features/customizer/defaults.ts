@@ -1,3 +1,4 @@
+import { normalizeTailoring } from "./tailoring";
 import { getGroupSelectionMode, type CustomizerGroupCode } from "./steps";
 import { getAvailableOptions, isOptionAvailable } from "./compatibility";
 import type {
@@ -80,6 +81,10 @@ export function normalizeConfiguration(
           : [];
   }
 
+  next.tailoring = normalizeTailoring(
+    configuration.tailoring,
+    next.selectedOptionCodes,
+  );
   return next;
 }
 

@@ -1,6 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Scissors, Sparkles, Waves } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clock3,
+  Ruler,
+  Scissors,
+  Sparkles,
+  Waves,
+} from "lucide-react";
 
 import { PageContainer } from "@/components/layout/page-container";
 import { FeaturedProducts } from "@/components/storefront/featured-products";
@@ -30,6 +38,24 @@ const process = [
     title: "Receive your tailoring",
     description:
       "Your garment is cut, finished, quality checked, and delivered in approximately four to six weeks.",
+  },
+];
+
+const heroHighlights = [
+  {
+    icon: Scissors,
+    title: "Configured online",
+    description: "Cloth, lapel, buttons, pockets, trousers, and finishing.",
+  },
+  {
+    icon: Ruler,
+    title: "Two fit paths",
+    description: "Standard sizing or made to measure before checkout.",
+  },
+  {
+    icon: Clock3,
+    title: "4-6 week delivery",
+    description: "Production timing is confirmed after fit review.",
   },
 ];
 
@@ -79,7 +105,7 @@ export default function HomePage() {
   return (
     <>
       <section className="border-border bg-stone border-b">
-        <PageContainer className="grid min-h-[calc(100svh-5rem)] items-center gap-10 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:py-16">
+        <PageContainer className="grid min-h-[calc(88svh-5rem)] items-center gap-10 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:py-14">
           <div className="max-w-2xl py-8 lg:py-16">
             <h1 className="text-ink font-serif text-6xl leading-[0.94] tracking-[-0.04em] sm:text-7xl lg:text-[6.75rem]">
               A custom suit, without the old rules.
@@ -94,9 +120,25 @@ export default function HomePage() {
                 Shop custom suits
                 <ArrowRight aria-hidden="true" className="size-4" />
               </Link>
-              <Link className="button-secondary" href="/about">
-                Our approach
+              <Link className="button-secondary" href="#tailoring-process">
+                See the process
               </Link>
+            </div>
+            <div className="border-border mt-9 grid max-w-2xl gap-4 border-t pt-6 sm:grid-cols-3">
+              {heroHighlights.map(({ icon: Icon, title, description }) => (
+                <div className="flex gap-3" key={title}>
+                  <Icon
+                    aria-hidden="true"
+                    className="text-accent-strong mt-0.5 size-4 shrink-0"
+                  />
+                  <div>
+                    <p className="text-ink text-sm font-bold">{title}</p>
+                    <p className="text-muted-foreground mt-1 text-xs leading-5">
+                      {description}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
           <div className="bg-clay relative mx-auto aspect-[3/4] w-full max-w-2xl overflow-hidden lg:ml-auto">
@@ -123,12 +165,19 @@ export default function HomePage() {
         </PageContainer>
       </section>
 
-      <section className="border-border bg-ink text-ivory border-y py-20 sm:py-28">
+      <section
+        id="tailoring-process"
+        className="border-border bg-ink text-ivory scroll-mt-24 border-y py-20 sm:py-28"
+      >
         <PageContainer>
-          <div>
+          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
             <h2 className="max-w-md font-serif text-5xl leading-[0.98] tracking-[-0.035em] sm:text-6xl">
-              Tailoring, made personal.
+              A clearer path to a better suit.
             </h2>
+            <p className="text-ivory/70 max-w-xl text-sm leading-6 sm:text-base sm:leading-7">
+              Move through selection, customization, fit, and checkout with the
+              essential decisions surfaced at each step.
+            </p>
           </div>
           <div className="mt-12 grid gap-9 sm:grid-cols-2 lg:grid-cols-4">
             {process.map((step) => (
@@ -186,6 +235,12 @@ export default function HomePage() {
                   </div>
                 </div>
               ))}
+              <div className="border-border border-t pt-6">
+                <Link className="text-link" href="/shop">
+                  Start with the collection
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </Link>
+              </div>
             </div>
           </div>
         </PageContainer>
@@ -221,6 +276,16 @@ export default function HomePage() {
             <h2 className="text-ink max-w-3xl font-serif text-5xl leading-[0.95] tracking-[-0.04em] sm:text-6xl">
               Begin with one suit that is unmistakably yours.
             </h2>
+            <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold">
+              {["Choose a suit", "Customize details", "Select fit"].map(
+                (item) => (
+                  <span className="inline-flex items-center gap-2" key={item}>
+                    <CheckCircle2 aria-hidden="true" className="size-4" />
+                    {item}
+                  </span>
+                ),
+              )}
+            </div>
           </div>
           <Link className="button-primary shrink-0" href="/shop">
             Explore the collection
