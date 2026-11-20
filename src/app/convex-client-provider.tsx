@@ -2,12 +2,21 @@
 
 import { useAuth } from "@clerk/nextjs";
 import type { ReactNode } from "react";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
+const signedOut = {
+  isLoading: false,
+  isAuthenticated: false,
+  fetchAccessToken: async () => null,
+};
+function useSignedOut() {
+  return signedOut;
+}
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   if (!convex) {
@@ -34,5 +43,12 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  return <ConvexProvider client={convex}>{children}</ConvexProvider>;
+  // Without Clerk, still provide auth (always signed out): components call
+  // useConvexAuth(), which throws without an auth provider, so the build and
+  // CI without Clerk keys would fail.
+  return (
+    <ConvexProviderWithAuth client={convex} useAuth={useSignedOut}>
+      {children}
+    </ConvexProviderWithAuth>
+  );
 }
