@@ -595,7 +595,10 @@ function ReviewStep({
         </CardHeader>
       </Card>
 
-      <TailoringSummary specification={configuration.tailoring} />
+      <TailoringSummary
+        specification={configuration.tailoring}
+        primary={configuration.selectedOptionCodes}
+      />
       <DownloadSpecification configuration={configuration} catalog={catalog} />
       <Separator />
 

@@ -300,6 +300,7 @@ export function SavedDesignDetail({
 
               <TailoringSummary
                 specification={design.configuration.tailoring}
+                primary={design.configuration.selectedOptionCodes}
               />
               <Separator className="my-6" />
 

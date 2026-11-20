@@ -126,7 +126,10 @@ export function CustomizerPreview({
               </div>
             ))}
           </div>
-          <TailoringSummary specification={configuration.tailoring} />
+          <TailoringSummary
+            specification={configuration.tailoring}
+            primary={configuration.selectedOptionCodes}
+          />
         </div>
       ) : null}
     </aside>
