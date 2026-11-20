@@ -160,28 +160,38 @@ export function ProductDetail({
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                className="button-primary w-full sm:w-auto"
-                href={`/customize/${product.slug}`}
-              >
-                Begin customization
-                <ArrowRight aria-hidden="true" className="size-4" />
-              </Link>
               {studioEnabled && product.slug === SUIT_3D_PRODUCT_SLUG ? (
-                <Link
-                  className="button-secondary w-full sm:w-auto"
-                  href={`/studio/${product.slug}`}
-                >
-                  <Box aria-hidden="true" className="size-4" />
-                  Design in 3D
-                </Link>
+                <>
+                  <Link
+                    className="button-primary w-full sm:w-auto"
+                    href={`/studio/${product.slug}`}
+                  >
+                    <Box aria-hidden="true" className="size-4" />
+                    Open the studio
+                  </Link>
+                  <Link
+                    className="button-secondary w-full sm:w-auto"
+                    href={`/customize/${product.slug}`}
+                  >
+                    Customize without 3D
+                  </Link>
+                </>
               ) : (
-                <Link
-                  className="button-secondary w-full sm:w-auto"
-                  href="/shop"
-                >
-                  Compare suits
-                </Link>
+                <>
+                  <Link
+                    className="button-primary w-full sm:w-auto"
+                    href={`/customize/${product.slug}`}
+                  >
+                    Begin customization
+                    <ArrowRight aria-hidden="true" className="size-4" />
+                  </Link>
+                  <Link
+                    className="button-secondary w-full sm:w-auto"
+                    href="/shop"
+                  >
+                    Compare suits
+                  </Link>
+                </>
               )}
             </div>
             <p className="text-muted-foreground mt-3 text-xs leading-5">

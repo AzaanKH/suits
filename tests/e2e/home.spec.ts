@@ -1,13 +1,14 @@
 import { expect, test } from "@playwright/test";
 
-test("shows the home page", async ({ page }) => {
+test("leads from the home page into the studio", async ({ page }) => {
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", {
-      name: /a custom suit, without the old rules/i,
-    }),
+    page.getByRole("heading", { level: 1, name: /cut for one/i }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open the studio" }).first(),
+  ).toHaveAttribute("href", "/studio/house-navy-hopsack-suit");
 });
 
 test("navigates from the collection to a suit detail page", async ({
@@ -23,8 +24,12 @@ test("navigates from the collection to a suit detail page", async ({
   await expect(
     page.getByRole("heading", { name: "The House Suit" }),
   ).toBeVisible();
+  // The House Suit has the 3D studio, so it leads there; the 2D customizer stays one click away.
   await expect(
-    page.getByRole("link", { name: "Begin customization" }),
+    page.getByRole("link", { name: "Open the studio" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Customize without 3D" }),
   ).toBeVisible();
 });
 

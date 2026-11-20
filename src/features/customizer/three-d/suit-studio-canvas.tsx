@@ -189,7 +189,7 @@ export function SuitStudioCanvas({
 
 function Podium({ mood }: { mood: SuitMood }) {
   const color =
-    mood === "evening" ? "#2a313d" : mood === "atelier" ? "#d9cfc0" : "#e2e6e9";
+    mood === "evening" ? "#2a313d" : mood === "atelier" ? "#dcded6" : "#e2e6e9";
   // Top sits just under the contact-shadow plane (y 0.024) so it is not captured as a caster.
   return (
     <mesh position={[0, -0.02, 0]} receiveShadow>

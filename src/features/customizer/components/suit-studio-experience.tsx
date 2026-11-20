@@ -11,6 +11,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import {
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -19,7 +20,10 @@ import {
 } from "react";
 
 import { EmptyState } from "@/components/storefront/empty-state";
-import { calculateConfigurationPrice } from "@/features/customizer/pricing";
+import {
+  calculateConfigurationPrice,
+  getSelectedFabric,
+} from "@/features/customizer/pricing";
 import {
   CUSTOMIZER_STEPS,
   type CustomizerGroupCode,
@@ -149,6 +153,16 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
   }
 
   const price = calculateConfigurationPrice(catalog, configuration);
+  const fabric = getSelectedFabric(catalog, configuration);
+  // One ticket line per group, in the order the cutter reads them.
+  const ticket = new Map<string, string[]>();
+  for (const item of price.selectedModifiers) {
+    if (item.stepCode === "fabric") continue;
+    ticket.set(item.groupLabel, [
+      ...(ticket.get(item.groupLabel) ?? []),
+      item.optionLabel,
+    ]);
+  }
   const step =
     CUSTOMIZER_STEPS.find((s) => s.code === activeStep) ?? CUSTOMIZER_STEPS[0];
   const nextIndex = STUDIO_STEP_CODES.indexOf(activeStep) + 1;
@@ -296,6 +310,22 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
               </p>
             )}
           </div>
+          <dl className="atelier-ticket" aria-label="Your specification">
+            {fabric ? (
+              <>
+                <dt>Cloth</dt>
+                <dd>
+                  {fabric.name} · {fabric.weight}
+                </dd>
+              </>
+            ) : null}
+            {[...ticket].map(([group, labels]) => (
+              <Fragment key={group}>
+                <dt>{group}</dt>
+                <dd>{labels.join(", ")}</dd>
+              </Fragment>
+            ))}
+          </dl>
           <div className="atelier-panel-actions">
             {nextStep ? (
               <button

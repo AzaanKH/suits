@@ -1,6 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Bodoni_Moda, Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
 
 import { CartSyncProvider } from "@/components/cart/cart-sync-provider";
 import { Footer } from "@/components/layout/footer";
@@ -12,15 +12,24 @@ import { isClerkConfigured } from "@/lib/clerk-config";
 import { ConvexClientProvider } from "./convex-client-provider";
 import "./globals.css";
 
-const sans = Manrope({
+// Cutting-room type: Bodoni for display, Hanken for text, Plex Mono for
+// measurements, cloth specs and order numbers.
+const display = Bodoni_Moda({
   subsets: ["latin"],
-  variable: "--font-manrope",
+  variable: "--font-display",
+  style: ["normal", "italic"],
+  axes: ["opsz"],
 });
 
-const serif = Cormorant_Garamond({
+const text = Hanken_Grotesk({
   subsets: ["latin"],
-  variable: "--font-cormorant",
-  weight: ["500", "600"],
+  variable: "--font-text",
+});
+
+const data = IBM_Plex_Mono({
+  subsets: ["latin"],
+  variable: "--font-data",
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +37,8 @@ export const metadata: Metadata = {
     default: "Arden Tailoring",
     template: "%s | Arden Tailoring",
   },
-  description: "Made-to-measure suiting with a refined, modern point of view.",
+  description:
+    "Design your suit in the Arden studio. Cut to your measurements from cloth you choose.",
 };
 
 export default function RootLayout({
@@ -48,7 +58,10 @@ export default function RootLayout({
   );
 
   return (
-    <html lang="en" className={`${sans.variable} ${serif.variable}`}>
+    <html
+      lang="en"
+      className={`${display.variable} ${text.variable} ${data.variable}`}
+    >
       <body className="flex min-h-screen flex-col">
         {isClerkConfigured() ? (
           <ClerkProvider

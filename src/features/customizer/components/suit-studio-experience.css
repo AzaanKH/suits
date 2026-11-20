@@ -2,15 +2,15 @@
 .suit-atelier {
   --atelier-ink: var(--ink);
   --atelier-muted: var(--muted-foreground);
-  --atelier-surface: color-mix(in oklab, var(--card) 92%, transparent);
+  --atelier-surface: color-mix(in oklab, var(--card) 94%, transparent);
   --atelier-rule: var(--border);
-  --atelier-accent: #b08a4f;
+  --atelier-accent: var(--chalk);
   position: fixed;
   inset: 0;
   z-index: 60;
   overflow: hidden;
   color: var(--atelier-ink);
-  background: #ebe4d9;
+  background: var(--background);
   overscroll-behavior: contain;
 }
 .suit-atelier[data-mood="daylight"] {
@@ -87,14 +87,15 @@
   transform: scale(0.97);
 }
 .atelier-title p:first-child {
-  font-family: var(--font-cormorant), Georgia, serif;
+  font-family: var(--font-display), Georgia, serif;
   font-size: 26px;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 .atelier-price {
-  margin-top: 4px;
-  font-size: 13px;
+  margin-top: 6px;
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: var(--atelier-muted);
 }
@@ -177,12 +178,11 @@
   width: clamp(340px, 30vw, 440px);
   display: flex;
   flex-direction: column;
-  border-radius: 18px;
+  border: 1px solid var(--atelier-rule);
+  border-radius: 4px;
   background: var(--atelier-surface);
   backdrop-filter: blur(18px);
-  box-shadow:
-    0 1px 2px rgb(40 30 20 / 0.06),
-    0 18px 40px rgb(40 30 20 / 0.12);
+  box-shadow: 0 12px 32px rgb(22 25 30 / 0.08);
 }
 .atelier-steps {
   display: flex;
@@ -207,18 +207,18 @@
 @media (hover: hover) {
   .atelier-steps button:not([aria-current]):hover {
     color: var(--atelier-ink);
-    background: rgb(40 30 20 / 0.06);
+    background: rgb(22 25 30 / 0.05);
   }
 }
 .atelier-panel-heading {
   padding: 20px 22px 4px;
 }
 .atelier-panel-heading h1 {
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-size: 34px;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 30px;
   line-height: 1.05;
-  letter-spacing: -0.03em;
-  font-weight: 500;
+  letter-spacing: -0.015em;
+  font-weight: 400;
 }
 .atelier-panel-heading p {
   margin-top: 6px;
@@ -239,6 +239,28 @@
 .atelier-options .studio-fabric-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+/* The order ticket: what the cutter will read, in the cutting room's mono. */
+.atelier-ticket {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  padding: 12px 22px;
+  border-top: 1px dashed var(--atelier-rule);
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--atelier-muted);
+}
+.atelier-ticket dt {
+  color: var(--atelier-accent);
+}
+.atelier-ticket dd {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--atelier-ink);
+}
 .atelier-panel-actions {
   display: flex;
   gap: 8px;
@@ -253,8 +275,9 @@
   gap: 6px;
   min-height: 44px;
   padding: 0 16px;
-  border-radius: 10px;
+  border-radius: 4px;
   font-size: 13px;
+  font-weight: 600;
   transition:
     background-color 150ms ease-out,
     transform 120ms ease-out;
@@ -301,7 +324,7 @@
     bottom: 8px;
     width: auto;
     max-height: 48svh;
-    border-radius: 16px;
+    border-radius: 4px;
   }
   .atelier-steps {
     flex-wrap: nowrap;
@@ -329,6 +352,9 @@
   }
   .atelier-panel-actions {
     padding: 10px 12px 12px;
+  }
+  .atelier-ticket {
+    display: none;
   }
 }
 

@@ -8,9 +8,11 @@ import { useState } from "react";
 
 import { CartSheet } from "@/components/cart/cart-sheet";
 import { PageContainer } from "@/components/layout/page-container";
+import { SUIT_3D_PRODUCT_SLUG } from "@/features/customizer/three-d/suit-selection";
 
 const navigation = [
-  { label: "Shop", href: "/shop" },
+  { label: "Studio", href: `/studio/${SUIT_3D_PRODUCT_SLUG}` },
+  { label: "Suits", href: "/shop" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
 ];
@@ -66,7 +68,7 @@ export function Header({ checkoutEnabled }: { checkoutEnabled: boolean }) {
 
         <Link
           href="/"
-          className="text-ink absolute left-1/2 -translate-x-1/2 font-serif text-[2rem] leading-none tracking-[-0.08em]"
+          className="text-ink absolute left-1/2 -translate-x-1/2 font-serif text-[1.65rem] leading-none tracking-[0.04em]"
           aria-label="Arden home"
         >
           ARDEN
@@ -87,7 +89,7 @@ export function Header({ checkoutEnabled }: { checkoutEnabled: boolean }) {
           <div className="mx-auto flex max-w-[90rem] flex-col gap-1">
             {navigation.map((item) => (
               <Link
-                className="text-ink py-3 font-serif text-4xl tracking-[-0.025em]"
+                className="text-ink py-3 font-serif text-4xl tracking-[-0.01em]"
                 href={item.href}
                 key={item.href}
                 onClick={() => setMenuOpen(false)}
@@ -96,7 +98,7 @@ export function Header({ checkoutEnabled }: { checkoutEnabled: boolean }) {
               </Link>
             ))}
             <Link
-              className="border-border mt-4 border-t pt-5 text-sm font-bold tracking-[0.12em] uppercase"
+              className="border-border mt-4 border-t pt-5 text-sm font-medium"
               href="/account/orders"
               onClick={() => setMenuOpen(false)}
               prefetch={false}
@@ -149,14 +151,14 @@ function AuthHeaderControls() {
         <div className="hidden items-center gap-1 sm:flex">
           <Link
             href="/sign-in"
-            className="text-ink inline-flex min-h-10 items-center px-2 text-sm font-bold tracking-[0.08em] uppercase"
+            className="text-ink hover:text-accent inline-flex min-h-10 items-center px-2 text-sm font-medium transition-colors"
             prefetch={false}
           >
             Sign in
           </Link>
           <Link
             href="/sign-up"
-            className="text-ink inline-flex min-h-10 items-center px-2 text-sm font-bold tracking-[0.08em] uppercase"
+            className="text-ink hover:text-accent inline-flex min-h-10 items-center px-2 text-sm font-medium transition-colors"
             prefetch={false}
           >
             Create account
@@ -174,21 +176,21 @@ function AuthHeaderControls() {
       <Show when="signed-in">
         <Link
           href="/account/orders"
-          className="text-ink hidden min-h-10 items-center px-2 text-sm font-bold tracking-[0.08em] uppercase sm:inline-flex"
+          className="text-ink hover:text-accent hidden min-h-10 items-center px-2 text-sm font-medium transition-colors sm:inline-flex"
           prefetch={false}
         >
           Orders
         </Link>
         <Link
           href="/account/designs"
-          className="text-ink hidden min-h-10 items-center px-2 text-sm font-bold tracking-[0.08em] uppercase sm:inline-flex"
+          className="text-ink hover:text-accent hidden min-h-10 items-center px-2 text-sm font-medium transition-colors sm:inline-flex"
           prefetch={false}
         >
           Designs
         </Link>
         <Link
           href="/account"
-          className="text-ink hidden min-h-10 items-center px-2 text-sm font-bold tracking-[0.08em] uppercase sm:inline-flex"
+          className="text-ink hover:text-accent hidden min-h-10 items-center px-2 text-sm font-medium transition-colors sm:inline-flex"
           prefetch={false}
         >
           Account
@@ -213,7 +215,7 @@ function SignedOutHeaderLink({ onClick }: { onClick: () => void }) {
   return (
     <div className="flex flex-col gap-3 pt-2">
       <Link
-        className="text-muted-foreground text-sm font-bold tracking-[0.12em] uppercase"
+        className="text-muted-foreground text-sm font-medium"
         href="/sign-in"
         onClick={onClick}
         prefetch={false}
@@ -221,7 +223,7 @@ function SignedOutHeaderLink({ onClick }: { onClick: () => void }) {
         Sign in
       </Link>
       <Link
-        className="text-muted-foreground text-sm font-bold tracking-[0.12em] uppercase"
+        className="text-muted-foreground text-sm font-medium"
         href="/sign-up"
         onClick={onClick}
         prefetch={false}
