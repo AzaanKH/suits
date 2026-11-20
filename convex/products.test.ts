@@ -20,13 +20,19 @@ describe("storefront product queries", () => {
       return product;
     });
 
-    expect(await t.mutation(internal.seed.syncProductFabrics)).toEqual([
+    expect(
+      await t.mutation(internal.seed.syncProductFabrics, { dryRun: true }),
+    ).toEqual(["house-navy-hopsack-suit"]);
+    expect(
+      (await t.run((ctx) => ctx.db.get(before._id)))?.availableFabricIds,
+    ).toHaveLength(2);
+    expect(await t.mutation(internal.seed.syncProductFabrics, {})).toEqual([
       "house-navy-hopsack-suit",
     ]);
     const after = await t.run((ctx) => ctx.db.get(before._id));
     expect(after?.availableFabricIds).toEqual(before.availableFabricIds);
     expect(after?.availableFabricIds).toHaveLength(6);
-    expect(await t.mutation(internal.seed.syncProductFabrics)).toEqual([]);
+    expect(await t.mutation(internal.seed.syncProductFabrics, {})).toEqual([]);
   });
 
   it("returns active categories in display order after an idempotent reseed", async () => {
