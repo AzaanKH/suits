@@ -554,7 +554,21 @@ export function hasTailoringRequests(spec: TailoringSpecification | undefined) {
   );
 }
 
-export function tailoringRows(spec: TailoringSpecification | undefined) {
+export function isDrawnOnJacket(id: string, primary: PrimarySelections) {
+  const jacket = primary["jacket-style"]?.[0];
+  if (id === "front-cut") return jacket === "double-breasted-six-button";
+  if (id === "lapel-buttonhole" || id === "buttonhole-thread")
+    return (
+      jacket !== "double-breasted-six-button" &&
+      primary.lapel?.[0] !== "shawl-lapel"
+    );
+  return true;
+}
+
+export function tailoringRows(
+  spec: TailoringSpecification | undefined,
+  primary: PrimarySelections,
+) {
   if (!spec) return [];
   return [
     ...TAILORING_FIELDS.flatMap((f) => {
@@ -566,7 +580,8 @@ export function tailoringRows(spec: TailoringSpecification | undefined) {
               label: f.label,
               value: option.label,
               preview:
-                f.previewValues && !f.previewValues.includes(option.value)
+                (f.previewValues && !f.previewValues.includes(option.value)) ||
+                !isDrawnOnJacket(f.id, primary)
                   ? ("specification" as const)
                   : f.preview,
             },

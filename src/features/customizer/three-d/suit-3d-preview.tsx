@@ -69,9 +69,10 @@ export function Suit3dPreview({ configuration, fallback }: Props) {
         data-view={view}
         data-ready={ready}
       >
-        {tailoringRows(configuration.tailoring).some(
-          (r) => r.preview === "specification",
-        ) ? (
+        {tailoringRows(
+          configuration.tailoring,
+          configuration.selectedOptionCodes,
+        ).some((r) => r.preview === "specification") ? (
           <p className="studio-render-note">
             Construction and measurement requests are recorded in your
             specification.

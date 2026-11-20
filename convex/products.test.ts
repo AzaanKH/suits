@@ -6,6 +6,29 @@ import schema from "./schema";
 import { modules } from "./test.setup";
 
 describe("storefront product queries", () => {
+  it("syncs product cloths without replacing the product", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(internal.seed.seed);
+    const before = await t.run(async (ctx) => {
+      const product = (await ctx.db
+        .query("products")
+        .withIndex("by_slug", (q) => q.eq("slug", "house-navy-hopsack-suit"))
+        .unique())!;
+      await ctx.db.patch(product._id, {
+        availableFabricIds: product.availableFabricIds.slice(0, 2),
+      });
+      return product;
+    });
+
+    expect(await t.mutation(internal.seed.syncProductFabrics)).toEqual([
+      "house-navy-hopsack-suit",
+    ]);
+    const after = await t.run((ctx) => ctx.db.get(before._id));
+    expect(after?.availableFabricIds).toEqual(before.availableFabricIds);
+    expect(after?.availableFabricIds).toHaveLength(6);
+    expect(await t.mutation(internal.seed.syncProductFabrics)).toEqual([]);
+  });
+
   it("returns active categories in display order after an idempotent reseed", async () => {
     const t = convexTest(schema, modules);
 

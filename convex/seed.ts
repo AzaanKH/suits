@@ -162,3 +162,34 @@ function requireValue<Key, Value>(
 
   return value;
 }
+
+export const syncProductFabrics = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const updated: string[] = [];
+    for (const seed of productSeeds) {
+      const product = await ctx.db
+        .query("products")
+        .withIndex("by_slug", (q) => q.eq("slug", seed.slug))
+        .unique();
+      if (!product) continue;
+      const availableFabricIds: Id<"fabrics">[] = [];
+      for (const code of seed.fabricCodes) {
+        const fabric = await ctx.db
+          .query("fabrics")
+          .withIndex("by_code", (q) => q.eq("code", code))
+          .unique();
+        if (!fabric) throw new Error(`Missing fabric: ${code}`);
+        availableFabricIds.push(fabric._id);
+      }
+      if (availableFabricIds.join() === product.availableFabricIds.join())
+        continue;
+      await ctx.db.patch(product._id, {
+        availableFabricIds,
+        updatedAt: Date.now(),
+      });
+      updated.push(seed.slug);
+    }
+    return updated;
+  },
+});
