@@ -18,7 +18,6 @@ import {
 } from "./suit-gallery-designs";
 import { SUIT_3D_PRODUCT_SLUG } from "./suit-selection";
 
-/** The House Suit catalog exactly as the seed defines it. */
 function houseSuitCatalog() {
   const seed = productSeeds.find((p) => p.slug === SUIT_3D_PRODUCT_SLUG)!;
   const product: Product = {
@@ -62,8 +61,6 @@ function houseSuitCatalog() {
 
 describe("studio floor designs", () => {
   it("keeps every house pick intact on the House Suit", () => {
-    // If a seed change makes a pick invalid, normalization would quietly
-    // swap options and "Wear this design" would not match what was shown.
     const catalog = houseSuitCatalog();
     const designs = buildGalleryDesigns(
       catalog,
@@ -128,16 +125,13 @@ describe("studio floor designs", () => {
         expect(Math.hypot(position[0], position[2])).toBeCloseTo(
           GALLERY_RADIUS,
         );
-        // Behind the visitor's suit: the camera stays in front of it.
         expect(position[2]).toBeLessThan(-GALLERY_RADIUS / 2 + 0.01);
-        // The suit's front (+z rotated by rotationY) points at the origin.
         const front = [Math.sin(rotationY), Math.cos(rotationY)];
         const toCenter = [-position[0], -position[2]].map(
           (v) => v / GALLERY_RADIUS,
         );
         expect(front[0] * toCenter[0] + front[1] * toCenter[1]).toBeCloseTo(1);
       }
-      // Podiums are 1.32 m across.
       for (let i = 1; i < count; i++) {
         const [a, b] = [placements[i - 1].position, placements[i].position];
         expect(Math.hypot(a[0] - b[0], a[2] - b[2])).toBeGreaterThan(1.32);

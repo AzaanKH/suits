@@ -313,8 +313,6 @@ export function CheckoutPreparation({
                       fonts: STRIPE_FONTS,
                     },
                   }}
-                  // The provider applies appearance changes itself
-                  // (changeAppearance), so the open form follows the theme.
                 >
                   <StripeCheckoutForm
                     orderId={checkoutSession.orderId}

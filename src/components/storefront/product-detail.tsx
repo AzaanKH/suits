@@ -45,7 +45,6 @@ export function ProductDetail({
   studioEnabled = false,
 }: {
   slug: string;
-  /** ENABLE_3D_CONFIGURATOR, read on the server. */
   studioEnabled?: boolean;
 }) {
   const product = useQuery(api.products.bySlug, { slug });

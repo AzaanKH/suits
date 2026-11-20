@@ -10,7 +10,6 @@ test("opens the studio from the customizer and keeps the design", async ({
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/customize/${SUIT}`);
   await page.getByRole("link", { name: "Open studio" }).click();
-  // Generous: under `next dev` the first visit compiles the route.
   await expect(page).toHaveURL(new RegExp(`/studio/${SUIT}$`), {
     timeout: 30_000,
   });
@@ -64,7 +63,6 @@ test("invites the visitor onto the floor and lets them wear a house pick", async
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  // `?explore` sends the invitation straight away instead of after a while.
   await page.goto(`/studio/${SUIT}?explore`);
   const scene = page.getByRole("region", {
     name: "Full-screen 3D suit studio",

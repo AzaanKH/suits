@@ -10,8 +10,6 @@ import { cn } from "@/lib/utils";
 
 const STUDIO_HREF = `/studio/${SUIT_3D_PRODUCT_SLUG}`;
 
-// Chalk notes on the hero render. Points are fractions of the image; labels sit
-// in the margin on the side named.
 const heroNotes = [
   { term: "Lapel", value: "Notch", x: 0.54, y: 0.11, side: "right" },
   { term: "Breast pocket", value: "Welt", x: 0.56, y: 0.18, side: "right" },
@@ -39,7 +37,6 @@ const heroNotes = [
   },
 ] as const;
 
-// What the studio lets you change, as the cutter's specification sheet.
 const specification = [
   {
     term: "Cloth",
@@ -123,7 +120,6 @@ export default function HomePage() {
               className="group bg-background border-border relative mx-auto block aspect-[1200/1520] w-full max-w-[34rem] border"
               aria-label="Open the studio with this suit"
             >
-              {/* One render per theme: atelier light by day, evening light at night. */}
               <Image
                 priority
                 fill
@@ -146,7 +142,6 @@ export default function HomePage() {
                 preserveAspectRatio="none"
               >
                 {heroNotes.map((note) => (
-                  // Left-hand notes need the margin beside the headline; it only exists from xl up.
                   <g
                     key={note.term}
                     className={
@@ -300,7 +295,6 @@ export default function HomePage() {
   );
 }
 
-/** A drafted jacket forepart: outline, dashed seam allowance, grain line, notes. */
 function PatternPiece() {
   return (
     <svg

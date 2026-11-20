@@ -5,12 +5,10 @@ import type {
   SelectedOptionCodes,
 } from "../types";
 
-/** A suit standing on the studio floor that the visitor can walk up to. */
 export type GalleryDesign = {
   id: string;
   name: string;
   source: "house" | "saved";
-  /** Shown under the name, e.g. "House pick" or "Saved 12 Nov". */
   sourceLabel: string;
   configuration: CustomizerConfiguration;
 };
@@ -22,10 +20,6 @@ type HousePick = {
   selectedOptionCodes: Partial<SelectedOptionCodes>;
 };
 
-/**
- * Curated by the house. Every pick uses only cloths and options the House Suit
- * offers, so "Wear this design" reproduces it exactly.
- */
 export const HOUSE_PICKS: HousePick[] = [
   {
     id: "house-double-breasted",
@@ -96,11 +90,6 @@ const savedDate = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
-/**
- * House picks plus the visitor's most recent saved designs for this suit.
- * House picks take on the visitor's fit and personal details; saved designs
- * come back exactly as they were saved.
- */
 export function buildGalleryDesigns(
   catalog: CustomizerCatalog,
   current: CustomizerConfiguration,
@@ -137,16 +126,9 @@ export function buildGalleryDesigns(
   return [...yours, ...house].slice(0, limit);
 }
 
-/** Distance from the visitor's suit to the lineup behind it, in meters. */
 export const GALLERY_RADIUS = 4;
-/** Angle between neighbors: about 1.4 m apart at this radius, clear of the podiums. */
 const GALLERY_STEP = (20 / 180) * Math.PI;
 
-/**
- * The other suits stand in an arc behind the visitor's own, facing it, so
- * from the front they line up just over its shoulders. The arc never spans
- * more than the back third of the room (120° to 240°).
- */
 export function getGalleryPlacement(index: number, count: number) {
   const step =
     count > 1 ? Math.min(GALLERY_STEP, (Math.PI * 2) / 3 / (count - 1)) : 0;
@@ -155,7 +137,6 @@ export function getGalleryPlacement(index: number, count: number) {
   const z = Math.cos(angle) * GALLERY_RADIUS;
   return {
     position: [x, 0, z] as [number, number, number],
-    // Local +z is the suit's front; turn it toward the visitor's suit.
     rotationY: Math.atan2(-x, -z),
   };
 }

@@ -24,10 +24,6 @@ const FLOOR_COLORS: Record<SuitMood, { cell: string; section: string }> = {
   evening: { cell: "#232a36", section: "#34446a" },
 };
 
-/**
- * The cutting-room floor: a chalk grid under the visitor's suit. It spreads
- * further once the room's other suits are revealed, to reach the lineup.
- */
 export function StudioFloor({ mood, wide }: { mood: SuitMood; wide: boolean }) {
   const floor = FLOOR_COLORS[mood];
   return (
@@ -41,8 +37,6 @@ export function StudioFloor({ mood, wide }: { mood: SuitMood; wide: boolean }) {
       sectionSize={1}
       sectionThickness={1}
       sectionColor={floor.section}
-      // Fade measured from the visitor's suit, not the camera, so the floor
-      // stays put however far the camera moves.
       fadeFrom={0}
       fadeDistance={wide ? 9 : 3.2}
       fadeStrength={1.6}
@@ -50,11 +44,6 @@ export function StudioFloor({ mood, wide }: { mood: SuitMood; wide: boolean }) {
   );
 }
 
-/**
- * The studio floor: a lineup of suits around the visitor's own, standing on a
- * chalk grid. Suits rise into place when `revealed` turns on and sink away
- * when it turns off; nothing is mounted until the first reveal.
- */
 export function SuitGallery({
   designs,
   revealed,
@@ -114,10 +103,8 @@ function GallerySuit({
   const invalidate = useThree((s) => s.invalidate);
   const { position, rotationY } = getGalleryPlacement(index, count);
 
-  // frameloop="demand": request frames until the rise or sink settles.
   useEffect(() => {
     revealedAt.current = performance.now();
-    // The click target unmounts on hide, so no pointer-out arrives to clear this.
     if (!revealed) document.body.style.cursor = "";
     invalidate();
   }, [revealed, invalidate]);
@@ -126,7 +113,6 @@ function GallerySuit({
     const group = ref.current;
     if (!group) return;
     const target = revealed ? 0 : HIDDEN_Y;
-    // Stagger the rise around the ring so the room fills in one sweep.
     const waiting =
       revealed &&
       !reducedMotion &&
@@ -143,7 +129,7 @@ function GallerySuit({
 
   const inspect = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation();
-    if (event.delta > 6) return; // the end of an orbit drag, not a click
+    if (event.delta > 6) return;
     onInspect(design.id);
   };
 
@@ -162,9 +148,6 @@ function GallerySuit({
           roughness={0.9}
         />
       </mesh>
-      {/* A cheap stand-in for clicks: raycasting the suit's own 200k triangles
-          on every pointer move would stall the frame. Only while raised: three.js
-          raycasts invisible objects, so a hidden suit would still catch clicks. */}
       {revealed ? (
         <mesh
           position={[0, 0.85, 0]}
@@ -182,12 +165,7 @@ function GallerySuit({
         </mesh>
       ) : null}
       {revealed ? (
-        <Html
-          position={[0, 1.86, 0]}
-          center
-          // Below the options panel (z-index 2), so tags never cover it.
-          zIndexRange={[1, 0]}
-        >
+        <Html position={[0, 1.86, 0]} center zIndexRange={[1, 0]}>
           <button
             type="button"
             className="atelier-floor-tag"

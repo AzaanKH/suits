@@ -1,12 +1,3 @@
-// Splits the Blender export into one GLB per jacket block so the browser only
-// downloads the block it shows. Run after `pnpm assets:studio:build`.
-//
-//   core   — shared meshes (trousers, waistcoat, pleats, waist details) + the
-//            single-breasted block, which is the default selection
-//   double — the double-breasted block
-//   dinner — the shawl-lapel dinner jacket block
-//
-// Mesh names are the runtime contract (see docs/3d-suit-configurator.md).
 import { NodeIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import {
@@ -23,7 +14,6 @@ const root = process.cwd();
 const source = path.join(root, "assets/suit-studio/arden-tailoring.glb");
 const output = path.join(root, "public/models/suit-studio");
 
-// A shawl lapel always selects the dinner block, so these never render.
 const UNREACHABLE = new Set(["single_lapel_shawl", "double_lapel_shawl"]);
 
 const BUNDLES = {

@@ -9,21 +9,15 @@ export type Suit3dMaterial = {
   color: string;
   roughness: number;
   metalness: number;
-  /** Sheen strength: fuzz on flannel, luster on barathea. Defaults to 0.35. */
   sheen?: number;
-  /** Depth of the weave in the normal map: open hopsack and slubby linen read deeper. */
   weave?: number;
 };
 
-/** Jacket details from Details requests that the model can draw. */
 export type Suit3dJacketDetails = {
   breastPocket: boolean;
-  /** Sleeve buttons per cuff, nearest the cuff edge first; null keeps the model's own. */
   sleeveButtons: number | null;
-  /** 4×2 double-breasted: drop the top, decorative row of the 6×2. */
   fourByTwo: boolean;
   lapelButtonhole: boolean;
-  /** Contrast thread for the lapel buttonhole; null matches the cloth. */
   buttonholeThread: string | null;
 };
 
@@ -49,7 +43,6 @@ export type Suit3dSelection = {
   };
 };
 
-/** Option codes the studio model can display. Others fall back to the defaults below. */
 const SUPPORTED_CODES = {
   jacket: [
     "single-breasted-two-button",
@@ -367,7 +360,6 @@ function getKnownMaterial<T extends Record<string, Suit3dMaterial>>(
 
 export type SuitBlock = "single" | "double" | "dinner";
 
-/** The jacket block a selection shows. A shawl lapel only exists on the dinner jacket. */
 export function getSuitBlock(selection: Suit3dSelection): SuitBlock {
   const codes = selection.selectedCodes;
   if (codes.lapel === "shawl-lapel") return "dinner";
@@ -381,10 +373,6 @@ const POCKET_MESH: Record<string, string> = {
   "slanted-flap-pockets": "slanted",
 };
 
-/**
- * Whether a mesh from the studio GLB shows for a selection. Mesh names follow
- * `<block>_<part>[_<variant>]`; see docs/3d-suit-configurator.md.
- */
 export function isSuitMeshVisible(
   name: string,
   selection: Suit3dSelection,
@@ -425,10 +413,6 @@ export function isSuitMeshVisible(
   return true;
 }
 
-/**
- * Sleeve buttons by distance from the cuff edge (0 = nearest), per block.
- * Positions come from the model: the arms hang down, so lower is nearer the edge.
- */
 const SLEEVE_BUTTON_RANK: Record<string, number> = Object.fromEntries(
   (
     [

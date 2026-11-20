@@ -17,11 +17,10 @@ jobs:
     name: Typecheck, lint, unit tests, format
     runs-on: ubuntu-latest
     steps:
-      # Git LFS: the geometry test reads the shipped 3D models.
       - uses: actions/checkout@v4
         with:
           lfs: true
-      - uses: pnpm/action-setup@v4 # version from package.json "packageManager"
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -35,9 +34,6 @@ jobs:
   e2e:
     name: End-to-end (Playwright)
     runs-on: ubuntu-latest
-    # The storefront reads its catalog from Convex. Add the repository secret
-    # NEXT_PUBLIC_CONVEX_URL (a seeded deployment) to turn this job on; Clerk
-    # keys are optional. Forked PRs never receive secrets, so they skip it.
     env:
       NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -52,8 +48,6 @@ jobs:
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
-      # The 3D models and textures are Git LFS objects; without them the
-      # studio loads pointer files and its tests fail.
       - if: steps.gate.outputs.run == 'true'
         uses: actions/checkout@v4
         with:

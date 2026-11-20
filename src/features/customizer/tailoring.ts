@@ -1,8 +1,6 @@
-/** A maker-neutral design catalog. Entries are requests, not priced production SKUs. */
 export type TailoringSpecification = {
   version: 1;
   choices: Record<string, string>;
-  /** Requested finished-garment dimensions in centimetres, never body measurements. */
   dimensions: Record<string, number>;
 };
 
@@ -47,7 +45,6 @@ type Field = {
   label: string;
   options: readonly { value: string; label: string }[];
   preview: "material" | "detail" | "specification";
-  /** The values the 3D model can draw; others are specification only. Omitted: all. */
   previewValues?: readonly string[];
 };
 function field(

@@ -14,8 +14,6 @@ import { isClerkConfigured } from "@/lib/clerk-config";
 import { ConvexClientProvider } from "./convex-client-provider";
 import "./globals.css";
 
-// Cutting-room type: Bodoni for display, Hanken for text, Plex Mono for
-// measurements, cloth specs and order numbers.
 const display = Bodoni_Moda({
   subsets: ["latin"],
   variable: "--font-display",
@@ -64,26 +62,20 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      // next-themes sets the theme class before hydration.
       suppressHydrationWarning
       className={`${display.variable} ${text.variable} ${data.variable}`}
     >
       <body className="flex min-h-screen flex-col">
         {isClerkConfigured() ? (
           <ClerkProvider
-            // Clerk's shadcn theme reads this site's tokens (--background,
-            // --primary, --border...), so sign-in follows light and dark mode.
             appearance={{
               theme: shadcn,
               variables: {
                 fontFamily: "var(--font-text), sans-serif",
                 borderRadius: "var(--radius)",
-                // shadcn's --input is a border color; as a fill it reads too heavy.
                 colorInput: "var(--background)",
               },
             }}
-            // Brand-neutral until the name is final: Clerk's defaults read
-            // "Sign in to <app name>" from the dashboard.
             localization={{
               signIn: {
                 start: {

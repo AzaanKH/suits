@@ -36,7 +36,6 @@ type CustomizerState = {
     catalog: CustomizerCatalog,
     configuration: CustomizerConfiguration,
   ) => void;
-  /** Replaces the design with another (e.g. one from the studio floor), keeping the step. */
   wearDesign: (
     catalog: CustomizerCatalog,
     configuration: CustomizerConfiguration,

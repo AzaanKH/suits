@@ -18,12 +18,11 @@ test("switches between light and dark themes", async ({ page }) => {
   const toggle = page.getByRole("button", { name: /^Theme:/ }).first();
 
   await expect(html).not.toHaveClass(/dark/);
-  await toggle.click(); // system -> light
+  await toggle.click();
   await expect(toggle).toHaveAccessibleName(/Theme: Light/);
-  await toggle.click(); // light -> dark
+  await toggle.click();
   await expect(html).toHaveClass(/dark/);
 
-  // The choice survives a reload.
   await page.reload();
   await expect(html).toHaveClass(/dark/);
 });
@@ -41,7 +40,6 @@ test("navigates from the collection to a suit detail page", async ({
   await expect(
     page.getByRole("heading", { name: "The House Suit" }),
   ).toBeVisible();
-  // The House Suit has the 3D studio, so it leads there; the 2D customizer stays one click away.
   await expect(
     page.getByRole("link", { name: "Open the studio" }),
   ).toBeVisible();
@@ -51,7 +49,6 @@ test("navigates from the collection to a suit detail page", async ({
 });
 
 test("completes the customization flow", async ({ page }) => {
-  // Each step's primary action reads "Continue to <next step>".
   const next = () =>
     page.getByRole("button", { name: /^(Continue to|Next)/ }).click();
   const configuration = page.getByRole("region", {
@@ -96,9 +93,9 @@ test("completes the customization flow", async ({ page }) => {
   await page.getByRole("button", { name: /Working cuffs/ }).click();
   await page.getByLabel("Monogram initials").fill("AK");
   await page.getByLabel("Tailoring notes").fill("Cleaner trouser break.");
-  await next(); // Details
-  await next(); // Fit
-  await next(); // Review
+  await next();
+  await next();
+  await next();
 
   await expect(
     page.getByText("Slate grey traveller wool").first(),

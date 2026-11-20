@@ -540,7 +540,6 @@ export const productSeeds = [
     badge: "House favorite",
     featured: true,
     displayOrder: 10,
-    // Every cloth the 3D studio can render, since this is the suit it shows.
     fabricCodes: [
       "navy-hopsack",
       "grey-traveller",

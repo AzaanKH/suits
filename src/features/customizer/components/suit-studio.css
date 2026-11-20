@@ -1,9 +1,7 @@
 .suit-studio {
-  /* Site tokens from globals.css, so the configurator reads as the same brand. */
   --studio-ink: var(--ink);
   --studio-muted: var(--muted-foreground);
   --studio-rule: var(--border);
-  /* Matches SUIT_MOODS.atelier.background so the 3D canvas blends in. */
   --studio-backdrop: var(--background);
   color: var(--studio-ink);
   background: var(--background);
@@ -353,7 +351,6 @@
   top: 0;
   z-index: 50;
 }
-/* Same wordmark and nav treatment as the storefront header. */
 .studio-brand {
   font-family: var(--font-display), Georgia, serif;
   letter-spacing: 0.04em;
@@ -472,7 +469,6 @@
     animation: none;
   }
 }
-/* The studio is a working canvas, with its own scrollable selection rail. */
 body:has(.suit-studio) footer {
   display: none;
 }
@@ -507,7 +503,6 @@ body:has(.suit-studio) footer {
   font-size: 11px;
 }
 
-/* Entry point to the full-screen studio (/studio/[productSlug]). */
 .studio-open-link {
   position: absolute;
   right: 28px;
