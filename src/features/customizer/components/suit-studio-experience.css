@@ -295,6 +295,163 @@
   transform: scale(0.98);
 }
 
+/* The studio floor ----------------------------------------------------- */
+
+/* A chalk note: the invitation to look around. */
+/* Sits just above the scene tools, so it never covers them. */
+.atelier-hint {
+  position: absolute;
+  left: 24px;
+  bottom: 76px;
+  z-index: 3;
+  width: min(400px, calc(100% - 48px));
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px dashed var(--atelier-accent);
+  border-radius: 4px;
+  background: var(--atelier-surface);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: atelier-hint-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.atelier-hint strong {
+  font-weight: 600;
+}
+.atelier-hint div {
+  display: flex;
+  gap: 8px;
+}
+.atelier-hint button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--atelier-rule);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    background-color 150ms ease-out,
+    transform 120ms ease-out;
+}
+.atelier-hint button.is-primary {
+  border-color: var(--atelier-ink);
+  background: var(--atelier-ink);
+  color: var(--background);
+}
+.atelier-hint button:active {
+  transform: scale(0.97);
+}
+@keyframes atelier-hint-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+/* Swing tickets above the suits on the floor (rendered by drei's Html). */
+.atelier-floor-tag {
+  display: grid;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1px solid var(--atelier-rule);
+  border-radius: 3px;
+  background: var(--atelier-surface);
+  backdrop-filter: blur(8px);
+  color: var(--atelier-ink);
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease-out,
+    transform 120ms ease-out;
+}
+.atelier-floor-tag span {
+  font-size: 12px;
+  font-weight: 600;
+}
+.atelier-floor-tag small {
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--atelier-accent);
+}
+.atelier-floor-tag[data-inspected="true"] {
+  border-color: var(--atelier-accent);
+  box-shadow: 0 0 0 1px var(--atelier-accent);
+}
+.atelier-floor-tag:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) {
+  .atelier-floor-tag:hover {
+    border-color: var(--atelier-accent);
+  }
+}
+
+.atelier-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--atelier-muted);
+}
+@media (hover: hover) {
+  .atelier-text-button:hover {
+    color: var(--atelier-ink);
+  }
+}
+.atelier-floor-list {
+  display: grid;
+  border-top: 1px solid var(--atelier-rule);
+}
+.atelier-floor-list button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--atelier-rule);
+  text-align: left;
+  transition: color 150ms ease-out;
+}
+.atelier-floor-list span {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 19px;
+}
+.atelier-floor-list small {
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--atelier-muted);
+}
+@media (hover: hover) {
+  .atelier-floor-list button:hover span {
+    color: var(--atelier-accent);
+  }
+}
+.atelier-ticket.is-inline {
+  padding: 12px 0;
+  border-top: 1px solid var(--atelier-rule);
+  border-bottom: 1px solid var(--atelier-rule);
+}
+.atelier-ticket.is-inline dd {
+  white-space: normal;
+}
+.atelier-floor-price {
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.atelier-floor-note {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--atelier-muted);
+}
+.atelier-floor-note a {
+  color: var(--atelier-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* Phones and narrow tablets: options become a bottom sheet. */
 @media (max-width: 899px) {
   .atelier-bar {
@@ -356,9 +513,28 @@
   .atelier-ticket {
     display: none;
   }
+  .atelier-ticket.is-inline {
+    display: grid;
+  }
+  /* Above the bottom sheet, not behind it. */
+  .atelier-hint {
+    left: 12px;
+    bottom: auto;
+    top: 112px;
+    width: calc(100% - 24px);
+  }
+  /* On a phone the panel already says how to inspect; keep the scene clear. */
+  .atelier-hint[data-stage="found"] {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .atelier-hint {
+    animation: none;
+  }
+  .atelier-floor-tag,
+  .atelier-hint button,
   .atelier-tooltip,
   .atelier-back,
   .atelier-icon-button,

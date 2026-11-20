@@ -56,3 +56,42 @@ test("shows the options as a bottom sheet on phones", async ({ page }) => {
   await page.getByRole("button", { name: "Hide options" }).click();
   await expect(panel).toBeHidden();
 });
+
+test("invites the visitor onto the floor and lets them wear a house pick", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  // `?explore` sends the invitation straight away instead of after a while.
+  await page.goto(`/studio/${SUIT}?explore`);
+  const scene = page.getByRole("region", {
+    name: "Full-screen 3D suit studio",
+  });
+  await expect(scene).toHaveAttribute("data-ready", "true", {
+    timeout: 60_000,
+  });
+
+  await expect(page.getByText("Take a look around.")).toBeVisible();
+  await page.getByRole("button", { name: "Show me" }).click();
+
+  const panel = page.getByRole("region", { name: "Design options" });
+  await expect(
+    panel.getByRole("heading", { name: "On the floor" }),
+  ).toBeVisible();
+  await panel.getByRole("button", { name: /Navy double-breasted/ }).click();
+  await expect(
+    panel.getByRole("heading", { name: "Navy double-breasted" }),
+  ).toBeVisible();
+  await expect(panel.getByText("Six-button double-breasted")).toBeVisible();
+
+  await panel.getByRole("button", { name: "Wear this design" }).click();
+  await expect(scene).toHaveAttribute(
+    "data-jacket",
+    "double-breasted-six-button",
+    { timeout: 30_000 },
+  );
+  await expect(
+    panel.getByRole("heading", { name: "Choose your cloth" }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});

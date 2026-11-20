@@ -22,8 +22,21 @@ Both surfaces are disabled when `ENABLE_3D_CONFIGURATOR=false`. The customizer t
 | `src/features/customizer/three-d/suit-studio-canvas.tsx`        | Studio scene: camera controls, fly-to, podium, ambient occlusion, hover tooltip, photo capture.                                                   |
 | `src/features/customizer/components/suit-studio-experience.tsx` | Studio page UI: top bar, tools, options panel.                                                                                                    |
 | `src/features/customizer/components/option-steps.tsx`           | Fabric and option pickers, shared by the customizer and the studio.                                                                               |
+| `src/features/customizer/three-d/suit-gallery-designs.ts`       | The studio floor's designs (house picks and the visitor's saved designs) and the ring layout around the visitor's suit.                           |
+| `src/features/customizer/three-d/suit-gallery.tsx`              | The studio floor scene: suits rising onto podiums, the chalk-grid floor, swing-ticket tags, cheap click targets.                                  |
+| `src/features/customizer/components/studio-floor.tsx`           | The invitation to look around, the floor panel (list, inspect, "Wear this design"), the spec ticket, and saved-design loading.                    |
 
 Pricing stays in `src/features/customizer/pricing.ts`. The scene only receives visual selections.
+
+## The studio floor
+
+After the visitor has made a few changes (three changes and 25 s, or 90 s regardless; once per browser session), a note invites them to look around. Turning the camera, or "Show me", raises a lineup of other suits in an arc just behind the visitor's own (4 m away, facing it): the house picks in `HOUSE_PICKS`, plus up to three of the signed-in visitor's saved designs for the same suit (four suits in total on low-power devices). Clicking a suit or its tag walks the camera up to it; "Wear this design" replaces the visitor's design through `wearDesign` in the customizer store. House picks keep the visitor's fit and personal details; saved designs come back as saved.
+
+- `/studio/<suit>?explore` sends the invitation immediately. E2E tests use it.
+- House picks must use only cloths and options the House Suit offers. `suit-gallery-designs.test.ts` fails if a seed change would make a pick render differently from what "Wear this design" produces.
+- They are curated, not ranked. Showing genuinely popular designs needs an aggregate over orders or saved designs in Convex.
+- While the floor is open the camera stays in the front half of the room (azimuth ±90°), so it can never walk into the lineup. A chalk-grid floor sits under the visitor's suit at all times and spreads wider when the lineup appears.
+- Each floor suit is a full `TailoredSuit` (geometry shared, materials per suit). Clicks hit an invisible cylinder per suit, never the 200k-triangle meshes.
 
 ## Home page hero
 
