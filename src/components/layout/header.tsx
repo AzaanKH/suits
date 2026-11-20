@@ -8,6 +8,7 @@ import { useState } from "react";
 
 import { CartSheet } from "@/components/cart/cart-sheet";
 import { PageContainer } from "@/components/layout/page-container";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { SUIT_3D_PRODUCT_SLUG } from "@/features/customizer/three-d/suit-selection";
 
 const navigation = [
@@ -32,6 +33,7 @@ export function Header({ checkoutEnabled }: { checkoutEnabled: boolean }) {
           <Link href="/account/designs" prefetch={false}>
             Saved designs
           </Link>
+          <ThemeToggle className="size-8" />
           <CartSheet checkoutEnabled={checkoutEnabled} />
         </nav>
       </header>
@@ -75,6 +77,7 @@ export function Header({ checkoutEnabled }: { checkoutEnabled: boolean }) {
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-3">
+          <ThemeToggle />
           <AuthHeaderControls />
           <CartSheet checkoutEnabled={checkoutEnabled} />
         </div>

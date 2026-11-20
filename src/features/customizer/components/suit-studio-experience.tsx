@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import {
   ArrowLeft,
   Camera,
@@ -70,7 +71,11 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
   const activeStep: StudioStepCode = isStudioStepCode(currentStepCode)
     ? currentStepCode
     : "fabric";
-  const [mood, setMood] = useState<SuitMood>("atelier");
+  // Until the visitor picks a lighting mood, follow the site theme.
+  const { resolvedTheme } = useTheme();
+  const [chosenMood, setMood] = useState<SuitMood | null>(null);
+  const mood: SuitMood =
+    chosenMood ?? (resolvedTheme === "dark" ? "evening" : "atelier");
   const [turntable, setTurntable] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [insets, setInsets] = useState({ right: 0, bottom: 0 });

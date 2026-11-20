@@ -17,7 +17,7 @@
   background: #eef0f1;
 }
 .suit-atelier[data-mood="evening"] {
-  background: #1b212b;
+  background: #14171b;
 }
 .suit-atelier.is-message {
   display: grid;
