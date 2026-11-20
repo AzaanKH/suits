@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
+  Box,
   Check,
   Palette,
   ReceiptText,
@@ -18,6 +19,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { EmptyState } from "@/components/storefront/empty-state";
 import { ProductImageGallery } from "@/components/storefront/product-image-gallery";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SUIT_3D_PRODUCT_SLUG } from "@/features/customizer/three-d/suit-selection";
 import { formatBasePrice, formatPriceModifier } from "@/lib/product-format";
 
 const purchasePath = [
@@ -38,7 +40,14 @@ const purchasePath = [
   },
 ];
 
-export function ProductDetail({ slug }: { slug: string }) {
+export function ProductDetail({
+  slug,
+  studioEnabled = false,
+}: {
+  slug: string;
+  /** ENABLE_3D_CONFIGURATOR, read on the server. */
+  studioEnabled?: boolean;
+}) {
   const product = useQuery(api.products.bySlug, { slug });
   const customizationOptions = useQuery(api.products.customizationOptions, {
     productSlug: slug,
@@ -158,9 +167,22 @@ export function ProductDetail({ slug }: { slug: string }) {
                 Begin customization
                 <ArrowRight aria-hidden="true" className="size-4" />
               </Link>
-              <Link className="button-secondary w-full sm:w-auto" href="/shop">
-                Compare suits
-              </Link>
+              {studioEnabled && product.slug === SUIT_3D_PRODUCT_SLUG ? (
+                <Link
+                  className="button-secondary w-full sm:w-auto"
+                  href={`/studio/${product.slug}`}
+                >
+                  <Box aria-hidden="true" className="size-4" />
+                  Design in 3D
+                </Link>
+              ) : (
+                <Link
+                  className="button-secondary w-full sm:w-auto"
+                  href="/shop"
+                >
+                  Compare suits
+                </Link>
+              )}
             </div>
             <p className="text-muted-foreground mt-3 text-xs leading-5">
               Customize details online, then choose Standard Fit or Made to

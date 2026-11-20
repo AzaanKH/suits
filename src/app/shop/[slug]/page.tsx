@@ -14,5 +14,10 @@ export const metadata: Metadata = {
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
 
-  return <ProductDetail slug={slug} />;
+  return (
+    <ProductDetail
+      slug={slug}
+      studioEnabled={process.env.ENABLE_3D_CONFIGURATOR !== "false"}
+    />
+  );
 }
