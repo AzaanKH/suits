@@ -144,3 +144,71 @@ describe("3D mesh visibility", () => {
     expect(isSuitMeshVisible("vest_button_2", vested)).toBe(true);
   });
 });
+
+describe("3D jacket details from Details requests", () => {
+  const withRequests = (
+    choices: Record<string, string>,
+    options: Partial<CustomizerConfiguration["selectedOptionCodes"]> = {},
+  ) =>
+    getSuit3dSelection({
+      ...baseConfiguration,
+      selectedOptionCodes: {
+        ...baseConfiguration.selectedOptionCodes,
+        ...options,
+      },
+      tailoring: { version: 1, choices, dimensions: {} },
+    });
+  const single = {
+    "jacket-style": ["single-breasted-two-button"],
+    lapel: ["notch-lapel"],
+  };
+
+  it("drops the top row for a 4×2 double-breasted, and only there", () => {
+    const fourByTwo = withRequests({ "front-cut": "db-four" });
+    expect(isSuitMeshVisible("double_button_upper_9", fourByTwo)).toBe(false);
+    expect(isSuitMeshVisible("double_button_9", fourByTwo)).toBe(true);
+    expect(isSuitMeshVisible("double_button_upper_9", withRequests({}))).toBe(
+      true,
+    );
+    // The request means nothing on a single-breasted jacket.
+    expect(
+      withRequests({ "front-cut": "db-four" }, single).jacketDetails.fourByTwo,
+    ).toBe(false);
+  });
+
+  it("keeps the sleeve buttons nearest the cuff edge", () => {
+    const two = withRequests({ "cuff-button-count": "two" }, single);
+    // Right sleeve, from the cuff edge up: 1, 0, 2.
+    expect(isSuitMeshVisible("single_button_1", two)).toBe(true);
+    expect(isSuitMeshVisible("single_button_0", two)).toBe(true);
+    expect(isSuitMeshVisible("single_button_2", two)).toBe(false);
+    // The jacket's front buttons are not sleeve buttons.
+    expect(isSuitMeshVisible("single_button_10", two)).toBe(true);
+    // Four and five need meshes the model lacks: it keeps its own three.
+    const four = withRequests({ "cuff-button-count": "four" }, single);
+    expect(four.jacketDetails.sleeveButtons).toBeNull();
+    expect(isSuitMeshVisible("single_button_2", four)).toBe(true);
+  });
+
+  it("hides the breast pocket and lapel buttonhole on request", () => {
+    const bare = withRequests(
+      { "breast-pocket": "none", "lapel-buttonhole": "none" },
+      single,
+    );
+    expect(isSuitMeshVisible("single_breast", bare)).toBe(false);
+    expect(isSuitMeshVisible("single_buttonhole", bare)).toBe(false);
+    const standard = withRequests({}, single);
+    expect(isSuitMeshVisible("single_breast", standard)).toBe(true);
+    expect(isSuitMeshVisible("single_buttonhole", standard)).toBe(true);
+  });
+
+  it("carries the lining colour and buttonhole thread", () => {
+    const selection = withRequests({
+      "lining-color": "burgundy",
+      "buttonhole-thread": "ivory",
+    });
+    expect(selection.liningMaterial.color).toBe("#602d3e");
+    expect(selection.jacketDetails.buttonholeThread).toBe("#e6dcc6");
+    expect(withRequests({}).jacketDetails.buttonholeThread).toBeNull();
+  });
+});

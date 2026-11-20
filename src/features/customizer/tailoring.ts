@@ -47,6 +47,8 @@ type Field = {
   label: string;
   options: readonly { value: string; label: string }[];
   preview: "material" | "detail" | "specification";
+  /** The values the 3D model can draw; others are specification only. Omitted: all. */
+  previewValues?: readonly string[];
 };
 function field(
   area: TailoringArea,
@@ -54,12 +56,14 @@ function field(
   label: string,
   values: string,
   preview: Field["preview"] = "specification",
+  previewValues?: readonly string[],
 ): Field {
   return {
     area,
     id,
     label,
     preview,
+    previewValues,
     options: values.split("|").map((entry) => {
       const [value, label] = entry.split(":");
       return { value, label };
@@ -83,6 +87,7 @@ export const TAILORING_FIELDS: readonly Field[] = [
     "lining-color",
     "Lining color",
     "navy:Navy|burgundy:Burgundy|ivory:Ivory|black:Black|forest:Forest green",
+    "material",
   ),
   field(
     "cloth",
@@ -107,6 +112,8 @@ export const TAILORING_FIELDS: readonly Field[] = [
     "front-cut",
     "Additional jacket front request",
     "sb-three:Three-button single breasted|three-roll-two:Three-roll-two|db-four:Four-button double breasted|db-six-one:Six-button, one fastening",
+    "detail",
+    ["db-four"],
   ),
   field(
     "jacket",
@@ -173,6 +180,8 @@ export const TAILORING_FIELDS: readonly Field[] = [
     "breast-pocket",
     "Breast pocket",
     "welt:Straight welt|barchetta:Curved welt|patch:Patch|none:None",
+    "detail",
+    ["welt", "none"],
   ),
   field(
     "jacket",
@@ -203,6 +212,8 @@ export const TAILORING_FIELDS: readonly Field[] = [
     "cuff-button-count",
     "Sleeve button count",
     "one:One|two:Two|three:Three|four:Four|five:Five",
+    "detail",
+    ["one", "two", "three"],
   ),
   field(
     "jacket",
@@ -388,12 +399,15 @@ export const TAILORING_FIELDS: readonly Field[] = [
     "buttonhole-thread",
     "Buttonhole thread",
     "matching:Matching|ivory:Ivory|burgundy:Burgundy|navy:Navy",
+    "detail",
   ),
   field(
     "finishing",
     "lapel-buttonhole",
     "Lapel buttonhole",
     "standard:Standard|milanese:Milanese|none:None",
+    "detail",
+    ["standard", "none"],
   ),
   field(
     "finishing",
@@ -554,7 +568,10 @@ export function tailoringRows(spec: TailoringSpecification | undefined) {
               id: f.id,
               label: f.label,
               value: option.label,
-              preview: f.preview,
+              preview:
+                f.previewValues && !f.previewValues.includes(option.value)
+                  ? ("specification" as const)
+                  : f.preview,
             },
           ]
         : [];

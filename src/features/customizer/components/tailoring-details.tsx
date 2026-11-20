@@ -119,9 +119,16 @@ export function TailoringDetails({
                 {reason ??
                   (field.preview === "material"
                     ? "Color preview in 3D; final fabric needs a swatch."
-                    : field.preview === "detail"
-                      ? "Schematic detail preview in 3D."
-                      : "Saved in the specification; not shown in 3D yet.")}
+                    : field.preview === "detail" && field.previewValues
+                      ? `Shown in 3D: ${field.options
+                          .filter((o) => field.previewValues?.includes(o.value))
+                          .map((o) => o.label.toLowerCase())
+                          .join(
+                            ", ",
+                          )}. Other choices are saved in the specification.`
+                      : field.preview === "detail"
+                        ? "Schematic detail preview in 3D."
+                        : "Saved in the specification; not shown in 3D yet.")}
               </p>
             </div>
           );

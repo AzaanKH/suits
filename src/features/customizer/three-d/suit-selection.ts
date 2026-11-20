@@ -9,6 +9,22 @@ export type Suit3dMaterial = {
   color: string;
   roughness: number;
   metalness: number;
+  /** Sheen strength: fuzz on flannel, luster on barathea. Defaults to 0.35. */
+  sheen?: number;
+  /** Depth of the weave in the normal map: open hopsack and slubby linen read deeper. */
+  weave?: number;
+};
+
+/** Jacket details from Details requests that the model can draw. */
+export type Suit3dJacketDetails = {
+  breastPocket: boolean;
+  /** Sleeve buttons per cuff, nearest the cuff edge first; null keeps the model's own. */
+  sleeveButtons: number | null;
+  /** 4×2 double-breasted: drop the top, decorative row of the 6×2. */
+  fourByTwo: boolean;
+  lapelButtonhole: boolean;
+  /** Contrast thread for the lapel buttonhole; null matches the cloth. */
+  buttonholeThread: string | null;
 };
 
 export type Suit3dSelection = {
@@ -21,6 +37,7 @@ export type Suit3dSelection = {
   trouserDetails: { waist: string; pleats: string } | null;
   buttonMaterial: Suit3dMaterial;
   liningMaterial: Suit3dMaterial;
+  jacketDetails: Suit3dJacketDetails;
   selectedCodes: {
     fabric: string;
     jacket: string;
@@ -64,6 +81,8 @@ export const FABRIC_MATERIALS = {
     color: "#344860",
     roughness: 0.82,
     metalness: 0.02,
+    sheen: 0.35,
+    weave: 0.35,
   },
   "grey-traveller": {
     code: "grey-traveller",
@@ -72,6 +91,8 @@ export const FABRIC_MATERIALS = {
     color: "#59606a",
     roughness: 0.78,
     metalness: 0.01,
+    sheen: 0.4,
+    weave: 0.3,
   },
   "olive-flannel": {
     code: "olive-flannel",
@@ -80,6 +101,8 @@ export const FABRIC_MATERIALS = {
     color: "#39432d",
     roughness: 0.9,
     metalness: 0.01,
+    sheen: 0.6,
+    weave: 0.15,
   },
   "charcoal-pick-and-pick": {
     code: "charcoal-pick-and-pick",
@@ -88,6 +111,8 @@ export const FABRIC_MATERIALS = {
     color: "#2f3233",
     roughness: 0.74,
     metalness: 0.02,
+    sheen: 0.35,
+    weave: 0.4,
   },
   "midnight-barathea": {
     code: "midnight-barathea",
@@ -96,6 +121,8 @@ export const FABRIC_MATERIALS = {
     color: "#111829",
     roughness: 0.7,
     metalness: 0.02,
+    sheen: 0.5,
+    weave: 0.25,
   },
   "stone-wool-linen": {
     code: "stone-wool-linen",
@@ -104,6 +131,8 @@ export const FABRIC_MATERIALS = {
     color: "#b0a58f",
     roughness: 0.88,
     metalness: 0,
+    sheen: 0.25,
+    weave: 0.5,
   },
 } satisfies Record<string, Suit3dMaterial>;
 
@@ -144,6 +173,12 @@ export const LINING_MATERIALS = {
     metalness: 0.01,
   },
 } satisfies Record<string, Suit3dMaterial>;
+
+const BUTTONHOLE_THREADS: Record<string, string> = {
+  ivory: "#e6dcc6",
+  burgundy: "#6b2433",
+  navy: "#1c2a4a",
+};
 
 const fallbackCodes = {
   jacket: "single-breasted-two-button",
@@ -262,6 +297,18 @@ export function getSuit3dSelection(
         }
       : null;
 
+  const sleeveCounts: Record<string, number> = { one: 1, two: 2, three: 3 };
+  const jacketDetails: Suit3dJacketDetails = {
+    breastPocket: requests["breast-pocket"] !== "none",
+    sleeveButtons: sleeveCounts[requests["cuff-button-count"] ?? ""] ?? null,
+    fourByTwo:
+      jacketCode === "double-breasted-six-button" &&
+      requests["front-cut"] === "db-four",
+    lapelButtonhole: requests["lapel-buttonhole"] !== "none",
+    buttonholeThread:
+      BUTTONHOLE_THREADS[requests["buttonhole-thread"] ?? ""] ?? null,
+  };
+
   return {
     supportedProduct: configuration.productSlug === SUIT_3D_PRODUCT_SLUG,
     productSlug: configuration.productSlug,
@@ -272,6 +319,7 @@ export function getSuit3dSelection(
     trouserDetails,
     buttonMaterial,
     liningMaterial,
+    jacketDetails,
     selectedCodes: {
       fabric: fabricMaterial.code,
       jacket: jacketCode,
@@ -367,5 +415,30 @@ export function isSuitMeshVisible(
     return name.endsWith("_" + (POCKET_MESH[codes.pockets] ?? "flap"));
   if (name === "single_button_11")
     return codes.jacket !== "single-breasted-one-button";
+  const details = selection.jacketDetails;
+  if (name.endsWith("_breast")) return details.breastPocket;
+  if (name.endsWith("_buttonhole")) return details.lapelButtonhole;
+  if (name.startsWith("double_button_upper_")) return !details.fourByTwo;
+  const rank = SLEEVE_BUTTON_RANK[name];
+  if (rank !== undefined && details.sleeveButtons !== null)
+    return rank < details.sleeveButtons;
   return true;
 }
+
+/**
+ * Sleeve buttons by distance from the cuff edge (0 = nearest), per block.
+ * Positions come from the model: the arms hang down, so lower is nearer the edge.
+ */
+const SLEEVE_BUTTON_RANK: Record<string, number> = Object.fromEntries(
+  (
+    [
+      ["single", [1, 0, 2], [4, 3, 5]],
+      ["double", [2, 1, 3], [5, 4, 6]],
+      ["dinner", [0, 1, 2, 3], [4, 5, 6, 7]],
+    ] as const
+  ).flatMap(([block, right, left]) =>
+    [right, left].flatMap((sleeve) =>
+      sleeve.map((index, rank) => [`${block}_button_${index}`, rank]),
+    ),
+  ),
+);
