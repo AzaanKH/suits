@@ -30,8 +30,8 @@ The woven color texture is used with the original garment normal maps. It is an 
 
 1. Run `pnpm assets:studio:build` (Blender in background mode) from the repository root. This produces the editable Blender file, raw GLB, part inventory, and an offline review render.
 2. Run `pnpm assets:studio:textures` to produce the WebP textures from retained source PNGs.
-3. Run `pnpm assets:studio:compress` to generate the Meshopt GLB used by the viewer. Named meshes remain separate so garment swaps continue to work.
+3. Run `pnpm assets:studio:split` to write the Meshopt GLBs the viewer loads: `suit-core.glb` (shared meshes and the single-breasted block), `suit-double.glb`, and `suit-dinner.glb`. Named meshes remain separate so garment swaps continue to work.
 
-The browser loads the optimized GLB (about 2.6 MB) and four WebP textures (about 3.9 MB combined). It does not fetch the raw GLB or source PNG files. Lighting is generated locally; no external HDR download is required.
+The browser first loads `suit-core.glb` with the wool and single-breasted textures (about 2.6 MB), then the other two blocks on demand or in the background. It does not fetch the raw GLB or source PNG files. Lighting is generated locally; no external HDR download is required.
 
 The three jacket blocks have their own collars, shirt inserts, cuffs and normal maps. Shawl lapels select the dinner-jacket block. Lining color, measurements, and unmodeled construction details remain specification requests. The waistcoat is a simplified visual insert; this model does not predict fit, drape, or manufacturing feasibility.

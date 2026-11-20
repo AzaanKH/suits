@@ -1,7 +1,9 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Bvh, CameraControls } from "@react-three/drei";
+import { CameraControls } from "@react-three/drei";
+import { EffectComposer, N8AO, ToneMapping } from "@react-three/postprocessing";
+import { ToneMappingMode } from "postprocessing";
 import {
   Suspense,
   useCallback,
@@ -31,7 +33,7 @@ import {
 } from "./suit-parts";
 import { getSuit3dSelection } from "./suit-selection";
 
-export type StudioCapture = () => string;
+export type StudioCapture = () => Promise<string>;
 
 type Props = {
   configuration: CustomizerConfiguration;
@@ -68,6 +70,7 @@ export function SuitStudioCanvas({
     [configuration],
   );
   const onReady = useCallback(() => setReady(true), []);
+  const clearHover = useCallback(() => setHoveredPart(null), []);
   const interaction = useMemo(
     () => ({
       hoveredStep: hoveredPart?.step ?? null,
@@ -114,6 +117,8 @@ export function SuitStudioCanvas({
           dpr={capability.simplified ? [1, 1.5] : [1, 2]}
           frameloop={turntable ? "always" : "demand"}
           shadows
+          // Meshes carry BVH indexes (see SuitPiece); only the nearest hit matters.
+          raycaster={{ firstHitOnly: true }}
           gl={{ antialias: true, powerPreference: "high-performance" }}
           onCreated={({ gl }) => {
             gl.domElement.setAttribute("data-testid", "suit-studio-canvas");
@@ -128,17 +133,33 @@ export function SuitStudioCanvas({
             <SuitLighting
               mood={mood}
               shadowResolution={capability.simplified ? 512 : 1024}
+              postProcessed={!capability.simplified}
             />
-            <Bvh firstHitOnly>
-              <TailoredSuit
-                selection={selection}
-                onReady={onReady}
-                onModel={setModel}
-                interaction={interaction}
-              />
-            </Bvh>
+            <TailoredSuit
+              selection={selection}
+              onReady={onReady}
+              onModel={setModel}
+              interaction={interaction}
+              preloadBlocks
+            />
             <Podium mood={mood} />
           </Suspense>
+          {capability.simplified ? null : (
+            // Ambient occlusion grounds folds, lapel rolls, and pocket edges
+            // that direct light alone leaves flat. Skipped on low-power devices.
+            <EffectComposer multisampling={4}>
+              <N8AO
+                aoRadius={0.12}
+                distanceFalloff={0.5}
+                intensity={2.2}
+                quality="medium"
+                halfRes
+              />
+              {/* The composer renders to a linear buffer, which skips the
+                  renderer's own tone mapping; reapply R3F's ACES default. */}
+              <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+            </EffectComposer>
+          )}
           <StudioCamera
             model={ready ? model : null}
             activeStep={activeStep}
@@ -146,7 +167,7 @@ export function SuitStudioCanvas({
             turntable={turntable}
             onUserControl={onTurntableStop}
           />
-          <CaptureBridge captureRef={captureRef} />
+          <CaptureBridge captureRef={captureRef} clearHover={clearHover} />
         </Canvas>
         {!ready ? (
           <div className="studio-scene-loading" role="status">
@@ -269,20 +290,29 @@ function StudioCamera({
 
 function CaptureBridge({
   captureRef,
+  clearHover,
 }: {
   captureRef: MutableRefObject<StudioCapture | null>;
+  /** Removes the hover outline so it does not end up in the photo. */
+  clearHover: () => void;
 }) {
   const get = useThree((s) => s.get);
   useEffect(() => {
-    captureRef.current = () => {
-      const { gl, scene, camera } = get();
-      // Render synchronously so the buffer is current without preserveDrawingBuffer.
-      gl.render(scene, camera);
+    captureRef.current = async () => {
+      clearHover();
+      // Two frames: one for React to commit, one for the scene to redraw.
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+      const { gl, advance } = get();
+      // Render a frame synchronously, through any post-processing, so the
+      // buffer is current without preserveDrawingBuffer.
+      advance(performance.now());
       return gl.domElement.toDataURL("image/png");
     };
     return () => {
       captureRef.current = null;
     };
-  }, [get, captureRef]);
+  }, [get, captureRef, clearHover]);
   return null;
 }

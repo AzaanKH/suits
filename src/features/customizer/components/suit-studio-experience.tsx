@@ -55,6 +55,7 @@ const SuitStudioCanvas = dynamic(
 );
 
 const DESKTOP_QUERY = "(min-width: 900px)";
+const NO_INSETS = { right: 0, bottom: 0 };
 
 export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
   const { customizerData, catalog } = useCustomizerCatalog(productSlug);
@@ -69,7 +70,8 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
   const [turntable, setTurntable] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [insets, setInsets] = useState({ right: 0, bottom: 0 });
-  const panelRef = useRef<HTMLElement>(null);
+  // A state ref, so measuring starts when the panel actually mounts (after the catalog loads).
+  const [panel, setPanel] = useState<HTMLElement | null>(null);
   const captureRef = useRef<StudioCapture | null>(null);
   const stopTurntable = useCallback(() => setTurntable(false), []);
   const selectStep = useCallback(
@@ -89,11 +91,7 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
 
   // The panel floats over the scene; report how much it covers so the camera can re-center.
   useLayoutEffect(() => {
-    const panel = panelRef.current;
-    if (!panel || !panelOpen) {
-      setInsets({ right: 0, bottom: 0 });
-      return;
-    }
+    if (!panel || !panelOpen) return;
     const measure = () => {
       const rect = panel.getBoundingClientRect();
       setInsets(
@@ -110,7 +108,7 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [panelOpen, catalog]);
+  }, [panel, panelOpen]);
 
   if (customizerData === undefined || (customizerData.product && !catalog)) {
     return (
@@ -162,11 +160,11 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
       ? null
       : catalog.groupsByCode[activeStep as CustomizerGroupCode];
 
-  function savePhoto() {
+  async function savePhoto() {
     const capture = captureRef.current;
     if (!capture) return;
     const link = document.createElement("a");
-    link.href = capture();
+    link.href = await capture();
     link.download = `arden-${productSlug}.png`;
     link.click();
   }
@@ -180,7 +178,7 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
         mood={mood}
         turntable={turntable}
         onTurntableStop={stopTurntable}
-        insets={insets}
+        insets={panel && panelOpen ? insets : NO_INSETS}
         captureRef={captureRef}
         fallback={
           <div className="suit-atelier is-message">
@@ -261,7 +259,7 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
 
       {panelOpen ? (
         <section
-          ref={panelRef}
+          ref={setPanel}
           className="atelier-panel"
           aria-label="Design options"
         >

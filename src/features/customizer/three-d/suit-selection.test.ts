@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { CustomizerConfiguration } from "@/features/customizer/types";
 
-import { getSuit3dSelection, SUIT_3D_PRODUCT_SLUG } from "./suit-selection";
+import {
+  getSuit3dSelection,
+  getSuitBlock,
+  isSuitMeshVisible,
+  SUIT_3D_PRODUCT_SLUG,
+} from "./suit-selection";
 
 const baseConfiguration: CustomizerConfiguration = {
   version: 1,
@@ -83,5 +88,59 @@ describe("3D suit selection", () => {
     });
 
     expect(selection.selectedCodes.vest).toBe("matching-waistcoat");
+  });
+});
+
+describe("3D mesh visibility", () => {
+  const withOptions = (
+    options: Partial<CustomizerConfiguration["selectedOptionCodes"]>,
+  ) =>
+    getSuit3dSelection({
+      ...baseConfiguration,
+      selectedOptionCodes: {
+        ...baseConfiguration.selectedOptionCodes,
+        ...options,
+      },
+    });
+
+  it("shows only the block for the jacket and lapel", () => {
+    const double = withOptions({});
+    expect(getSuitBlock(double)).toBe("double");
+    expect(isSuitMeshVisible("double_body", double)).toBe(true);
+    expect(isSuitMeshVisible("single_body", double)).toBe(false);
+    expect(isSuitMeshVisible("double_lapel_peak", double)).toBe(true);
+    expect(isSuitMeshVisible("double_lapel_notch", double)).toBe(false);
+    expect(isSuitMeshVisible("shirt_button_0", double)).toBe(false);
+
+    const dinner = withOptions({ lapel: ["shawl-lapel"] });
+    expect(getSuitBlock(dinner)).toBe("dinner");
+    expect(isSuitMeshVisible("dinner_lapel_shawl", dinner)).toBe(true);
+    expect(isSuitMeshVisible("double_body", dinner)).toBe(false);
+  });
+
+  it("maps pockets and the one-button front", () => {
+    const single = withOptions({
+      "jacket-style": ["single-breasted-one-button"],
+      lapel: ["notch-lapel"],
+      pockets: ["jetted-pockets"],
+    });
+    expect(getSuitBlock(single)).toBe("single");
+    expect(isSuitMeshVisible("single_pocket_welt", single)).toBe(true);
+    expect(isSuitMeshVisible("single_pocket_flap", single)).toBe(false);
+    expect(isSuitMeshVisible("single_button_11", single)).toBe(false);
+    expect(isSuitMeshVisible("single_button_10", single)).toBe(true);
+    expect(isSuitMeshVisible("shirt_button_0", single)).toBe(true);
+  });
+
+  it("follows trouser and waistcoat choices for shared meshes", () => {
+    const pleated = withOptions({ trousers: ["single-pleat-trousers"] });
+    expect(isSuitMeshVisible("pleat_1_0", pleated)).toBe(true);
+    expect(isSuitMeshVisible("pleat_1_1", pleated)).toBe(false);
+    expect(isSuitMeshVisible("trousers", pleated)).toBe(true);
+    expect(isSuitMeshVisible("waistcoat", pleated)).toBe(false);
+
+    const vested = withOptions({ extras: ["matching-waistcoat"] });
+    expect(isSuitMeshVisible("waistcoat", vested)).toBe(true);
+    expect(isSuitMeshVisible("vest_button_2", vested)).toBe(true);
   });
 });

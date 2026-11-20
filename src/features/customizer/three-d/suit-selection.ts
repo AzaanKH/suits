@@ -316,3 +316,56 @@ function getKnownMaterial<T extends Record<string, Suit3dMaterial>>(
     ? materials[code as keyof T]
     : null;
 }
+
+export type SuitBlock = "single" | "double" | "dinner";
+
+/** The jacket block a selection shows. A shawl lapel only exists on the dinner jacket. */
+export function getSuitBlock(selection: Suit3dSelection): SuitBlock {
+  const codes = selection.selectedCodes;
+  if (codes.lapel === "shawl-lapel") return "dinner";
+  if (codes.jacket === "double-breasted-six-button") return "double";
+  return "single";
+}
+
+const POCKET_MESH: Record<string, string> = {
+  "patch-pockets": "patch",
+  "jetted-pockets": "welt",
+  "slanted-flap-pockets": "slanted",
+};
+
+/**
+ * Whether a mesh from the studio GLB shows for a selection. Mesh names follow
+ * `<block>_<part>[_<variant>]`; see docs/3d-suit-configurator.md.
+ */
+export function isSuitMeshVisible(
+  name: string,
+  selection: Suit3dSelection,
+): boolean {
+  const codes = selection.selectedCodes;
+  const block = getSuitBlock(selection);
+  if (name.startsWith("vest_") || name === "waistcoat")
+    return Boolean(codes.vest);
+  if (name.startsWith("shirt_button_")) return block === "single";
+  if (name.startsWith("waist_loop_") || name.startsWith("waist_adjuster_")) {
+    const waist = selection.trouserDetails?.waist ?? codes.trousers;
+    return name.startsWith("waist_loop_")
+      ? waist === "belt-loops"
+      : waist === "side-adjusters";
+  }
+  if (name.startsWith("pleat_")) {
+    const pleats =
+      selection.trouserDetails?.pleats ??
+      (codes.trousers === "single-pleat-trousers" ? "single" : "flat");
+    return pleats !== "flat" && (pleats === "double" || name.endsWith("_0"));
+  }
+  const prefix = /^(single|double|dinner)_/.exec(name)?.[1];
+  if (!prefix) return true;
+  if (prefix !== block) return false;
+  if (name.includes("_lapel_"))
+    return name.endsWith("_" + codes.lapel.replace("-lapel", ""));
+  if (name.includes("_pocket_"))
+    return name.endsWith("_" + (POCKET_MESH[codes.pockets] ?? "flap"));
+  if (name === "single_button_11")
+    return codes.jacket !== "single-breasted-one-button";
+  return true;
+}

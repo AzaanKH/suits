@@ -1,46 +1,50 @@
 # 3D Performance Report
 
-Measured on the studio assets on November 19, 2026. Byte counts come from the files in `public/models/suit-studio`. Triangle counts come from `assets/suit-studio/parts.json`, which `pnpm assets:studio:build` writes.
+Measured on the studio assets on November 19, 2026. Byte counts come from the files in `public/models/suit-studio`. Triangle counts are printed by `pnpm assets:studio:split`.
 
 ## Transfer
 
-Both 3D surfaces load the same files, once per session (drei caches them).
+The model is split by jacket block. A visitor first downloads the shared meshes plus the default single-breasted block. The double-breasted and dinner blocks load the first time a selection needs them, or in the background 1.5 s after the suit first renders (skipped when the browser asks to save data). drei caches every file for the session, so both 3D surfaces share them.
 
-| Asset                                     |         Bytes |
-| ----------------------------------------- | ------------: |
-| `arden-tailoring-optimized.glb` (Meshopt) |     2,650,228 |
-| `textures/wool-albedo.webp`               |       712,456 |
-| `textures/single-normal.webp`             |       883,448 |
-| `textures/double-normal.webp`             |     1,206,356 |
-| `textures/dinner-normal.webp`             |     1,179,388 |
-| **Total**                                 | **6,631,876** |
+| Asset                         | When                    |         Bytes |
+| ----------------------------- | ----------------------- | ------------: |
+| `suit-core.glb` (Meshopt)     | First render            |     1,041,232 |
+| `textures/wool-albedo.webp`   | First render            |       712,456 |
+| `textures/single-normal.webp` | First render            |       883,448 |
+| **First render**              |                         | **2,637,136** |
+| `suit-double.glb`             | Background or on demand |       452,444 |
+| `textures/double-normal.webp` | Background or on demand |     1,206,356 |
+| `suit-dinner.glb`             | Background or on demand |       567,680 |
+| `textures/dinner-normal.webp` | Background or on demand |     1,179,388 |
+| **Everything**                |                         | **6,043,004** |
 
-The uncompressed source GLB (11,459,064 bytes) lives in `assets/suit-studio/` and is not deployed.
+Before the split, the first render needed all 6,631,876 bytes. It now needs 60% less. The total also dropped, because two lapel meshes that no selection can show (`single_lapel_shawl`, `double_lapel_shawl`) are no longer exported.
+
+The studio route also loads `postprocessing` and N8AO for ambient occlusion: one lazily loaded chunk of about 136 KB gzipped, only on `/studio`.
 
 ## Geometry
 
-| Group                                 |   Triangles |
-| ------------------------------------- | ----------: |
-| `single_*` block                      |     191,584 |
-| `double_*` block                      |     106,784 |
-| `dinner_*` block                      |     134,576 |
-| Shared (trousers, waistcoat, details) |      81,004 |
-| **Loaded**                            | **513,948** |
+| File              |   Triangles |
+| ----------------- | ----------: |
+| `suit-core.glb`   |     262,028 |
+| `suit-double.glb` |      98,688 |
+| `suit-dinner.glb` |     134,576 |
+| **All blocks**    | **495,292** |
 
-Only one jacket block is visible at a time, so about 190k–270k triangles render. All three blocks still download and stay in GPU memory.
+`suit-core.glb` holds the shared meshes (trousers, waistcoat, trouser details, shirt buttons) plus the single-breasted block. One jacket block is visible at a time, so 180k–260k triangles render.
 
 ## Runtime behavior
 
 - Both canvases use `frameloop="demand"` and render only when something changes. The studio switches to a continuous loop only while the turntable runs.
-- Low-memory, low-core, data-saver, and slow-connection devices get a lower device pixel ratio cap (1.5 instead of 2) and, in the studio, a 512px contact shadow instead of 1024px.
-- The studio builds three-mesh-bvh bounds trees (drei `Bvh`) for pointer raycasts. This is a one-time cost after load.
+- Switching to a block that has not loaded yet keeps the current suit on screen until the download finishes (`useDeferredValue` in `TailoredSuit`); it never blanks to a loading state.
+- The studio renders through an `EffectComposer` with N8AO (half resolution) and ACES tone mapping. Low-memory, low-core, data-saver, and slow-connection devices skip the composer, cap device pixel ratio at 1.5 instead of 2, and get a 512px contact shadow instead of 1024px.
+- Each model piece builds three-mesh-bvh bounds trees for pointer raycasts when it mounts. Clones share geometry, so each geometry is indexed once.
 - No WebGL means the 2D preview or a message. A runtime error offers a retry and the 2D preview.
 
 ## Improvement candidates
 
 In order of expected payoff:
 
-1. **Split the GLB per jacket block.** Load `single` first and the others on demand. This cuts first-load geometry by roughly 45% and frees GPU memory for blocks the customer never picks.
-2. **KTX2 textures.** WebP decodes to full RGBA in GPU memory. KTX2/Basis stays compressed on the GPU, which matters most on phones for the three 1.5k normal maps.
-3. **Reduce `single_body`** (110k triangles). A decimated LOD for the preview panel would keep the studio sharp while lightening the default page.
-4. **Measure on a real mid-range phone.** These numbers are file measurements, not field timings. Record time to first frame and orbit frame rate before setting budgets.
+1. **KTX2 textures.** The three normal maps are 3.3 MB of WebP and decode to full RGBA in GPU memory. KTX2/Basis stays compressed on the GPU, which matters most on phones.
+2. **Reduce `single_body`** (110k triangles, the largest mesh in the first download). A decimated version for the preview panel would keep the studio sharp while lightening the default page.
+3. **Measure on a real mid-range phone.** These numbers are file measurements, not field timings. Record time to first frame and orbit frame rate, with and without the AO composer, before setting budgets.

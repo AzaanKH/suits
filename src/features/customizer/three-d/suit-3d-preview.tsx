@@ -102,8 +102,12 @@ export function Suit3dPreview({ configuration, fallback }: Props) {
             }}
           >
             <Suspense fallback={null}>
-              <SuitLighting />
-              <TailoredSuit selection={selection} onReady={onReady} />
+              <SuitLighting mood="atelier" />
+              <TailoredSuit
+                selection={selection}
+                onReady={onReady}
+                preloadBlocks
+              />
             </Suspense>
             <CameraRig view={view} revision={cameraRevision} />
           </Canvas>

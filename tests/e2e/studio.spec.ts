@@ -10,7 +10,10 @@ test("opens the studio from the customizer and keeps the design", async ({
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/customize/${SUIT}`);
   await page.getByRole("link", { name: "Open studio" }).click();
-  await expect(page).toHaveURL(new RegExp(`/studio/${SUIT}$`));
+  // Generous: under `next dev` the first visit compiles the route.
+  await expect(page).toHaveURL(new RegExp(`/studio/${SUIT}$`), {
+    timeout: 30_000,
+  });
 
   const scene = page.getByRole("region", {
     name: "Full-screen 3D suit studio",

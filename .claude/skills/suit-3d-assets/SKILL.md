@@ -16,14 +16,14 @@ All commands run from the repository root. Blender must be on `PATH`.
 ```bash
 pnpm assets:studio:build      # Blender: arden-studio.blend, assets/suit-studio/arden-tailoring.glb, parts.json, model-review.png
 pnpm assets:studio:textures   # only if source PNGs changed
-pnpm assets:studio:compress   # Meshopt -> public/models/suit-studio/arden-tailoring-optimized.glb
+pnpm assets:studio:split      # Meshopt, one file per block -> public/models/suit-studio/suit-{core,double,dinner}.glb
 ```
 
 Only `public/models/suit-studio/` is deployed. Never write raw or source files there.
 
 After a rebuild:
 
-1. Bump the `?v=` query on `SUIT_MODEL_URL` in `src/features/customizer/three-d/suit-model.tsx`.
+1. Bump `ASSET_VERSION` in `src/features/customizer/three-d/suit-model.tsx`.
 2. Diff `assets/suit-studio/parts.json` against git. A renamed or missing mesh is a breaking change.
 3. Look at `assets/suit-studio/model-review.png`. It is an offline Cycles render of the default suit.
 4. Update the numbers in `docs/3d-performance-report.md` if bytes or triangles changed noticeably.
@@ -34,7 +34,7 @@ After a rebuild:
 
 A new mesh needs three things, or it will render but behave wrongly:
 
-1. **Visibility:** a rule in the `model.traverse` block of `TailoredSuit` in `suit-model.tsx`, unless it should always show with its block.
+1. **Visibility:** a rule in `isSuitMeshVisible` in `suit-selection.ts`, plus a test in `suit-selection.test.ts`, unless it should always show with its block. Its block prefix also decides which split GLB it ships in (`scripts/split-suit-studio.mjs`).
 2. **Click target:** a case in `getSuitPartForMesh` in `suit-parts.ts`, plus a row in `suit-parts.test.ts`. Return `null` for parts the customer cannot change.
 3. **Material:** a Blender material named after an existing slot (`Cloth`, `Lapel`, `Trouser`, `Waistcoat`, `Shirt`, `Button`, `Lining`). Unknown slots fall back to `Cloth`.
 
@@ -42,7 +42,7 @@ A new option code also needs adding to `SUPPORTED_CODES` in `suit-selection.ts`,
 
 ## Budgets
 
-The current load is about 6.6 MB and 514k triangles, of which roughly 190k–270k are visible. Check `parts.json` before adding detail. A new jacket block adds 100k–190k triangles to every visitor's download. Prefer variants of existing parts over new blocks.
+The first render loads about 2.6 MB (`suit-core.glb` with 262k triangles plus two textures); all blocks together are about 6 MB and 495k triangles. Anything without a `double_`/`dinner_` prefix lands in the core file every visitor downloads, so check `parts.json` before adding shared or single-breasted detail. A new jacket block should get its own file in the split script.
 
 ## Git LFS
 

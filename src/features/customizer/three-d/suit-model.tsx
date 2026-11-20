@@ -11,12 +11,21 @@ import {
 } from "@react-three/drei";
 import {
   Component,
+  Fragment,
+  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import {
+  acceleratedRaycast,
+  computeBoundsTree,
+  disposeBoundsTree,
+} from "three-mesh-bvh";
+import {
+  BufferGeometry,
   Color,
   DoubleSide,
   Mesh,
@@ -25,21 +34,63 @@ import {
   SRGBColorSpace,
   Vector2,
   type Group,
+  type Object3D,
   type Texture,
 } from "three";
 
-import type { Suit3dSelection } from "./suit-selection";
+import {
+  getSuitBlock,
+  isSuitMeshVisible,
+  type Suit3dSelection,
+  type SuitBlock,
+} from "./suit-selection";
 import { getSuitPartForMesh, type SuitPart } from "./suit-parts";
 
-export const SUIT_MODEL_URL =
-  "/models/suit-studio/arden-tailoring-optimized.glb?v=3";
-const TEXTURES = "/models/suit-studio/textures/";
-export const SUIT_TEXTURE_URLS = [
-  "wool-albedo.webp",
-  "single-normal.webp",
-  "double-normal.webp",
-  "dinner-normal.webp",
-].map((file) => TEXTURES + file);
+BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+
+// Bump after regenerating the GLBs or textures so browsers skip cached copies.
+const ASSET_VERSION = "?v=4";
+const MODELS = "/models/suit-studio/";
+const TEXTURES = MODELS + "textures/";
+
+/** Shared meshes plus the default single-breasted block. Always loaded. */
+export const SUIT_CORE_URL = `${MODELS}suit-core.glb${ASSET_VERSION}`;
+const CORE_TEXTURE_URLS = [
+  `${TEXTURES}wool-albedo.webp${ASSET_VERSION}`,
+  `${TEXTURES}single-normal.webp${ASSET_VERSION}`,
+];
+/** The other jacket blocks load the first time a selection needs them. */
+const BLOCK_ASSETS: Record<
+  Exclude<SuitBlock, "single">,
+  { model: string; normal: string }
+> = {
+  double: {
+    model: `${MODELS}suit-double.glb${ASSET_VERSION}`,
+    normal: `${TEXTURES}double-normal.webp${ASSET_VERSION}`,
+  },
+  dinner: {
+    model: `${MODELS}suit-dinner.glb${ASSET_VERSION}`,
+    normal: `${TEXTURES}dinner-normal.webp${ASSET_VERSION}`,
+  },
+};
+
+/** Fetches the other jacket blocks in the background so switching is instant. */
+export function preloadSuitBlocks() {
+  for (const { model, normal } of Object.values(BLOCK_ASSETS)) {
+    useGLTF.preload(model);
+    useTexture.preload(normal);
+  }
+}
+
+function clearSuitAssets() {
+  useGLTF.clear(SUIT_CORE_URL);
+  useTexture.clear(CORE_TEXTURE_URLS);
+  for (const { model, normal } of Object.values(BLOCK_ASSETS)) {
+    useGLTF.clear(model);
+    useTexture.clear(normal);
+  }
+}
 
 /** Hidden garment blocks move to this layer so pointer raycasts skip them. */
 const HIDDEN_LAYER = 31;
@@ -86,7 +137,7 @@ export const SUIT_MOODS: Record<
 type TailoredSuitProps = {
   selection: Suit3dSelection;
   onReady?: () => void;
-  /** Receives the cloned scene once, for camera framing. */
+  /** Receives the suit group once, for camera framing. */
   onModel?: (model: Group) => void;
   /** Enables part hover and click. Leave undefined for a passive preview. */
   interaction?: {
@@ -94,98 +145,56 @@ type TailoredSuitProps = {
     onHover: (part: SuitPart | null, event: ThreeEvent<PointerEvent>) => void;
     onSelect: (part: SuitPart) => void;
   };
+  /** Fetch the other jacket blocks once the suit is on screen. */
+  preloadBlocks?: boolean;
 };
+
+type SuitMaterials = Record<string, MeshPhysicalMaterial>;
 
 export function TailoredSuit({
   selection,
   onReady,
   onModel,
   interaction,
+  preloadBlocks = false,
 }: TailoredSuitProps) {
-  const { scene } = useGLTF(SUIT_MODEL_URL);
-  const sourceTextures = useTexture(SUIT_TEXTURE_URLS);
+  // A block swap may need a download. Rendering a deferred copy of the selection
+  // keeps the current suit on screen until the new block has loaded; a suspended
+  // background render never replaces committed UI with the Suspense fallback.
+  const shown = useDeferredValue(selection);
+  const block = getSuitBlock(shown);
+  const { scene } = useGLTF(SUIT_CORE_URL);
+  const [woolSource, normalSource] = useTexture(CORE_TEXTURE_URLS);
   const invalidate = useThree((s) => s.invalidate);
-  const model = useMemo(() => scene.clone(true), [scene]);
-  const meshes = useMemo(() => {
-    const list: Mesh[] = [];
-    model.traverse((object) => {
-      if (object instanceof Mesh) list.push(object);
-    });
-    return list;
-  }, [model]);
+  const groupRef = useRef<Group>(null);
+  const core = useMemo(() => scene.clone(true), [scene]);
   const textures = useMemo(() => {
-    const wool = sourceTextures[0].clone();
+    const wool = woolSource.clone();
     wool.wrapS = wool.wrapT = RepeatWrapping;
     wool.repeat.set(36, 36);
     wool.colorSpace = SRGBColorSpace;
     wool.anisotropy = 8;
     wool.needsUpdate = true;
-    const [single, double, dinner] = sourceTextures.slice(1).map((source) => {
-      const normal = source.clone();
-      normal.flipY = false;
-      normal.needsUpdate = true;
-      return normal;
-    });
-    return { wool, single, double, dinner };
-  }, [sourceTextures]);
+    return { wool, normal: toGltfNormal(normalSource) };
+  }, [woolSource, normalSource]);
   // Built once per texture set; selection changes only update uniforms below.
-  const materials = useMemo(() => createMaterials(textures), [textures]);
+  const materials = useMemo(
+    () => createMaterials(textures.wool, textures.normal),
+    [textures],
+  );
 
   useLayoutEffect(() => {
-    onModel?.(model);
-  }, [model, onModel]);
+    if (groupRef.current) onModel?.(groupRef.current);
+  }, [onModel]);
 
   useLayoutEffect(() => {
-    applySelectionToMaterials(materials, selection);
-    const codes = selection.selectedCodes;
-    const double = codes.jacket === "double-breasted-six-button";
-    const dinner = codes.lapel === "shawl-lapel";
-    const block = dinner ? "dinner" : double ? "double" : "single";
-    const lapel = codes.lapel.replace("-lapel", "");
-    const pocket =
-      codes.pockets === "patch-pockets"
-        ? "patch"
-        : codes.pockets === "jetted-pockets"
-          ? "welt"
-          : codes.pockets === "slanted-flap-pockets"
-            ? "slanted"
-            : "flap";
-    const vest = Boolean(codes.vest);
-    const waist = selection.trouserDetails?.waist ?? codes.trousers;
-    const pleats =
-      selection.trouserDetails?.pleats ??
-      (codes.trousers === "single-pleat-trousers" ? "single" : "flat");
+    const group = groupRef.current;
+    if (!group) return;
+    applySelectionToMaterials(materials, shown);
     // Mutate through traverse: three.js objects are imperative, not React state.
-    model.traverse((object) => {
+    group.traverse((object) => {
       if (!(object instanceof Mesh)) return;
-      const name = object.name;
-      object.visible = true;
-      if (
-        name.startsWith("single_") ||
-        name.startsWith("double_") ||
-        name.startsWith("dinner_")
-      )
-        object.visible = name.startsWith(block + "_");
-      if (name.includes("_lapel_"))
-        object.visible &&= name.endsWith("_" + lapel);
-      if (name.includes("_pocket_"))
-        object.visible &&= name.endsWith("_" + pocket);
-      if (
-        name === "single_button_11" &&
-        codes.jacket === "single-breasted-one-button"
-      )
-        object.visible = false;
-      if (name.startsWith("shirt_button_") && (double || dinner))
-        object.visible = false;
-      if (name.startsWith("vest_") || name === "waistcoat")
-        object.visible = vest;
-      if (name.startsWith("waist_loop_"))
-        object.visible = waist === "belt-loops";
-      if (name.startsWith("waist_adjuster_"))
-        object.visible = waist === "side-adjusters";
-      if (name.startsWith("pleat_"))
-        object.visible =
-          pleats !== "flat" && (pleats === "double" || name.endsWith("_0"));
+      object.visible = isSuitMeshVisible(object.name, shown);
       // three.js raycasts invisible meshes; a separate layer keeps hidden blocks unclickable.
       object.layers.set(object.visible ? 0 : HIDDEN_LAYER);
       // The clone keeps source material names until first assignment. Store them once.
@@ -193,9 +202,9 @@ export function TailoredSuit({
         Array.isArray(object.material) ? object.material[0] : object.material
       ).name;
       const slot = object.userData.slot as string;
-      const variant = name.startsWith("dinner_")
+      const variant = object.name.startsWith("dinner_")
         ? "Dinner"
-        : name.startsWith("double_")
+        : object.name.startsWith("double_")
           ? "Double"
           : "";
       object.material =
@@ -204,7 +213,17 @@ export function TailoredSuit({
     });
     invalidate();
     onReady?.();
-  }, [selection, model, materials, invalidate, onReady]);
+  }, [shown, block, materials, invalidate, onReady]);
+
+  useEffect(() => {
+    if (!preloadBlocks) return;
+    const connection = (
+      navigator as Navigator & { connection?: { saveData?: boolean } }
+    ).connection;
+    if (connection?.saveData) return;
+    const timer = window.setTimeout(preloadSuitBlocks, 1500);
+    return () => window.clearTimeout(timer);
+  }, [preloadBlocks]);
 
   useEffect(
     () => () => Object.values(materials).forEach((m) => m.dispose()),
@@ -216,69 +235,168 @@ export function TailoredSuit({
   );
 
   const hoveredStep = interaction?.hoveredStep ?? null;
+
+  return (
+    <group
+      ref={groupRef}
+      onPointerMove={
+        interaction
+          ? (event: ThreeEvent<PointerEvent>) => {
+              event.stopPropagation();
+              interaction.onHover(getSuitPartForMesh(event.object.name), event);
+            }
+          : undefined
+      }
+      onPointerOut={
+        interaction
+          ? (event: ThreeEvent<PointerEvent>) =>
+              interaction.onHover(null, event)
+          : undefined
+      }
+      onClick={
+        interaction
+          ? (event: ThreeEvent<MouseEvent>) => {
+              event.stopPropagation();
+              // Ignore the click that ends an orbit drag.
+              if (event.delta > 6) return;
+              const part = getSuitPartForMesh(event.object.name);
+              if (part) interaction.onSelect(part);
+            }
+          : undefined
+      }
+    >
+      <SuitPiece
+        object={core}
+        hoveredStep={hoveredStep}
+        interactive={Boolean(interaction)}
+      />
+      {block === "single" ? null : (
+        <SuitBlockModel
+          block={block}
+          materials={materials}
+          hoveredStep={hoveredStep}
+          interactive={Boolean(interaction)}
+        />
+      )}
+    </group>
+  );
+}
+
+function SuitBlockModel({
+  block,
+  materials,
+  hoveredStep,
+  interactive,
+}: {
+  block: Exclude<SuitBlock, "single">;
+  materials: SuitMaterials;
+  hoveredStep: SuitPart["step"] | null;
+  interactive: boolean;
+}) {
+  const assets = BLOCK_ASSETS[block];
+  const { scene } = useGLTF(assets.model);
+  const normalSource = useTexture(assets.normal);
+  const model = useMemo(() => scene.clone(true), [scene]);
+  const normal = useMemo(() => toGltfNormal(normalSource), [normalSource]);
+  // Runs before the parent's layout effect assigns materials in the same commit.
+  useLayoutEffect(() => {
+    setBlockNormal(materials, block, normal);
+  }, [materials, block, normal]);
+  useEffect(() => () => normal.dispose(), [normal]);
+  return (
+    <SuitPiece
+      object={model}
+      hoveredStep={hoveredStep}
+      interactive={interactive}
+    />
+  );
+}
+
+function SuitPiece({
+  object,
+  hoveredStep,
+  interactive,
+}: {
+  object: Object3D;
+  hoveredStep: SuitPart["step"] | null;
+  /** Builds raycast acceleration structures for hover and click. */
+  interactive: boolean;
+}) {
+  const meshes = useMemo(() => {
+    const list: Mesh[] = [];
+    object.traverse((child) => {
+      if (child instanceof Mesh) list.push(child);
+    });
+    return list;
+  }, [object]);
+  // Per piece rather than drei's <Bvh>, which only indexes meshes present at
+  // its first mount and would miss blocks that load later. Clones share
+  // geometry, so each geometry is indexed once.
+  useEffect(() => {
+    if (!interactive) return;
+    object.traverse((child) => {
+      if (!(child instanceof Mesh)) return;
+      if (!child.geometry.boundsTree) child.geometry.computeBoundsTree();
+      child.raycast = acceleratedRaycast;
+    });
+  }, [object, interactive]);
   const outlined = hoveredStep
     ? meshes.filter((m) => getSuitPartForMesh(m.name)?.step === hoveredStep)
     : [];
-
   return (
     <>
-      <primitive
-        object={model}
-        dispose={null}
-        onPointerMove={
-          interaction
-            ? (event: ThreeEvent<PointerEvent>) => {
-                event.stopPropagation();
-                interaction.onHover(
-                  getSuitPartForMesh(event.object.name),
-                  event,
-                );
-              }
-            : undefined
-        }
-        onPointerOut={
-          interaction
-            ? (event: ThreeEvent<PointerEvent>) =>
-                interaction.onHover(null, event)
-            : undefined
-        }
-        onClick={
-          interaction
-            ? (event: ThreeEvent<MouseEvent>) => {
-                event.stopPropagation();
-                // Ignore the click that ends an orbit drag.
-                if (event.delta > 6) return;
-                const part = getSuitPartForMesh(event.object.name);
-                if (part) interaction.onSelect(part);
-              }
-            : undefined
-        }
-      />
-      {outlined.map((mesh) =>
-        createPortal(
-          <Outlines
-            key={mesh.uuid}
-            // drei 10.7.9 swaps the shader branches: screenspace={false} is the
-            // pixel-width path. Re-check if drei fixes it. angle={0} keeps the
-            // mesh normals instead of re-creasing the quantized geometry.
-            thickness={3}
-            screenspace={false}
-            angle={0}
-            color="#b08a4f"
-          />,
-          mesh,
-        ),
-      )}
+      <primitive object={object} dispose={null} />
+      {outlined.map((mesh) => (
+        <Fragment key={mesh.uuid}>
+          {createPortal(
+            <Outlines
+              // drei 10.7.9 swaps the shader branches: screenspace={false} is the
+              // pixel-width path. Re-check if drei fixes it. angle={0} keeps the
+              // mesh normals instead of re-creasing the quantized geometry.
+              thickness={3}
+              screenspace={false}
+              angle={0}
+              color="#b08a4f"
+            />,
+            mesh,
+          )}
+        </Fragment>
+      ))}
     </>
   );
+}
+
+/** glTF UVs expect textures without the default vertical flip. */
+function toGltfNormal(source: Texture) {
+  const normal = source.clone();
+  normal.flipY = false;
+  normal.needsUpdate = true;
+  return normal;
+}
+
+function setBlockNormal(
+  materials: SuitMaterials,
+  block: Exclude<SuitBlock, "single">,
+  normal: Texture,
+) {
+  const variant = block === "double" ? "Double" : "Dinner";
+  materials[`Cloth${variant}`].normalMap = normal;
+  materials[`Lapel${variant}`].normalMap = normal;
 }
 
 export function SuitLighting({
   mood = "daylight",
   shadowResolution = 512,
+  postProcessed = false,
 }: {
   mood?: SuitMood;
   shadowResolution?: number;
+  /**
+   * Set when the studio's post-processing composer (ambient occlusion plus
+   * tone mapping) renders the frame. The background is pre-compensated so it
+   * still lands on the mood color, and contact shadows are left to the AO.
+   */
+  postProcessed?: boolean;
 }) {
   const preset = SUIT_MOODS[mood];
   const get = useThree((s) => s.get);
@@ -289,7 +407,14 @@ export function SuitLighting({
   }, [get, preset.exposure]);
   return (
     <>
-      <color attach="background" args={[preset.background]} />
+      <color
+        attach="background"
+        args={[
+          postProcessed
+            ? untoneMapped(preset.background, preset.exposure)
+            : preset.background,
+        ]}
+      />
       <ambientLight intensity={mood === "evening" ? 0.35 : 0.7} />
       <hemisphereLight args={["#ffffff", "#b9c2ce", 0.7]} />
       <directionalLight
@@ -338,30 +463,79 @@ export function SuitLighting({
           rotation={[Math.PI / 2, 0, 0]}
         />
       </Environment>
-      <ContactShadows
-        key={`shadow-${mood}`}
-        position={[0, 0.024, 0]}
-        opacity={mood === "evening" ? 0.6 : 0.4}
-        scale={2.8}
-        blur={2.5}
-        far={0.65}
-        resolution={shadowResolution}
-        frames={3}
-        color={preset.shadow}
-      />
+      {/* ContactShadows' own depth pass breaks under the post-processing
+          composer (it reads back as light blotches). The composer's ambient
+          occlusion grounds the suit there instead. */}
+      {postProcessed ? null : (
+        <ContactShadows
+          key={`shadow-${mood}`}
+          position={[0, 0.024, 0]}
+          opacity={mood === "evening" ? 0.6 : 0.4}
+          scale={2.8}
+          blur={2.5}
+          far={0.65}
+          resolution={shadowResolution}
+          frames={3}
+          color={preset.shadow}
+        />
+      )}
     </>
   );
 }
 
-function createMaterials(maps: {
-  wool: Texture;
-  single: Texture;
-  double: Texture;
-  dinner: Texture;
-}): Record<string, MeshPhysicalMaterial> {
-  const cloth = (normal: Texture) =>
+/**
+ * The linear color that three's ACESFilmicToneMapping maps to `hex`, so a
+ * tone-mapped background keeps its exact design color. Inverts the curve in
+ * three/src/renderers/shaders/ShaderChunk/tonemapping_pars_fragment.glsl.js.
+ */
+function untoneMapped(hex: string, exposure: number): Color {
+  const target = new Color(hex); // sRGB hex -> linear working space
+  const y = multiply(ACES_OUTPUT_INVERSE, [target.r, target.g, target.b]);
+  const z = y.map((v) => {
+    // Solve RRTAndODTFit(x) = v for x >= 0.
+    const a = 1 - 0.983729 * v;
+    const b = 0.0245786 - 0.432951 * v;
+    const c = -(0.000090537 + 0.238081 * v);
+    return Math.max(0, (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a));
+  });
+  const x = multiply(ACES_INPUT_INVERSE, z).map(
+    (v) => (Math.max(0, v) * 0.6) / exposure,
+  );
+  return new Color(x[0], x[1], x[2]);
+}
+
+type Matrix = [number, number, number][];
+
+function multiply(m: Matrix, v: number[]) {
+  return m.map((row) => row[0] * v[0] + row[1] * v[1] + row[2] * v[2]);
+}
+
+function invert3(m: Matrix): Matrix {
+  const [[a, b, c], [d, e, f], [g, h, i]] = m;
+  const det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+  return [
+    [(e * i - f * h) / det, (c * h - b * i) / det, (b * f - c * e) / det],
+    [(f * g - d * i) / det, (a * i - c * g) / det, (c * d - a * f) / det],
+    [(d * h - e * g) / det, (b * g - a * h) / det, (a * e - b * d) / det],
+  ];
+}
+
+// Row-major forms of the column-major GLSL matrices in three's ACES chunk.
+const ACES_INPUT_INVERSE = invert3([
+  [0.59719, 0.35458, 0.04823],
+  [0.076, 0.90834, 0.01566],
+  [0.0284, 0.13383, 0.83777],
+]);
+const ACES_OUTPUT_INVERSE = invert3([
+  [1.60475, -0.53108, -0.07367],
+  [-0.10208, 1.10813, -0.00605],
+  [-0.00327, -0.07276, 1.07602],
+]);
+
+function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
+  const cloth = () =>
     new MeshPhysicalMaterial({
-      map: maps.wool,
+      map: wool,
       roughness: 0.88,
       normalMap: normal,
       normalScale: new Vector2(0.35, 0.35),
@@ -371,15 +545,17 @@ function createMaterials(maps: {
       envMapIntensity: 0.65,
       side: DoubleSide,
     });
-  const mats: Record<string, MeshPhysicalMaterial> = {
-    Cloth: cloth(maps.single),
-    ClothDouble: cloth(maps.double),
-    ClothDinner: cloth(maps.dinner),
-    Lapel: cloth(maps.single),
-    LapelDouble: cloth(maps.double),
-    LapelDinner: cloth(maps.dinner),
-    Trouser: cloth(maps.single),
-    Waistcoat: cloth(maps.single),
+  // Double and Dinner slots start on the single normal map; SuitBlockModel
+  // swaps in the block's own map when it loads.
+  const mats: SuitMaterials = {
+    Cloth: cloth(),
+    ClothDouble: cloth(),
+    ClothDinner: cloth(),
+    Lapel: cloth(),
+    LapelDouble: cloth(),
+    LapelDinner: cloth(),
+    Trouser: cloth(),
+    Waistcoat: cloth(),
     Shirt: new MeshPhysicalMaterial({
       color: "#eef0ed",
       roughness: 0.85,
@@ -398,14 +574,45 @@ function createMaterials(maps: {
       side: DoubleSide,
     }),
   };
-  for (const [name, material] of Object.entries(mats)) material.name = name;
+  for (const [name, material] of Object.entries(mats)) {
+    material.name = name;
+    if (material.side === DoubleSide) shadeInterior(material);
+  }
   return mats;
 }
+
+/**
+ * The suit is a hollow shell with no body inside. Without this, the inside of
+ * the collar, cuffs, and hems is lit like the outside and reads as a bright
+ * white hole. Back faces get a fraction of the light, like a garment's
+ * shadowed interior.
+ */
+function shadeInterior(material: MeshPhysicalMaterial) {
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <lights_fragment_end>",
+      `#include <lights_fragment_end>
+      if (!gl_FrontFacing) {
+        reflectedLight.directDiffuse *= ${INTERIOR_LIGHT};
+        reflectedLight.indirectDiffuse *= ${INTERIOR_LIGHT};
+        reflectedLight.directSpecular *= ${INTERIOR_LIGHT};
+        reflectedLight.indirectSpecular *= ${INTERIOR_LIGHT};
+        #ifdef USE_SHEEN
+          sheenSpecularDirect *= ${INTERIOR_LIGHT};
+          sheenSpecularIndirect *= ${INTERIOR_LIGHT};
+        #endif
+      }`,
+    );
+  };
+  material.customProgramCacheKey = () => "suit-interior";
+}
+
+const INTERIOR_LIGHT = "0.45";
 
 const sheenTint = new Color("#c3ccda");
 
 function applySelectionToMaterials(
-  mats: Record<string, MeshPhysicalMaterial>,
+  mats: SuitMaterials,
   selection: Suit3dSelection,
 ) {
   const setCloth = (
@@ -447,8 +654,7 @@ export class SuitSceneErrorBoundary extends Component<
         <button
           className="mb-4 text-sm underline"
           onClick={() => {
-            useGLTF.clear(SUIT_MODEL_URL);
-            useTexture.clear(SUIT_TEXTURE_URLS);
+            clearSuitAssets();
             this.setState({ failed: false });
           }}
         >
