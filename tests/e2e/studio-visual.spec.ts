@@ -127,11 +127,23 @@ test("hovering the jacket outlines its edge, not the cloth around the pockets", 
     expect(flap, "pocket flap on screen").not.toBeNull();
     boxes.push({ x: flap!.x - 50, y: flap!.y - 25, width: 100, height: 50 });
   }
+  const view = page.viewportSize()!;
+  const scene: Box = {
+    x: 0,
+    y: 0,
+    width: Math.round(view.width * 0.6),
+    height: view.height,
+  };
   const before = await Promise.all(boxes.map((b) => outlinePixels(page, b)));
+  const sceneBefore = await outlinePixels(page, scene);
   await page.mouse.move(boxes[0].x + 50, boxes[0].y - 90);
   await expect(page.locator(".atelier-tooltip")).toHaveText("Change jacket");
   await page.waitForTimeout(500);
   const after = await Promise.all(boxes.map((b) => outlinePixels(page, b)));
+  expect(
+    (await outlinePixels(page, scene)) - sceneBefore,
+    "the hover outline draws the jacket's edge",
+  ).toBeGreaterThan(300);
   for (const [i, box] of boxes.entries())
     expect(
       after[i] - before[i],
