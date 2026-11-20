@@ -28,6 +28,7 @@ const FILE: Record<Block, string> = {
   dinner: "suit-dinner.glb",
 };
 const POCKET_STYLES = ["flap", "slanted", "welt", "patch"] as const;
+const INSIDE_SLOTS = ["chest_l", "chest_r", "pen", "lower_l", "lower_r"];
 
 const material = new MeshBasicMaterial({ side: DoubleSide });
 const meshes = new Map<string, Mesh>();
@@ -73,6 +74,7 @@ async function load(file: string) {
 const raycaster = new Raycaster();
 raycaster.firstHitOnly = true;
 const BACK = new Vector3(0, 0, -1);
+const FORWARD = new Vector3(0, 0, 1);
 
 function frontHit(mesh: Mesh, x: number, y: number) {
   raycaster.set(new Vector3(x, y, 2), BACK);
@@ -243,52 +245,112 @@ describe("studio model geometry", () => {
     },
   );
 
+  function expectSeated(
+    block: Block,
+    name: string,
+    sides: readonly (1 | -1)[],
+    minCoverage: number,
+  ) {
+    const body = get(`${block}_body`);
+    const pocket = get(name);
+    const tree = body.geometry.boundsTree!;
+    for (const side of sides) {
+      let samples = 0;
+      let sunk = 0;
+      let floating = 0;
+      for (const [x, y] of footprint(pocket, side)) {
+        const hit = frontHit(pocket, x, y);
+        const bz = frontZ(body, x, y);
+        if (hit === null || bz === null) continue;
+        const pz = hit.point.z;
+        samples++;
+        if (pz < bz + 0.0002) {
+          sunk++;
+          if (process.env.GEOMETRY_DEBUG)
+            console.log(
+              `sunk ${name} ${side} x=${x.toFixed(3)} y=${y.toFixed(3)} ${((pz - bz) * 1000).toFixed(2)}mm`,
+            );
+        }
+        const off = tree.closestPointToPoint(hit.point)!.distance;
+        if (off > 0.008) {
+          floating++;
+          if (process.env.GEOMETRY_DEBUG)
+            console.log(
+              `floating ${name} ${side} x=${x.toFixed(3)} y=${y.toFixed(3)} ${(off * 1000).toFixed(1)}mm pz-bz=${((pz - bz) * 1000).toFixed(1)}`,
+            );
+        }
+      }
+      const label = `${name} side ${side}`;
+      expect(samples, label).toBeGreaterThan(20);
+      const middle = footprint(pocket, side, 0.2);
+      const covered = middle.filter(
+        ([x, y]) => frontHit(pocket, x, y) !== null,
+      ).length;
+      expect(covered / middle.length, `${label}: coverage`).toBeGreaterThan(
+        minCoverage,
+      );
+      expect(sunk / samples, `${label}: sunk`).toBeLessThan(0.03);
+      expect(floating / samples, `${label}: floating`).toBeLessThan(0.03);
+    }
+  }
+
   for (const block of BLOCKS)
     it.each(POCKET_STYLES)(
       `${block} %s pockets sit on the cloth, in front and not floating`,
       (style) => {
+        expectSeated(
+          block,
+          `${block}_pocket_${style}`,
+          [1, -1],
+          style === "slanted" ? 0.8 : 0.97,
+        );
+      },
+    );
+
+  for (const block of BLOCKS)
+    it.each(["flap", "jetted"])(
+      `${block} %s ticket pocket sits on the cloth above the right hip pocket`,
+      (style) => {
+        expectSeated(block, `${block}_ticket_${style}`, [-1], 0.97);
+        const ticket = positions(get(`${block}_ticket_${style}`));
+        const hip = positions(get(`${block}_pocket_flap`)).filter(
+          (p) => p.x < 0,
+        );
+        expect(Math.min(...ticket.map((p) => p.y))).toBeGreaterThan(
+          Math.max(...hip.map((p) => p.y)),
+        );
+      },
+    );
+
+  for (const block of BLOCKS)
+    it.each(INSIDE_SLOTS)(
+      `${block} %s inside pocket sits on the lining, hidden from the front`,
+      (slot) => {
         const body = get(`${block}_body`);
-        const pocket = meshes.get(`${block}_pocket_${style}`);
-        if (!pocket) return;
-        for (const side of [1, -1] as const) {
-          let samples = 0;
-          let sunk = 0;
-          let floating = 0;
-          const tree = body.geometry.boundsTree!;
-          for (const [x, y] of footprint(pocket, side)) {
-            const hit = frontHit(pocket, x, y);
-            const bz = frontZ(body, x, y);
-            if (hit === null || bz === null) continue;
-            const pz = hit.point.z;
-            samples++;
-            if (pz < bz + 0.0002) {
-              sunk++;
-              if (process.env.GEOMETRY_DEBUG)
-                console.log(
-                  `sunk ${block}_${style} ${side} x=${x.toFixed(3)} y=${y.toFixed(3)} ${((pz - bz) * 1000).toFixed(2)}mm`,
-                );
-            }
-            const off = tree.closestPointToPoint(hit.point)!.distance;
-            if (off > 0.008) {
-              floating++;
-              if (process.env.GEOMETRY_DEBUG)
-                console.log(
-                  `floating ${block}_${style} ${side} x=${x.toFixed(3)} y=${y.toFixed(3)} ${(off * 1000).toFixed(1)}mm pz-bz=${((pz - bz) * 1000).toFixed(1)}`,
-                );
-            }
+        const tree = body.geometry.boundsTree!;
+        const lips = get(`${block}_inpocket_${slot}`);
+        const mouth = get(`${block}_inpocket_${slot}_mouth`);
+        for (const mesh of [lips, mouth]) {
+          for (const p of positions(mesh)) {
+            const bz = frontZ(body, p.x, p.y);
+            expect(bz, `${mesh.name} has cloth in front`).not.toBeNull();
+            expect(bz! - p.z, `${mesh.name} behind the cloth`).toBeGreaterThan(
+              0.001,
+            );
+            expect(
+              tree.closestPointToPoint(p)!.distance,
+              `${mesh.name} on the lining`,
+            ).toBeLessThan(0.008);
           }
-          const label = `${block}_pocket_${style} side ${side}`;
-          expect(samples, label).toBeGreaterThan(20);
-          const middle = footprint(pocket, side, 0.2);
-          const covered = middle.filter(
-            ([x, y]) => frontHit(pocket, x, y) !== null,
-          ).length;
-          expect(covered / middle.length, `${label}: coverage`).toBeGreaterThan(
-            style === "slanted" ? 0.8 : 0.97,
-          );
-          expect(sunk / samples, `${label}: sunk`).toBeLessThan(0.03);
-          expect(floating / samples, `${label}: floating`).toBeLessThan(0.03);
         }
+        const centre = positions(mouth)
+          .reduce((a, p) => a.add(p), new Vector3())
+          .divideScalar(positions(mouth).length);
+        raycaster.set(new Vector3(centre.x, centre.y, -2), FORWARD);
+        const first = raycaster
+          .intersectObjects([lips, mouth, body])
+          .find((h) => h.point.z > 0.02);
+        expect(first?.object.name, "mouth shows from inside").toBe(mouth.name);
       },
     );
 });

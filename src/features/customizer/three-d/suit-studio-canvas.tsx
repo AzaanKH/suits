@@ -62,6 +62,7 @@ type Props = {
   inspectedId: string | null;
   onInspect: (id: string) => void;
   onCameraStart: () => void;
+  insideView?: boolean;
 };
 
 export function SuitStudioCanvas({
@@ -79,6 +80,7 @@ export function SuitStudioCanvas({
   inspectedId,
   onInspect,
   onCameraStart,
+  insideView = false,
 }: Props) {
   const [reducedMotion] = useState(
     () =>
@@ -123,6 +125,7 @@ export function SuitStudioCanvas({
   );
 
   const trousersOnly = view.kind === "fit" && activeStep === "trousers";
+  const inside = insideView && view.kind === "fit" && activeStep === "pockets";
   const block = getSuitBlock(selection);
   const pocketMesh = ["flap", "slanted", "welt", "patch"]
     .map((style) => `${block}_pocket_${style}`)
@@ -144,6 +147,7 @@ export function SuitStudioCanvas({
         data-lapel={selection.selectedCodes.lapel}
         data-pocket-mesh={pocketMesh}
         data-trousers-only={trousersOnly}
+        data-inside-view={inside}
       >
         <Canvas
           camera={{ fov: 30, position: [0.9, 1.1, 4.6], near: 0.05, far: 90 }}
@@ -174,6 +178,7 @@ export function SuitStudioCanvas({
               interaction={interaction}
               preloadBlocks
               trousersOnly={trousersOnly}
+              insideView={inside}
             />
             <Podium mood={mood} />
           </Suspense>
@@ -206,6 +211,7 @@ export function SuitStudioCanvas({
             insets={insets}
             turntable={turntable}
             view={view}
+            insideView={inside}
             reducedMotion={reducedMotion}
             onUserControl={() => {
               onTurntableStop();
@@ -322,12 +328,18 @@ function TestHook() {
   return null;
 }
 
+const INSIDE_FRAME = new Box3(
+  new Vector3(-0.24, 0.94, 0),
+  new Vector3(0.24, 1.32, 0.2),
+);
+
 function StudioCamera({
   model,
   activeStep,
   insets,
   turntable,
   view,
+  insideView,
   reducedMotion,
   onUserControl,
 }: {
@@ -336,6 +348,7 @@ function StudioCamera({
   insets: { right: number; bottom: number };
   turntable: boolean;
   view: StudioView;
+  insideView: boolean;
   reducedMotion: boolean;
   onUserControl: () => void;
 }) {
@@ -362,13 +375,18 @@ function StudioCamera({
   }, [get, size.width, size.height, insets.right, insets.bottom]);
 
   const previousView = useRef(view.kind);
+  const wasInside = useRef(false);
 
   useEffect(() => {
     const c = controls.current;
     if (!model || !c || view.kind !== "fit") return;
     const returning = previousView.current !== "fit";
     previousView.current = "fit";
-    if (returning) void c.rotateTo(0.19, Math.PI * 0.47, !reducedMotion);
+    const turning = wasInside.current !== insideView;
+    wasInside.current = insideView;
+    if (insideView) void c.rotateTo(Math.PI, Math.PI * 0.47, !reducedMotion);
+    else if (returning || turning)
+      void c.rotateTo(0.19, Math.PI * 0.47, !reducedMotion);
     const all = new Box3();
     const part = new Box3();
     model.updateWorldMatrix(true, true);
@@ -383,7 +401,11 @@ function StudioCamera({
       part.min.y = Math.max(part.min.y, 0.55);
       part.max.y = Math.min(part.max.y, 1.02);
     }
-    const target = activeStep === "fabric" || part.isEmpty() ? all : part;
+    const target = insideView
+      ? INSIDE_FRAME
+      : activeStep === "fabric" || part.isEmpty()
+        ? all
+        : part;
     const extent = target.getSize(new Vector3()).length();
     const padding = Math.max(0.06, extent * 0.12);
     const animate = framed.current && !reducedMotion;
@@ -395,7 +417,7 @@ function StudioCamera({
       paddingRight: padding,
     });
     get().invalidate();
-  }, [model, activeStep, reducedMotion, get, view.kind]);
+  }, [model, activeStep, reducedMotion, get, view.kind, insideView]);
 
   useEffect(() => {
     const c = controls.current;

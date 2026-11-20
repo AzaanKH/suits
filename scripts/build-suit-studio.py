@@ -12,7 +12,7 @@ def mat(name,color,rough=.8):
  m=bpy.data.materials.get(name) or bpy.data.materials.new(name);m.use_nodes=True
  bs=m.node_tree.nodes.get('Principled BSDF');bs.inputs['Base Color'].default_value=(*color,1);bs.inputs['Roughness'].default_value=rough
  return m
-MATS={k:mat(k,c,r) for k,c,r in [('Cloth',(.032,.052,.089),.8),('Lapel',(.032,.052,.089),.8),('Trouser',(.032,.052,.089),.8),('Shirt',(.88,.9,.91),.82),('Button',(.035,.024,.017),.34),('Lining',(.025,.033,.049),.48),('Waistcoat',(.032,.052,.089),.8)]}
+MATS={k:mat(k,c,r) for k,c,r in [('Pocketing',(.006,.007,.01),.9),('Cloth',(.032,.052,.089),.8),('Lapel',(.032,.052,.089),.8),('Trouser',(.032,.052,.089),.8),('Shirt',(.88,.9,.91),.82),('Button',(.035,.024,.017),.34),('Lining',(.025,.033,.049),.48),('Waistcoat',(.032,.052,.089),.8)]}
 
 def uv_islands(obj):
  bm=bmesh.new();bm.from_mesh(obj.data);uv=bm.loops.layers.uv.active;bm.faces.ensure_lookup_table();visited=set();out=[]
@@ -326,13 +326,17 @@ def fit_uv_map(body,x0,x1,z0,z1):
     bu[i]+=row[i]*u.x;bv[i]+=row[i]*u.y
     for j in range(3):A[i][j]+=row[i]*row[j]
  return solve3(A,bu),solve3(A,bv)
-def pocket_panel(kind,variant,lift=.0015,thickness=.0024,cols=26,rows=14,clearance=.0006):
+def pocket_panel(kind,variant,lift=.0015,thickness=.0024,cols=26,rows=14,clearance=.0006,name=None,frames=None,inside=False,tall=None,material='Cloth',fill=False):
  body=bpy.data.objects[f'{kind}_body'];tree=BVHTree.FromObject(body,bpy.context.evaluated_depsgraph_get())
  flap=bpy.data.objects[f'{kind}_pocket_flap'];verts=[];faces=[];uvs=[];floor=[];supported=[]
  for side in [-1,1]:
+  if frames is not None and side not in frames:continue
   fv=[v.co for v in flap.data.vertices if v.co.x*side>0]
   ax0,ax1=min(abs(v.x) for v in fv),max(abs(v.x) for v in fv);top=max(v.z for v in fv);bottom=min(v.z for v in fv)
-  if variant=='patch':
+  if frames is not None:ax0,ax1,top=frames[side]
+  if tall is not None:
+   ztop=lambda s:top;height=lambda s:tall
+  elif variant=='patch':
    ztop=lambda s:top+.003;height=lambda s:.12
   elif variant in ('slanted','flap'):
    rise=.022 if variant=='slanted' else 0
@@ -363,35 +367,37 @@ def pocket_panel(kind,variant,lift=.0015,thickness=.0024,cols=26,rows=14,clearan
      R=.02;cx=side*(inner+R) if s_<.5 else side*(outer-R);cz=ztop(s_)-height(s_)+R
      if z<cz and (abs(x)<abs(cx) if s_<.5 else abs(x)>abs(cx)):
       d=Vector((x-cx,z-cz));d=d.normalized()*min(d.length,R) if d.length>R else d;x,z=cx+d.x,cz+d.y
-    verts.append(Vector((x,surface(x,z)-lift,z)))
+    verts.append(Vector((x,surface(x,z)+(lift if inside else -lift),z)))
     uvs.append((cu[0]*x+cu[1]*(z+lift_uv)+cu[2],cv[0]*x+cv[1]*(z+lift_uv)+cv[2]))
   W=cols+1;cloth=[]
   for i in range(start,len(verts)):
    v=verts[i];hit,normal,_,_=tree.ray_cast(Vector((v.x,-1,v.z)),Vector((0,1,0)))
    ok=hit is not None and normal.y<-1e-4 and hit.y<0
-   supported.append(ok);cloth.append(hit.y if ok else v.y+lift)
-  ys=[c-lift for c in cloth]
+   supported.append(ok or fill);cloth.append(hit.y if ok else v.y-lift if inside else v.y+lift)
+  ys=[c+lift if inside else c-lift for c in cloth]
   for _ in range(12):
    nxt=ys[:]
    for r in range(1,rows):
     for c in range(1,cols):
      i=r*W+c;nxt[i]=(ys[i-1]+ys[i+1]+ys[i-W]+ys[i+W])/4
-   ys=[min(y,c-clearance) for y,c in zip(nxt,cloth)]
+   ys=[max(y,c+clearance) if inside else min(y,c-clearance) for y,c in zip(nxt,cloth)]
   for i,y in enumerate(ys):verts[start+i].y=y
   for r in range(rows):
    for c in range(cols):
     a=start+r*(cols+1)+c;b=a+1;d=a+cols+1;e=d+1
     if not all(supported[q] for q in (a,b,d,e)):continue
     faces.append((a,d,e,b) if side>0 else (a,b,e,d))
- mesh=bpy.data.meshes.new(f'{kind}_pocket_{variant}');mesh.from_pydata([tuple(v) for v in verts],[],faces);mesh.update()
+ name=name or f'{kind}_pocket_{variant}'
+ mesh=bpy.data.meshes.new(name);mesh.from_pydata([tuple(v) for v in verts],[],faces);mesh.update()
  layer=mesh.uv_layers.new(name='UVMap')
  for loop in mesh.loops:layer.data[loop.index].uv=uvs[loop.vertex_index]
- obj=bpy.data.objects.get(f'{kind}_pocket_{variant}')
+ obj=bpy.data.objects.get(name)
  if obj:old=obj.data;obj.data=mesh;bpy.data.meshes.remove(old)
- else:obj=bpy.data.objects.new(f'{kind}_pocket_{variant}',mesh);bpy.context.collection.objects.link(obj)
- finish(obj,obj.name,'Cloth',0)
+ else:obj=bpy.data.objects.new(name,mesh);bpy.context.collection.objects.link(obj)
+ finish(obj,obj.name,material,0)
  bm=bmesh.new();bm.from_mesh(mesh);bm.normal_update()
- if sum((f.normal.y for f in bm.faces))>0:bmesh.ops.reverse_faces(bm,faces=bm.faces[:])
+ facing=sum((f.normal.y for f in bm.faces))
+ if (facing<0 if inside else facing>0):bmesh.ops.reverse_faces(bm,faces=bm.faces[:])
  bm.to_mesh(mesh);bm.free()
  if not thickness:return
  bpy.context.view_layer.objects.active=obj
@@ -442,6 +448,22 @@ for kind in ['single','double','dinner']:
  pocket_panel(kind,'slanted',thickness=.0015,cols=40,rows=12)
  pocket_panel(kind,'welt',lift=.0012,thickness=.0012,rows=3)
  pocket_panel(kind,'flap',thickness=.0015,cols=40,rows=12)
+ flap=bpy.data.objects[f'{kind}_pocket_flap']
+ hip=max(v.co.z for v in flap.data.vertices)
+ ticket={-1:(.085 if kind=='double' else .065,.145,hip+.04)}
+ pocket_panel(kind,'flap',name=f'{kind}_ticket_flap',frames=ticket,tall=.026,thickness=.0015,cols=30,rows=10)
+ pocket_panel(kind,'welt',name=f'{kind}_ticket_jetted',frames=ticket,tall=.008,lift=.0012,thickness=.0012,rows=3)
+ breast=bpy.data.objects.get(f'{kind}_breast')
+ if breast:
+  bv=[v.co for v in breast.data.vertices]
+  x0,x1=min(v.x for v in bv)-.008,max(v.x for v in bv)+.008;top=max(v.z for v in bv)+.008
+  pocket_panel(kind,'welt',name=f'{kind}_body_patch',frames={1:(x0,x1,top)},inside=True,tall=top-min(v.z for v in bv)+.008,lift=.002,thickness=0,cols=24,rows=10,clearance=.0015,fill=True)
+  patch=bpy.data.objects[f'{kind}_body_patch'].data;bm=bmesh.new();bm.from_mesh(patch);bmesh.ops.reverse_faces(bm,faces=bm.faces[:]);bm.to_mesh(patch);bm.free()
+ near=.08 if kind=='double' else .07
+ for slot,frames in [('chest_l',{1:(near,.145,1.21)}),('chest_r',{-1:(near,.145,1.21)}),('pen',{1:(.09,.135,1.15)}),('lower_l',{1:(near,.13,1.04)}),('lower_r',{-1:(near,.13,1.04)})]:
+  pocket_panel(kind,'welt',name=f'{kind}_inpocket_{slot}',frames=frames,inside=True,tall=.012,lift=.005,thickness=.001,cols=24,rows=4,clearance=.004)
+  (x0,x1,top),=frames.values()
+  pocket_panel(kind,'welt',name=f'{kind}_inpocket_{slot}_mouth',frames={k:(x0+.003,x1-.003,top-.0048) for k in frames},inside=True,tall=.0024,lift=.006,thickness=0,cols=24,rows=2,clearance=.0055,material='Pocketing')
  tree=BVHTree.FromObject(bpy.data.objects[f'{kind}_body'],bpy.context.evaluated_depsgraph_get())
  for o in list(bpy.data.objects):
   if o.type=='MESH' and o.name.startswith(f'{kind}_button_'):seat(o,tree)
@@ -456,7 +478,7 @@ bpy.ops.export_scene.gltf(filepath=str(OUT/'arden-tailoring.glb'),export_format=
 manifest={o.name:{'vertices':len(o.data.vertices),'triangles':sum(len(p.vertices)-2 for p in o.data.polygons)} for o in model_objects if o.type=='MESH'}
 (OUT/'parts.json').write_text(json.dumps(manifest,indent=2))
 for o in model_objects:
- o.hide_render=o.name.startswith(('double_','dinner_')) or any(k in o.name for k in ['_peak','_shawl','_welt','_patch','_slanted','waistcoat','vest_button','pleat_','waist_'])
+ o.hide_render=o.name.startswith(('double_','dinner_')) or any(k in o.name for k in ['_peak','_shawl','_welt','_patch','_slanted','_ticket_','waistcoat','vest_button','pleat_','waist_'])
 center=Vector((0,0,.8))
 bpy.ops.object.camera_add(location=(.32,-3.7,1.0));cam=bpy.context.object;cam.rotation_euler=(center-cam.location).to_track_quat('-Z','Y').to_euler();cam.data.type='ORTHO';cam.data.ortho_scale=1.8;bpy.context.scene.camera=cam
 for pos,power,size in [((-3,-4,5),550,4),((3,-1,3),250,3),((0,3,4),700,3)]:

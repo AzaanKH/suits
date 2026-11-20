@@ -185,6 +185,7 @@ export const TAILORING_FIELDS: readonly Field[] = [
     "ticket-pocket",
     "Ticket pocket",
     "none:None|flap:Flap|jetted:Jetted",
+    "detail",
   ),
   field(
     "jacket",
@@ -197,6 +198,7 @@ export const TAILORING_FIELDS: readonly Field[] = [
     "inside-pockets",
     "Interior pockets",
     "standard:Standard|travel:Travel pockets|minimal:Minimal|none:None",
+    "detail",
   ),
   field(
     "jacket",

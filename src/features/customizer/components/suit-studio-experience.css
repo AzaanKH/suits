@@ -234,6 +234,26 @@
 .atelier-options .studio-fabric-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.atelier-pocket-details {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--atelier-rule);
+}
+.atelier-detail-row {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.atelier-detail-row .atelier-moods {
+  flex-wrap: wrap;
+  justify-self: start;
+  backdrop-filter: none;
+}
+.atelier-inside-toggle {
+  justify-self: start;
+}
 .atelier-ticket {
   display: grid;
   grid-template-columns: auto 1fr;

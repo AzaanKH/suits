@@ -44,6 +44,8 @@ export function getSuitPartForMesh(name: string): SuitPart | null {
       return PARTS.lapel;
     case "pocket":
     case "breast":
+    case "ticket":
+    case "inpocket":
       return PARTS.pockets;
     case "button":
     case "buttonhole":

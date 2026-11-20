@@ -19,6 +19,17 @@ export type Suit3dJacketDetails = {
   fourByTwo: boolean;
   lapelButtonhole: boolean;
   buttonholeThread: string | null;
+  insidePockets: InsidePockets;
+  ticketPocket: "none" | "flap" | "jetted";
+};
+
+export type InsidePockets = "standard" | "travel" | "minimal" | "none";
+
+export const INSIDE_POCKET_SLOTS: Record<InsidePockets, readonly string[]> = {
+  standard: ["chest_l", "chest_r", "pen"],
+  travel: ["chest_l", "chest_r", "pen", "lower_l", "lower_r"],
+  minimal: ["chest_l"],
+  none: [],
 };
 
 export type Suit3dSelection = {
@@ -300,6 +311,14 @@ export function getSuit3dSelection(
     lapelButtonhole: requests["lapel-buttonhole"] !== "none",
     buttonholeThread:
       BUTTONHOLE_THREADS[requests["buttonhole-thread"] ?? ""] ?? null,
+    insidePockets: isInsidePockets(requests["inside-pockets"])
+      ? requests["inside-pockets"]
+      : "standard",
+    ticketPocket:
+      requests["ticket-pocket"] === "flap" ||
+      requests["ticket-pocket"] === "jetted"
+        ? requests["ticket-pocket"]
+        : "none",
   };
 
   return {
@@ -323,6 +342,10 @@ export function getSuit3dSelection(
       vest: vestCode,
     },
   };
+}
+
+function isInsidePockets(value: string | undefined): value is InsidePockets {
+  return value !== undefined && value in INSIDE_POCKET_SLOTS;
 }
 
 function getSupportedSelection<T extends string>(
@@ -397,13 +420,18 @@ export function isSuitMeshVisible(
   const prefix = /^(single|double|dinner)_/.exec(name)?.[1];
   if (!prefix) return true;
   if (prefix !== block) return false;
+  const details = selection.jacketDetails;
+  const inside = /_inpocket_([a-z]+(?:_[lr])?)(?:_mouth)?$/.exec(name)?.[1];
+  if (inside)
+    return INSIDE_POCKET_SLOTS[details.insidePockets].includes(inside);
+  const ticket = /_ticket_(flap|jetted)$/.exec(name)?.[1];
+  if (ticket) return ticket === details.ticketPocket;
   if (name.includes("_lapel_"))
     return name.endsWith("_" + codes.lapel.replace("-lapel", ""));
   if (name.includes("_pocket_"))
     return name.endsWith("_" + (POCKET_MESH[codes.pockets] ?? "flap"));
   if (name === "single_button_11")
     return codes.jacket !== "single-breasted-one-button";
-  const details = selection.jacketDetails;
   if (name.endsWith("_breast")) return details.breastPocket;
   if (name.endsWith("_buttonhole")) return details.lapelButtonhole;
   if (name.startsWith("double_button_upper_")) return !details.fourByTwo;
