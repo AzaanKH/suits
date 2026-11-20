@@ -274,7 +274,25 @@ function TestHook() {
       __ardenStudio?: unknown;
     };
     if (!w.__ARDEN_TEST__) return;
+    let lastMoved = 0;
+    let watching = false;
     w.__ardenStudio = {
+      now: () => performance.now(),
+      cameraSettled(since: number) {
+        const controls = get().controls as ComponentRef<
+          typeof CameraControls
+        > | null;
+        if (!controls) return false;
+        if (!watching) {
+          watching = true;
+          controls.addEventListener("update", () => {
+            lastMoved = performance.now();
+          });
+        }
+        if (controls.active) return false;
+        const now = performance.now();
+        return lastMoved > since ? now - lastMoved > 250 : now - since > 800;
+      },
       /** `side` picks the wearer's left (-1) or right (1) of a paired part. */
       screenPoint(name: string, side?: 1 | -1) {
         const { scene, camera, gl } = get();

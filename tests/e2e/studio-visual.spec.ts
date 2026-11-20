@@ -14,6 +14,8 @@ declare global {
   interface Window {
     __ARDEN_TEST__?: boolean;
     __ardenStudio?: {
+      now(): number;
+      cameraSettled(since: number): boolean;
       screenPoint(name: string, side?: 1 | -1): { x: number; y: number } | null;
     };
   }
@@ -36,12 +38,17 @@ async function openStudio(page: Page) {
 }
 
 async function step(page: Page, name: string) {
+  const since = await page.evaluate(() => window.__ardenStudio!.now());
   await page
     .getByRole("navigation", { name: "Studio steps" })
     .getByRole("button", { name })
     .click();
-  // The camera flies to the step's part; wait for it to settle.
-  await page.waitForTimeout(1500);
+  await expect
+    .poll(
+      () => page.evaluate((t) => window.__ardenStudio!.cameraSettled(t), since),
+      { message: "camera settled", timeout: 30_000 },
+    )
+    .toBe(true);
 }
 
 async function hoverPart(page: Page, mesh: string, side?: 1 | -1) {

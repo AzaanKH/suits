@@ -290,9 +290,6 @@ describe("studio model geometry", () => {
             const bz = frontZ(body, x, y);
             if (hit === null || bz === null) continue;
             const pz = hit.point.z;
-            // More than 5 mm behind the cloth is hidden (a pocket bag inside the
-            // jacket), not a defect anyone can see.
-            if (pz < bz - 0.005) continue;
             samples++;
             if (pz < bz + 0.0002) {
               sunk++; // the cloth shows through the pocket
