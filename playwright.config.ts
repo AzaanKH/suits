@@ -3,6 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
+  // CI renders the 3D suit with software WebGL on a small runner: each change
+  // re-renders ~260k triangles on the CPU. One worker at a time, with more
+  // time per test, instead of parallel tests starving each other.
+  workers: process.env.CI ? 1 : undefined,
+  timeout: process.env.CI ? 120_000 : 60_000,
   reporter: "html",
   use: {
     baseURL: "http://127.0.0.1:3000",

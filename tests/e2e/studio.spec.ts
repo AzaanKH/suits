@@ -2,10 +2,6 @@ import { expect, test } from "@playwright/test";
 
 const SUIT = "house-navy-hopsack-suit";
 
-// The studio renders with software WebGL in CI and headless runs; with
-// parallel workers a single test can need well over the default 30 s.
-test.describe.configure({ timeout: 90_000 });
-
 test("opens the studio from the customizer and keeps the design", async ({
   page,
 }) => {

@@ -10,10 +10,6 @@ import { expect, test, type Page } from "@playwright/test";
  */
 const SUIT = "house-navy-hopsack-suit";
 
-// The studio renders with software WebGL in CI and headless runs; with
-// parallel workers a single test can need well over the default 30 s.
-test.describe.configure({ timeout: 90_000 });
-
 declare global {
   interface Window {
     __ARDEN_TEST__?: boolean;
