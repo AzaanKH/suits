@@ -244,7 +244,9 @@ export function MeasurementProfilesManager({
           </DialogHeader>
           <MeasurementProfileForm
             defaultValues={activeDefaultValues}
-            submitLabel={editing?.mode === "edit" ? "Update profile" : "Create profile"}
+            submitLabel={
+              editing?.mode === "edit" ? "Update profile" : "Create profile"
+            }
             onSubmit={handleSubmit}
           />
         </DialogContent>

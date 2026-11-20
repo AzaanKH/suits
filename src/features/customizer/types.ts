@@ -1,3 +1,4 @@
+import type { TailoringSpecification } from "./tailoring";
 import type { CustomizationGroup, Product, ProductImage } from "@/types";
 
 import type { CustomizerGroupCode } from "./steps";
@@ -59,6 +60,7 @@ export type CustomizerConfiguration = {
   fabricCode: string;
   selectedOptionCodes: SelectedOptionCodes;
   personalization: CustomizerPersonalization;
+  tailoring?: TailoringSpecification;
 };
 
 export type ConfigurationSelectionSummary = {
@@ -79,4 +81,5 @@ export type ConfigurationSummary = {
   selectionSignature: string;
   selections: ConfigurationSelectionSummary[];
   personalization: CustomizerPersonalization;
+  tailoring?: TailoringSpecification;
 };

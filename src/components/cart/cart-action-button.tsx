@@ -3,6 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth, useMutation } from "convex/react";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { hasTailoringRequests } from "@/features/customizer/tailoring";
 import { ShoppingBag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -40,6 +41,13 @@ export function CartActionButton({
   editContext,
   disabled = false,
 }: CartActionButtonProps) {
+  if (hasTailoringRequests(configuration.tailoring))
+    return (
+      <Button size="lg" disabled>
+        Maker quote required
+      </Button>
+    );
+
   if (!clerkConfigured) {
     return (
       <LocalCartActionButton

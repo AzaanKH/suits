@@ -28,20 +28,27 @@ test("navigates from the collection to a suit detail page", async ({
   ).toBeVisible();
 });
 
-test("completes the two-dimensional customization flow", async ({ page }) => {
+test("completes the customization flow", async ({ page }) => {
+  // Each step's primary action reads "Continue to <next step>".
+  const next = () =>
+    page.getByRole("button", { name: /^(Continue to|Next)/ }).click();
+  const configuration = page.getByRole("region", {
+    name: "Suit configuration",
+  });
   await page.goto("/customize/house-navy-hopsack-suit");
 
   await expect(
-    page.getByRole("heading", { name: "Customize The House Suit" }),
+    configuration.getByRole("heading", { name: "Make it yours." }),
   ).toBeVisible();
+  await expect(configuration.getByText("The House Suit")).toBeVisible();
 
   await page.getByRole("button", { name: /Slate grey traveller wool/ }).click();
-  await page.getByRole("button", { name: "Next" }).click();
+  await next();
 
   await page
     .getByRole("button", { name: /Six-button double-breasted/ })
     .click();
-  await page.getByRole("button", { name: "Next" }).click();
+  await next();
 
   await expect(
     page.getByRole("button", { name: /Notch lapel/ }),
@@ -49,16 +56,16 @@ test("completes the two-dimensional customization flow", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /Peak lapel/ }),
   ).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Next" }).click();
+  await next();
 
   await page.getByRole("button", { name: /Self-covered/ }).click();
-  await page.getByRole("button", { name: "Next" }).click();
+  await next();
 
   await page.getByRole("button", { name: /Jetted pockets/ }).click();
-  await page.getByRole("button", { name: "Next" }).click();
+  await next();
 
   await page.getByRole("button", { name: /Single pleat/ }).click();
-  await page.getByRole("button", { name: "Next" }).click();
+  await next();
 
   await expect(
     page.getByRole("button", { name: /Matching waistcoat/ }),
@@ -67,8 +74,9 @@ test("completes the two-dimensional customization flow", async ({ page }) => {
   await page.getByRole("button", { name: /Working cuffs/ }).click();
   await page.getByLabel("Monogram initials").fill("AK");
   await page.getByLabel("Tailoring notes").fill("Cleaner trouser break.");
-  await page.getByRole("button", { name: "Next" }).click();
-  await page.getByRole("button", { name: "Next" }).click();
+  await next(); // Details
+  await next(); // Fit
+  await next(); // Review
 
   await expect(
     page.getByText("Slate grey traveller wool").first(),
@@ -88,7 +96,7 @@ test("completes the two-dimensional customization flow", async ({ page }) => {
 
   await page.getByRole("link", { name: "Edit" }).click();
   await expect(
-    page.getByRole("heading", { name: "Customize The House Suit" }),
+    configuration.getByRole("heading", { name: "Make it yours." }),
   ).toBeVisible();
   await page.getByRole("button", { name: /Midnight navy hopsack/ }).click();
   const updateCartButton = page.getByRole("button", { name: "Update cart" });
@@ -97,7 +105,7 @@ test("completes the two-dimensional customization flow", async ({ page }) => {
       break;
     }
 
-    await page.getByRole("button", { name: "Next" }).click();
+    await next();
   }
   await expect(updateCartButton).toBeEnabled();
   await updateCartButton.click();

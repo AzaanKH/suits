@@ -1,3 +1,8 @@
+import {
+  tailoringValidationError,
+  type TailoringSpecification,
+} from "../src/features/customizer/tailoring";
+import { tailoringValidator } from "./tailoringValidation";
 import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -16,6 +21,7 @@ const configuration = v.object({
   productSlug: v.string(),
   fabricCode: v.string(),
   selectedOptionCodes: v.record(v.string(), v.array(v.string())),
+  tailoring: v.optional(tailoringValidator),
   personalization,
 });
 
@@ -43,6 +49,7 @@ type SavedConfiguration = {
   productSlug: string;
   fabricCode: string;
   selectedOptionCodes: Record<string, string[]>;
+  tailoring?: TailoringSpecification;
   personalization: {
     monogramText: string;
     notes: string;
@@ -190,7 +197,8 @@ async function requireOwnedDesign(
   designId: Id<"savedDesigns">,
   ownerClerkUserId?: string,
 ) {
-  const userId = ownerClerkUserId ?? (await requireAuthenticatedClerkUserId(ctx));
+  const userId =
+    ownerClerkUserId ?? (await requireAuthenticatedClerkUserId(ctx));
   const design = await ctx.db.get(designId);
 
   if (!design || design.ownerClerkUserId !== userId) {
@@ -214,7 +222,11 @@ async function validateConfigurationSnapshot(
     throw new ConvexError("Invalid product for saved design.");
   }
 
-  const fabric = await getSelectedFabric(ctx, product, configuration.fabricCode);
+  const fabric = await getSelectedFabric(
+    ctx,
+    product,
+    configuration.fabricCode,
+  );
   const availableGroups = await getAvailableCustomizationGroups(ctx, product);
   const selectedGroupCodes = Object.keys(configuration.selectedOptionCodes);
   const unknownGroupCode = selectedGroupCodes.find(
@@ -226,6 +238,11 @@ async function validateConfigurationSnapshot(
   }
 
   validatePersonalization(configuration);
+  const tailoringError = tailoringValidationError(
+    configuration.tailoring,
+    configuration.selectedOptionCodes,
+  );
+  if (tailoringError) throw new ConvexError(tailoringError);
 
   const selections: ValidatedConfiguration["selections"] = [
     {
@@ -437,7 +454,7 @@ function getUnavailableReason(
     const selectedCodes =
       groupCode === "fabric"
         ? [configuration.fabricCode]
-        : configuration.selectedOptionCodes[groupCode] ?? [];
+        : (configuration.selectedOptionCodes[groupCode] ?? []);
     const hasMatchingSelection = optionCodes.some((code) =>
       selectedCodes.includes(code),
     );

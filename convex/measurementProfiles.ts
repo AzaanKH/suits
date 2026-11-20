@@ -119,7 +119,12 @@ export const update = mutation({
       updatedAt: now,
     });
 
-    await updateCartProfileName(ctx, profile._id, normalizeName(args.name), now);
+    await updateCartProfileName(
+      ctx,
+      profile._id,
+      normalizeName(args.name),
+      now,
+    );
   },
 });
 
@@ -162,7 +167,8 @@ export async function requireOwnedProfile(
   profileId: Id<"measurementProfiles">,
   ownerClerkUserId?: string,
 ) {
-  const userId = ownerClerkUserId ?? (await requireAuthenticatedClerkUserId(ctx));
+  const userId =
+    ownerClerkUserId ?? (await requireAuthenticatedClerkUserId(ctx));
   const profile = await ctx.db.get(profileId);
 
   if (!profile || profile.ownerClerkUserId !== userId) {
@@ -231,7 +237,11 @@ function normalizeMeasurements(
   return normalized;
 }
 
-function normalizeMeasurement(label: string, value: number, units: "in" | "cm") {
+function normalizeMeasurement(
+  label: string,
+  value: number,
+  units: "in" | "cm",
+) {
   if (!Number.isFinite(value)) {
     throw new ConvexError(`${label} is required.`);
   }

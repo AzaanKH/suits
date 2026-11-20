@@ -23,6 +23,58 @@ type TestDesignInput = {
 };
 
 describe("saved designs", () => {
+  it("preserves broad requests across save and duplicate, but requires a quote for cart", async () => {
+    const t = convexTest(schema, modules).withIdentity({
+      subject: "user_tailoring",
+      issuer: "https://example.clerk.accounts.dev",
+    });
+    await t.mutation(internal.seed.seed);
+    const design = await buildValidDesign(t);
+    const tailoring = {
+      version: 1 as const,
+      choices: {
+        pleats: "double",
+        "waist-treatment": "belt-loops",
+        canvas: "full",
+      },
+      dimensions: { "inseam-cm": 80.5 },
+    };
+    const configuration = { ...design.configuration, tailoring };
+    const designId = await t.mutation(api.savedDesigns.save, {
+      ...design,
+      configuration,
+    });
+    expect(
+      (await t.query(api.savedDesigns.get, { designId }))?.configuration
+        .tailoring,
+    ).toEqual(tailoring);
+    const copyId = await t.mutation(api.savedDesigns.duplicate, { designId });
+    expect(
+      (await t.query(api.savedDesigns.get, { designId: copyId }))?.configuration
+        .tailoring,
+    ).toEqual(tailoring);
+    await expect(
+      t.mutation(api.carts.previewLine, {
+        configuration,
+        quantity: 1,
+        fitSelection: {
+          fitMethod: "standard",
+          jacketSize: "40",
+          trouserSize: "32",
+          fitPreference: "classic",
+        },
+      }),
+    ).rejects.toThrow("maker quote");
+    await expect(
+      t.mutation(api.savedDesigns.save, {
+        ...design,
+        configuration: {
+          ...configuration,
+          tailoring: { ...tailoring, choices: { canvas: "invalid" } },
+        },
+      }),
+    ).rejects.toThrow("Unknown tailoring choice");
+  });
   it("requires a Clerk-authenticated Convex identity", async () => {
     const t = convexTest(schema, modules);
     await t.mutation(internal.seed.seed);

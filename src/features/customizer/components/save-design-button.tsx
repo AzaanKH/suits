@@ -24,10 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { getSignInRedirectHref } from "@/lib/auth-redirect";
 import { useCustomizerStore } from "@/store/customizer-store";
-import type {
-  ConfigurationSummary,
-  CustomizerConfiguration,
-} from "../types";
+import type { ConfigurationSummary, CustomizerConfiguration } from "../types";
 
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 const designNameSchema = z.object({
@@ -149,10 +146,7 @@ function ClerkSaveDesignButton({
               Give this configuration a name so you can find it in your account.
             </DialogDescription>
           </DialogHeader>
-          <form
-            className="space-y-4"
-            onSubmit={form.handleSubmit(handleSave)}
-          >
+          <form className="space-y-4" onSubmit={form.handleSubmit(handleSave)}>
             <div className="space-y-2">
               <label
                 className="text-muted-foreground text-xs font-bold tracking-[0.1em] uppercase"

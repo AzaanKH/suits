@@ -1,3 +1,4 @@
+import { tailoringSignature } from "./tailoring";
 import { calculateConfigurationPrice } from "./pricing";
 import type {
   ConfigurationSelectionSummary,
@@ -24,13 +25,15 @@ export function createConfigurationSummary(
     productName: catalog.product.name,
     basePriceCents: price.basePriceCents,
     totalPriceCents: price.totalPriceCents,
-    selectionSignature: createSelectionSignature(
-      selections,
-      configuration.productSlug,
-      personalization,
-    ),
+    selectionSignature:
+      createSelectionSignature(
+        selections,
+        configuration.productSlug,
+        personalization,
+      ) + tailoringSignature(configuration.tailoring),
     selections,
     personalization,
+    tailoring: configuration.tailoring,
   };
 }
 

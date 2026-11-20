@@ -277,9 +277,9 @@ function SelectField({
 }
 
 function formatOption(value: string) {
-  return value.replaceAll("-", " ").replace(/^\w/, (letter) =>
-    letter.toUpperCase(),
-  );
+  return value
+    .replaceAll("-", " ")
+    .replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
 function mapMeasurements(

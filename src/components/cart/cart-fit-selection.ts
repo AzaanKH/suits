@@ -14,8 +14,7 @@ export function toConvexFitSelection(fitSelection: CartFitSelection) {
     return {
       ...fitSelection,
       measurementProfileId: fitSelection.measurementProfileId as
-        | Id<"measurementProfiles">
-        | undefined,
+        Id<"measurementProfiles"> | undefined,
     };
   }
 

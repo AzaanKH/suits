@@ -18,6 +18,7 @@ import type * as products from "../products.js";
 import type * as savedDesigns from "../savedDesigns.js";
 import type * as seed from "../seed.js";
 import type * as seedData from "../seedData.js";
+import type * as tailoringValidation from "../tailoringValidation.js";
 
 import type {
   ApiFromModules,
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   savedDesigns: typeof savedDesigns;
   seed: typeof seed;
   seedData: typeof seedData;
+  tailoringValidation: typeof tailoringValidation;
 }>;
 
 /**

@@ -28,3 +28,9 @@ pnpm-debug.log*
 # misc
 .DS_Store
 *.tsbuildinfo
+
+# Blender autosave backups
+*.blend1
+
+# local browser verification screenshots
+/artifacts/

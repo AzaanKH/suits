@@ -59,6 +59,13 @@ export const CUSTOMIZER_STEPS = [
     groupCode: "extras",
   },
   {
+    code: "tailoring",
+    label: "Specify tailoring details",
+    shortLabel: "Details",
+    description:
+      "Explore the full tailoring catalog and record your requests for a maker to review.",
+  },
+  {
     code: "fit",
     label: "Choose fit method",
     shortLabel: "Fit",
