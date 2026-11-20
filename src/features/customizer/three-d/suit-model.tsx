@@ -31,6 +31,7 @@ import {
   Mesh,
   MeshPhysicalMaterial,
   RepeatWrapping,
+  SphereGeometry,
   SRGBColorSpace,
   Vector2,
   type Group,
@@ -51,7 +52,7 @@ BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 
 // Bump after regenerating the GLBs or textures so browsers skip cached copies.
-const ASSET_VERSION = "?v=4";
+const ASSET_VERSION = "?v=5";
 const MODELS = "/models/suit-studio/";
 const TEXTURES = MODELS + "textures/";
 
@@ -150,6 +151,11 @@ type TailoredSuitProps = {
   };
   /** Fetch the other jacket blocks once the suit is on screen. */
   preloadBlocks?: boolean;
+  /**
+   * Show only the trousers: their options (loops, side adjusters, pleats) sit
+   * at the waistband, under the jacket.
+   */
+  trousersOnly?: boolean;
 };
 
 type SuitMaterials = Record<string, MeshPhysicalMaterial>;
@@ -160,6 +166,7 @@ export function TailoredSuit({
   onModel,
   interaction,
   preloadBlocks = false,
+  trousersOnly = false,
 }: TailoredSuitProps) {
   // A block swap may need a download. Rendering a deferred copy of the selection
   // keeps the current suit on screen until the new block has loaded; a suspended
@@ -197,7 +204,14 @@ export function TailoredSuit({
     // Mutate through traverse: three.js objects are imperative, not React state.
     group.traverse((object) => {
       if (!(object instanceof Mesh)) return;
-      object.visible = isSuitMeshVisible(object.name, shown);
+      // A button's hit target follows the button (traverse visits it after).
+      if (object.userData.hitProxy) {
+        object.layers.mask = object.parent!.layers.mask;
+        return;
+      }
+      object.visible =
+        isSuitMeshVisible(object.name, shown) &&
+        (!trousersOnly || getSuitPartForMesh(object.name)?.step === "trousers");
       // three.js raycasts invisible meshes; a separate layer keeps hidden blocks unclickable.
       object.layers.set(object.visible ? 0 : HIDDEN_LAYER);
       // The clone keeps source material names until first assignment. Store them once.
@@ -212,14 +226,16 @@ export function TailoredSuit({
           : "";
       object.material = object.name.endsWith("_buttonhole")
         ? materials.Buttonhole
-        : (materials[`${slot}${variant}`] ??
-          materials[slot] ??
-          materials.Cloth);
+        : /_pocket_(patch|slanted|base)$/.test(object.name)
+          ? materials.PocketPanel
+          : (materials[`${slot}${variant}`] ??
+            materials[slot] ??
+            materials.Cloth);
       object.castShadow = object.receiveShadow = true;
     });
     invalidate();
     onReady?.();
-  }, [shown, block, materials, invalidate, onReady]);
+  }, [shown, block, materials, invalidate, onReady, trousersOnly]);
 
   useEffect(() => {
     if (!preloadBlocks) return;
@@ -327,6 +343,8 @@ function SuitBlockModel({
   );
 }
 
+const HIT_PROXY_GEOMETRY = new SphereGeometry(1, 12, 8);
+
 function SuitPiece({
   object,
   hoveredStep,
@@ -349,11 +367,30 @@ function SuitPiece({
   // geometry, so each geometry is indexed once.
   useEffect(() => {
     if (!interactive) return;
+    const buttons: Mesh[] = [];
     object.traverse((child) => {
-      if (!(child instanceof Mesh)) return;
+      if (!(child instanceof Mesh) || child.userData.hitProxy) return;
       if (!child.geometry.boundsTree) child.geometry.computeBoundsTree();
       child.raycast = acceleratedRaycast;
+      if (getSuitPartForMesh(child.name)?.step === "buttons")
+        buttons.push(child);
     });
+    // Buttons are 6 mm deep and 1–2 cm across: the pointer nearly always lands
+    // on the jacket behind them. Give each an invisible, larger target.
+    for (const button of buttons) {
+      if (button.userData.hasHitProxy) continue;
+      button.userData.hasHitProxy = true;
+      button.geometry.computeBoundingSphere();
+      const sphere = button.geometry.boundingSphere!;
+      const proxy = new Mesh(HIT_PROXY_GEOMETRY);
+      proxy.name = button.name;
+      proxy.userData.hitProxy = true;
+      proxy.visible = false; // never drawn; three.js still raycasts it
+      proxy.position.copy(sphere.center);
+      proxy.scale.setScalar(Math.max(0.012, sphere.radius * 1.8));
+      proxy.layers.mask = button.layers.mask;
+      button.add(proxy);
+    }
   }, [object, interactive]);
   const outlined = hoveredStep
     ? meshes.filter((m) => getSuitPartForMesh(m.name)?.step === hoveredStep)
@@ -590,6 +627,18 @@ function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
       side: DoubleSide,
     }),
     Buttonhole: new MeshPhysicalMaterial({ roughness: 0.7, sheen: 0.3 }),
+    // Patch, slanted and pocket-base panels are built in the asset script: they
+    // take the woven cloth but not the body's normal map, whose darts and seams
+    // they cannot line up with.
+    PocketPanel: new MeshPhysicalMaterial({
+      map: wool,
+      roughness: 0.88,
+      metalness: 0,
+      sheen: 0.35,
+      sheenRoughness: 0.85,
+      envMapIntensity: 0.65,
+      side: DoubleSide,
+    }),
   };
   for (const [name, material] of Object.entries(mats)) {
     material.name = name;
@@ -670,6 +719,7 @@ function applySelectionToMaterials(
   setCloth(mats.Lapel, selection.lapelMaterial, satin);
   setCloth(mats.LapelDouble, selection.lapelMaterial, satin);
   setCloth(mats.LapelDinner, selection.lapelMaterial, true);
+  setCloth(mats.PocketPanel, selection.fabricMaterial);
   setCloth(mats.Trouser, selection.trouserMaterial);
   setCloth(mats.Waistcoat, selection.vestMaterial);
   mats.Button.color.set(selection.buttonMaterial.color);

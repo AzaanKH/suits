@@ -5,6 +5,7 @@ Source: Margaret Toigo, MakeHuman Suits 01, CC0. See assets/suit-studio/README.m
 import bpy, bmesh, math, json
 from pathlib import Path
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=ROOT/'assets/suit-studio/source'
 OUT=ROOT/'assets/suit-studio'
@@ -230,6 +231,213 @@ for sign in [-1,1]:
  bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
  mod=o.modifiers.new('Turned tab edge','BEVEL');mod.width=.002;mod.segments=3
  finish(o,f'waist_adjuster_{sign}','Trouser',0)
+# The single-breasted and dinner bodies are cut open under the hip-pocket
+# flap (the flap was its own island in the source). The straight flap hides the
+# opening; slanted, patch and jetted pockets leave it showing as a dark gap. Fill
+# each such opening, giving new faces the UVs of their edge vertices so the
+# cloth texture carries across.
+def solve3(M,b):
+ # Least-squares normal equations for a 3-term affine fit.
+ M=[m[:]+[b[i]] for i,m in enumerate(M)]
+ for c in range(3):
+  p=max(range(c,3),key=lambda r:abs(M[r][c]));M[c],M[p]=M[p],M[c]
+  for r in range(3):
+   if r!=c:
+    k=M[r][c]/M[c][c];M[r]=[a-k*b for a,b in zip(M[r],M[c])]
+ return [M[i][3]/M[i][i] for i in range(3)]
+def solve(M,b):
+ # Gaussian elimination with partial pivoting for small normal equations.
+ n=len(b);M=[m[:]+[b[i]] for i,m in enumerate(M)]
+ for c in range(n):
+  p=max(range(c,n),key=lambda r:abs(M[r][c]));M[c],M[p]=M[p],M[c]
+  for r in range(n):
+   if r!=c:
+    k=M[r][c]/M[c][c];M[r]=[a-k*b for a,b in zip(M[r],M[c])]
+ return [M[i][n]/M[i][i] for i in range(n)]
+def fill_pocket_openings(kind):
+ body=bpy.data.objects[f'{kind}_body'];bm=bmesh.new();bm.from_mesh(body.data)
+ uv=bm.loops.layers.uv.active
+ seen=set();groups=[]
+ for e in bm.edges:
+  if not e.is_boundary or e in seen:continue
+  stack=[e];group=[]
+  while stack:
+   x=stack.pop()
+   if x in seen:continue
+   seen.add(x);group.append(x)
+   for v in x.verts:
+    stack.extend(e2 for e2 in v.link_edges if e2.is_boundary and e2 not in seen)
+  groups.append(group)
+ filled=0
+ for group in groups:
+  vs={v for e in group for v in e.verts}
+  if not all(.02<abs(v.co.x)<.2 and .88<v.co.z<1.06 for v in vs):continue
+  uvs={v:next(l[uv].uv.copy() for l in v.link_loops) for v in vs}
+  new=[g for g in bmesh.ops.triangle_fill(bm,use_beauty=True,use_dissolve=False,edges=group)['geom'] if isinstance(g,bmesh.types.BMFace)]
+  bm.normal_update()
+  # Face the fill outward, like the cloth around it.
+  around=sum((f.normal for e in group for f in e.link_faces if f not in new),Vector())
+  flip=[f for f in new if f.normal.dot(around)<0]
+  if flip:bmesh.ops.reverse_faces(bm,faces=flip)
+  # A flat fill cuts across the curved body and meets the pockets' undersides;
+  # add interior points, relax them into a curved patch with the rim fixed,
+  # and sit it behind the cloth so no pocket ever shows it through.
+  patch=new
+  for _ in range(2):patch=bmesh.ops.poke(bm,faces=patch)['faces']
+  free=list({v for f in patch for v in f.verts if v not in vs})
+  for _ in range(40):bmesh.ops.smooth_vert(bm,verts=free,factor=.5,use_axis_x=True,use_axis_y=True,use_axis_z=True)
+  # Recess as a shallow dish, in one direction (into the body, opposite the
+  # cloth around it) so no point can push forward through a pocket.
+  inward=-around.normalized()
+  for v in free:
+   d=min((v.co-r.co).length for r in vs)
+   v.co+=inward*.0015*min(1,d/.012)
+  # Around each opening the body's UVs are close to an affine map of the
+  # front-facing position (x, height); fit it to the rim.
+  rim=list(vs);A=[[0.0]*3 for _ in range(3)];bu=[0.0]*3;bv=[0.0]*3
+  for r in rim:
+   row=(r.co.x,r.co.z,1.0)
+   for i in range(3):
+    bu[i]+=row[i]*uvs[r].x;bv[i]+=row[i]*uvs[r].y
+    for j in range(3):A[i][j]+=row[i]*row[j]
+  cu,cv=solve3(A,bu),solve3(A,bv)
+  # The opening is a cut-out in the body's UV layout too, so the textures are
+  # unpainted padding there (it reads as streaks). Sample the clean cloth just
+  # above it instead, through the same map.
+  lift=1.3*(max(r.co.z for r in rim)-min(r.co.z for r in rim))
+  for f in patch:
+   f.smooth=True;f.material_index=0
+   for l in f.loops:
+    x,z=l.vert.co.x,l.vert.co.z+lift
+    l[uv].uv=Vector((cu[0]*x+cu[1]*z+cu[2],cv[0]*x+cv[1]*z+cv[2]))
+  filled+=1
+ bm.normal_update();bm.to_mesh(body.data);bm.free();body.data.update()
+ print(kind,'pocket openings filled:',filled)
+# The patch and slanted pockets used to be stretched or sheared copies of the
+# flap. Stretching opened the flap's folded edge into slats you could see
+# through, and neither followed the body. Build them as panels laid onto the
+# body instead: a grid ray-cast onto the cloth from the front, lifted, given
+# thickness, with UVs following the body's own scale (the studio draws them
+# without the body normal map, whose darts and seams they cannot match).
+# Each keeps its object name.
+def fit_uv_map(body,x0,x1,z0,z1):
+ bl=body.data.uv_layers.active.data;A=[[0.0]*3 for _ in range(3)];bu=[0.0]*3;bv=[0.0]*3
+ for poly in body.data.polygons:
+  c=poly.center
+  if not(x0<c.x<x1 and z0<c.z<z1 and poly.normal.y<-.3):continue
+  for li in poly.loop_indices:
+   co=body.data.vertices[body.data.loops[li].vertex_index].co;row=(co.x,co.z,1.0);u=bl[li].uv
+   for i in range(3):
+    bu[i]+=row[i]*u.x;bv[i]+=row[i]*u.y
+    for j in range(3):A[i][j]+=row[i]*row[j]
+ return solve3(A,bu),solve3(A,bv)
+def pocket_panel(kind,variant,lift=.0032,thickness=.0024,cols=26,rows=14):
+ body=bpy.data.objects[f'{kind}_body'];tree=BVHTree.FromObject(body,bpy.context.evaluated_depsgraph_get())
+ flap=bpy.data.objects[f'{kind}_pocket_flap'];verts=[];faces=[];uvs=[];floor=[]
+ for side in [-1,1]:
+  fv=[v.co for v in flap.data.vertices if v.co.x*side>0]
+  ax0,ax1=min(abs(v.x) for v in fv),max(abs(v.x) for v in fv);top=max(v.z for v in fv);bottom=min(v.z for v in fv)
+  if variant=='patch':
+   # A patch pocket: the flap's width, from its top edge down 12 cm.
+   ztop=lambda s:top+.003;height=lambda s:.12
+  elif variant=='base':
+   # A backing over the hip-pocket opening, just proud of the cloth, so the
+   # styles that leave it partly uncovered (slanted, jetted) show plain cloth.
+   ztop=lambda s:top+.006;height=lambda s:(top-bottom)+.012
+  else:
+   # Hacking pocket: a flap of the same depth, falling toward the back.
+   drop=.024;ztop=lambda s:top+drop*(1-s);height=lambda s:(top-bottom)
+  cu,cv=fit_uv_map(body,ax0*(1 if side>0 else -1)-.03 if side>0 else -ax1-.03,ax1+.03 if side>0 else -ax0+.03,top-.16,top+.04)
+  lift_uv=0
+  # A smooth quadratic depth y(x, z) fitted to the front-facing body around
+  # the pocket: the panel follows the hip without picking up seams or the
+  # filled opening.
+  lo,hi=(ax0-.03,ax1+.03) if side>0 else (-ax1-.03,-ax0+.03)
+  ref=sorted(v.co.y for v in body.data.vertices if lo<v.co.x<hi and top-.16<v.co.z<top+.04 and v.normal.y<-.3)
+  mid=ref[len(ref)//2]
+  pts=[v.co for v in body.data.vertices if lo<v.co.x<hi and top-.16<v.co.z<top+.04 and v.normal.y<-.3 and abs(v.co.y-mid)<.05]
+  terms=lambda x,z:(1.0,x,z,x*x,x*z,z*z)
+  N=[[0.0]*6 for _ in range(6)];rhs=[0.0]*6
+  for q in pts:
+   t=terms(q.x,q.z)
+   for i in range(6):
+    rhs[i]+=t[i]*q.y
+    for j in range(6):N[i][j]+=t[i]*t[j]
+  k=solve(N,rhs);surface=lambda x,z:sum(a*b for a,b in zip(k,terms(x,z)))
+  start=len(verts)
+  for r in range(rows+1):
+   t=r/rows
+   for c in range(cols+1):
+    pad=.006 if variant=='base' else .004
+    s_=c/cols;x=side*(ax0-pad+(ax1-ax0+2*pad)*s_);z=ztop(s_)-t*height(s_)
+    if variant=='patch':
+     # Round the two bottom corners (2 cm radius).
+     R=.02;cx=side*(ax0-.004+R) if s_<.5 else side*(ax1+.004-R);cz=ztop(s_)-height(s_)+R
+     if z<cz and (abs(x)<abs(cx) if s_<.5 else abs(x)>abs(cx)):
+      d=Vector((x-cx,z-cz));d=d.normalized()*min(d.length,R) if d.length>R else d;x,z=cx+d.x,cz+d.y
+    verts.append(Vector((x,surface(x,z)-lift,z)))
+    uvs.append((cu[0]*x+cu[1]*(z+lift_uv)+cu[2],cv[0]*x+cv[1]*(z+lift_uv)+cv[2]))
+  # Push forward only where the real cloth bulges past the fitted surface; a
+  # hit more than 1.5 cm behind is the back of the jacket, seen through the
+  # open front, and is ignored.
+  for i in range(start,len(verts)):
+   v=verts[i];hit,_,_,_=tree.ray_cast(Vector((v.x,v.y-.02,v.z)),Vector((0,1,0)))
+   floor.append(hit.y-.0028 if hit is not None and hit.y-v.y<.015 else v.y)
+   v.y=min(v.y,floor[-1])
+  # Smooth the depth across the grid: a pocket is stiffer than the body under
+  # it, and the filled opening has a slight dip. Never closer than 2.8 mm.
+  W=cols+1
+  for _ in range(25):
+   ys=[v.y for v in verts[start:]]
+   for r in range(1,rows):
+    for c in range(1,cols):
+     i=r*W+c;ys[i]=(ys[i-1]+ys[i+1]+ys[i-W]+ys[i+W])/4
+   for i,y in enumerate(ys):verts[start+i].y=min(y,floor[start+i])
+  for r in range(rows):
+   for c in range(cols):
+    a=start+r*(cols+1)+c;b=a+1;d=a+cols+1;e=d+1
+    # Wind toward the viewer (-y) on both sides.
+    faces.append((a,d,e,b) if side>0 else (a,b,e,d))
+ mesh=bpy.data.meshes.new(f'{kind}_pocket_{variant}');mesh.from_pydata([tuple(v) for v in verts],[],faces);mesh.update()
+ layer=mesh.uv_layers.new(name='UVMap')
+ for loop in mesh.loops:layer.data[loop.index].uv=uvs[loop.vertex_index]
+ obj=bpy.data.objects.get(f'{kind}_pocket_{variant}')
+ if obj:old=obj.data;obj.data=mesh;bpy.data.meshes.remove(old)
+ else:obj=bpy.data.objects.new(f'{kind}_pocket_{variant}',mesh);bpy.context.collection.objects.link(obj)
+ finish(obj,obj.name,'Cloth',0)
+ # Face the panel front if the winding came out inward, then thicken toward the body.
+ bm=bmesh.new();bm.from_mesh(mesh);bm.normal_update()
+ if sum((f.normal.y for f in bm.faces))>0:bmesh.ops.reverse_faces(bm,faces=bm.faces[:])
+ bm.to_mesh(mesh);bm.free()
+ if not thickness:return
+ bpy.context.view_layer.objects.active=obj
+ sol=obj.modifiers.new('Pocket thickness','SOLIDIFY');sol.thickness=thickness;sol.offset=-1;sol.use_even_offset=True
+ bpy.ops.object.modifier_apply(modifier=sol.name)
+# The MakeHuman buttons were authored for a closed body and pushed forward;
+# after the open-quarter reshaping they float off the cloth, visibly so from
+# the side. Seat each button on the surface beneath it. Front buttons sit on
+# the left forepart (under the wearer's right); it ends just right of the
+# buttons, where the right forepart overlaps it 1 cm further forward. Shift
+# them 1.4 cm toward the left so they sit on cloth, not at that step.
+def seat(obj,tree,gap=.0004):
+ vs=obj.data.vertices;c=sum((v.co for v in vs),Vector())/len(vs)
+ loc,normal,_,_=tree.find_nearest(c)
+ if normal.dot(c-loc)<0:normal=-normal
+ back=min((v.co-c).dot(normal) for v in vs)
+ delta=loc+normal*(gap-back)-c
+ for v in vs:v.co+=delta
+FRONT_BUTTONS={'single':[10,11],'dinner':[14]}
+for kind in ['single','double','dinner']:
+ for i in FRONT_BUTTONS.get(kind,[]):
+  o=bpy.data.objects.get(f'{kind}_button_{i}')
+  if o:
+   for v in o.data.vertices:v.co.x-=.014
+ fill_pocket_openings(kind)
+ for variant in ['patch','slanted']:pocket_panel(kind,variant)
+ pocket_panel(kind,'base',lift=.0007,thickness=0)
+ tree=BVHTree.FromObject(bpy.data.objects[f'{kind}_body'],bpy.context.evaluated_depsgraph_get())
+ for o in list(bpy.data.objects):
+  if o.type=='MESH' and o.name.startswith(f'{kind}_button_'):seat(o,tree)
 # Export geometry with named material regions and separate variants.
 bpy.ops.object.select_all(action='SELECT')
 for o in list(bpy.context.selected_objects):

@@ -1,6 +1,6 @@
 # 3D Performance Report
 
-Measured on the studio assets on November 19, 2026. Byte counts come from the files in `public/models/suit-studio`. Triangle counts are printed by `pnpm assets:studio:split`.
+Measured on the studio assets on November 20, 2026. Byte counts come from the files in `public/models/suit-studio`. Triangle counts are printed by `pnpm assets:studio:split`.
 
 ## Transfer
 
@@ -8,15 +8,15 @@ The model is split by jacket block. A visitor first downloads the shared meshes 
 
 | Asset                         | When                    |         Bytes |
 | ----------------------------- | ----------------------- | ------------: |
-| `suit-core.glb` (Meshopt)     | First render            |     1,041,232 |
+| `suit-core.glb` (Meshopt)     | First render            |     1,062,768 |
 | `textures/wool-albedo.webp`   | First render            |       712,456 |
 | `textures/single-normal.webp` | First render            |       883,448 |
-| **First render**              |                         | **2,637,136** |
-| `suit-double.glb`             | Background or on demand |       452,444 |
+| **First render**              |                         | **2,658,672** |
+| `suit-double.glb`             | Background or on demand |       468,860 |
 | `textures/double-normal.webp` | Background or on demand |     1,206,356 |
-| `suit-dinner.glb`             | Background or on demand |       567,680 |
+| `suit-dinner.glb`             | Background or on demand |       576,620 |
 | `textures/dinner-normal.webp` | Background or on demand |     1,179,388 |
-| **Everything**                |                         | **6,043,004** |
+| **Everything**                |                         | **6,089,896** |
 
 Before the split, the first render needed all 6,631,876 bytes. It now needs 60% less. The total also dropped, because two lapel meshes that no selection can show (`single_lapel_shawl`, `double_lapel_shawl`) are no longer exported.
 
@@ -26,10 +26,10 @@ The studio route also loads `postprocessing` and N8AO for ambient occlusion: one
 
 | File              |   Triangles |
 | ----------------- | ----------: |
-| `suit-core.glb`   |     262,028 |
-| `suit-double.glb` |      98,688 |
-| `suit-dinner.glb` |     134,576 |
-| **All blocks**    | **495,292** |
+| `suit-core.glb`   |     266,104 |
+| `suit-double.glb` |     101,360 |
+| `suit-dinner.glb` |     134,620 |
+| **All blocks**    | **502,084** |
 
 `suit-core.glb` holds the shared meshes (trousers, waistcoat, trouser details, shirt buttons) plus the single-breasted block. One jacket block is visible at a time, so 180k–260k triangles render.
 

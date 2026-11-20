@@ -42,6 +42,10 @@ After the visitor has made a few changes (three changes and 25 s, or 90 s regard
 
 The two hero images (`public/images/studio-suit.webp` and `studio-suit-dark.webp`) are renders of the real studio, one per theme. Re-render them with `pnpm assets:hero` while the app is running whenever the model, materials, lighting, floor or default suit change.
 
+## Build-script fitting
+
+`scripts/build-suit-studio.py` fits derived parts to the body after import. It fills the hip-pocket openings in the single-breasted and dinner bodies, and builds the patch, slanted and `pocket_base` meshes as panels laid onto a smooth surface fitted to the body around each pocket. The studio draws these panels with the `PocketPanel` material: the woven cloth, but not the body's normal map. It also seats every button on the cloth beneath it; the single-breasted and dinner front buttons sit on the under forepart, clear of the overlapping front edge.
+
 ## Model contract
 
 The model ships as three Meshopt-compressed GLBs in `public/models/suit-studio/`, one per jacket block, plus WebP textures:
@@ -57,7 +61,7 @@ The model ships as three Meshopt-compressed GLBs in `public/models/suit-studio/`
 Mesh names follow `<block>_<part>[_<variant>]`:
 
 - **Blocks:** `single_*` (single-breasted), `double_*` (double-breasted), `dinner_*` (shawl-lapel dinner jacket). Only one block is visible at a time.
-- **Parts:** `body`, `cuff`, `collar`, `lapel_{notch,peak,shawl}`, `pocket_{flap,slanted,welt,patch}`, `breast`, `button_N`, `buttonhole`, `shirt_N`.
+- **Parts:** `body`, `cuff`, `collar`, `lapel_{notch,peak,shawl}`, `pocket_{flap,slanted,welt,patch}`, `pocket_base` (a backing over the hip-pocket opening, shown under every style except the straight flap, which covers it itself), `breast`, `button_N`, `buttonhole`, `shirt_N`.
 - **Shared, block-independent meshes:** `trousers`, `pleat_*`, `waist_loop_*`, `waist_adjuster_*`, `waistcoat`, `vest_button_*`, `shirt_button_*`.
 
 Material slots come from the Blender material name stored on each mesh: `Cloth`, `Lapel`, `Trouser`, `Waistcoat`, `Shirt`, `Button`, `Lining`. Cloth and lapel slots get a `Double` or `Dinner` suffix at runtime so each block uses its own normal map.

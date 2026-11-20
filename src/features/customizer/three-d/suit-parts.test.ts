@@ -8,6 +8,7 @@ describe("studio part registry", () => {
     ["dinner_lapel_shawl", "lapel"],
     ["double_collar", "lapel"],
     ["single_pocket_flap", "pockets"],
+    ["single_pocket_base", "pockets"],
     ["dinner_breast", "pockets"],
     ["double_button_upper_9", "buttons"],
     ["single_buttonhole", "buttons"],

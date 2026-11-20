@@ -411,6 +411,10 @@ export function isSuitMeshVisible(
   if (prefix !== block) return false;
   if (name.includes("_lapel_"))
     return name.endsWith("_" + codes.lapel.replace("-lapel", ""));
+  // Covers the hip-pocket opening under the styles that leave it showing; the
+  // straight flap covers it itself.
+  if (name.endsWith("_pocket_base"))
+    return (POCKET_MESH[codes.pockets] ?? "flap") !== "flap";
   if (name.includes("_pocket_"))
     return name.endsWith("_" + (POCKET_MESH[codes.pockets] ?? "flap"));
   if (name === "single_button_11")

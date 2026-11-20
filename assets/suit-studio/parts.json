@@ -56,8 +56,8 @@
     "triangles": 4032
   },
   "single_body": {
-    "vertices": 55746,
-    "triangles": 110272
+    "vertices": 56370,
+    "triangles": 111676
   },
   "single_lapel_notch": {
     "vertices": 5525,
@@ -80,16 +80,16 @@
     "triangles": 10560
   },
   "single_pocket_slanted": {
-    "vertices": 1394,
-    "triangles": 2624
+    "vertices": 1620,
+    "triangles": 3232
   },
   "single_pocket_welt": {
     "vertices": 1394,
     "triangles": 2624
   },
   "single_pocket_patch": {
-    "vertices": 1394,
-    "triangles": 2624
+    "vertices": 1620,
+    "triangles": 3232
   },
   "double_button_1": {
     "vertices": 249,
@@ -216,8 +216,8 @@
     "triangles": 4352
   },
   "dinner_body": {
-    "vertices": 30546,
-    "triangles": 60160
+    "vertices": 30914,
+    "triangles": 60988
   },
   "dinner_cuff": {
     "vertices": 1584,
@@ -232,16 +232,16 @@
     "triangles": 16384
   },
   "dinner_pocket_slanted": {
-    "vertices": 2226,
-    "triangles": 4352
+    "vertices": 1620,
+    "triangles": 3232
   },
   "dinner_pocket_welt": {
     "vertices": 2226,
     "triangles": 4352
   },
   "dinner_pocket_patch": {
-    "vertices": 2226,
-    "triangles": 4352
+    "vertices": 1620,
+    "triangles": 3232
   },
   "double_pocket_flap": {
     "vertices": 1394,
@@ -252,12 +252,12 @@
     "triangles": 2624
   },
   "double_pocket_patch": {
-    "vertices": 1394,
-    "triangles": 2624
+    "vertices": 1620,
+    "triangles": 3232
   },
   "double_pocket_slanted": {
-    "vertices": 1394,
-    "triangles": 2624
+    "vertices": 1620,
+    "triangles": 3232
   },
   "double_button_upper_9": {
     "vertices": 249,
@@ -346,5 +346,17 @@
   "waist_adjuster_1": {
     "vertices": 96,
     "triangles": 188
+  },
+  "single_pocket_base": {
+    "vertices": 810,
+    "triangles": 1456
+  },
+  "double_pocket_base": {
+    "vertices": 810,
+    "triangles": 1456
+  },
+  "dinner_pocket_base": {
+    "vertices": 810,
+    "triangles": 1456
   }
 }
