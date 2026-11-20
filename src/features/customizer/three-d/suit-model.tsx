@@ -41,6 +41,7 @@ import {
 import {
   getSuitBlock,
   isSuitMeshVisible,
+  type Suit3dMaterial,
   type Suit3dSelection,
   type SuitBlock,
 } from "./suit-selection";
@@ -209,8 +210,11 @@ export function TailoredSuit({
         : object.name.startsWith("double_")
           ? "Double"
           : "";
-      object.material =
-        materials[`${slot}${variant}`] ?? materials[slot] ?? materials.Cloth;
+      object.material = object.name.endsWith("_buttonhole")
+        ? materials.Buttonhole
+        : (materials[`${slot}${variant}`] ??
+          materials[slot] ??
+          materials.Cloth);
       object.castShadow = object.receiveShadow = true;
     });
     invalidate();
@@ -585,10 +589,13 @@ function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
       sheen: 0.8,
       side: DoubleSide,
     }),
+    Buttonhole: new MeshPhysicalMaterial({ roughness: 0.7, sheen: 0.3 }),
   };
   for (const [name, material] of Object.entries(mats)) {
     material.name = name;
-    if (material.side === DoubleSide) shadeInterior(material);
+    // The jacket body is lined: its inside faces take the lining color.
+    if (material.side === DoubleSide)
+      shadeInterior(material, name.startsWith("Cloth"));
   }
   return mats;
 }
@@ -599,8 +606,21 @@ function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
  * white hole. Back faces get a fraction of the light, like a garment's
  * shadowed interior.
  */
-function shadeInterior(material: MeshPhysicalMaterial) {
+function shadeInterior(material: MeshPhysicalMaterial, lined = false) {
+  // Kept on the material so a lining change is a uniform update, not a recompile.
+  const lining = { value: new Color("#111827") };
+  material.userData.lining = lining;
   material.onBeforeCompile = (shader) => {
+    if (lined) {
+      shader.uniforms.liningColor = lining;
+      shader.fragmentShader = shader.fragmentShader
+        .replace("void main() {", "uniform vec3 liningColor;\nvoid main() {")
+        .replace(
+          "#include <map_fragment>",
+          `#include <map_fragment>
+          if (!gl_FrontFacing) diffuseColor.rgb = liningColor;`,
+        );
+    }
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <lights_fragment_end>",
       `#include <lights_fragment_end>
@@ -616,7 +636,8 @@ function shadeInterior(material: MeshPhysicalMaterial) {
       }`,
     );
   };
-  material.customProgramCacheKey = () => "suit-interior";
+  material.customProgramCacheKey = () =>
+    lined ? "suit-interior-lined" : "suit-interior";
 }
 
 const INTERIOR_LIGHT = "0.45";
@@ -629,24 +650,33 @@ function applySelectionToMaterials(
 ) {
   const setCloth = (
     material: MeshPhysicalMaterial,
-    color: string,
+    cloth: Suit3dMaterial,
     satin = false,
   ) => {
-    material.color.set(color);
-    material.roughness = satin ? 0.4 : 0.88;
-    material.sheen = satin ? 0.8 : 0.35;
-    material.sheenColor.set(color).lerp(sheenTint, 0.25);
+    material.color.set(cloth.color);
+    material.roughness = satin ? 0.4 : cloth.roughness;
+    material.sheen = satin ? 0.8 : (cloth.sheen ?? 0.35);
+    material.sheenColor.set(cloth.color).lerp(sheenTint, 0.25);
+    const weave = satin ? 0.15 : (cloth.weave ?? 0.35);
+    material.normalScale.set(weave, weave);
   };
   const satin = selection.lapelMaterial.roughness < 0.6;
-  for (const name of ["Cloth", "ClothDouble", "ClothDinner"])
-    setCloth(mats[name], selection.fabricMaterial.color);
-  setCloth(mats.Lapel, selection.lapelMaterial.color, satin);
-  setCloth(mats.LapelDouble, selection.lapelMaterial.color, satin);
-  setCloth(mats.LapelDinner, selection.lapelMaterial.color, true);
-  setCloth(mats.Trouser, selection.trouserMaterial.color);
-  setCloth(mats.Waistcoat, selection.vestMaterial.color);
+  for (const name of ["Cloth", "ClothDouble", "ClothDinner"]) {
+    setCloth(mats[name], selection.fabricMaterial);
+    (mats[name].userData.lining as { value: Color }).value.set(
+      selection.liningMaterial.color,
+    );
+  }
+  setCloth(mats.Lapel, selection.lapelMaterial, satin);
+  setCloth(mats.LapelDouble, selection.lapelMaterial, satin);
+  setCloth(mats.LapelDinner, selection.lapelMaterial, true);
+  setCloth(mats.Trouser, selection.trouserMaterial);
+  setCloth(mats.Waistcoat, selection.vestMaterial);
   mats.Button.color.set(selection.buttonMaterial.color);
   mats.Lining.color.set(selection.liningMaterial.color);
+  mats.Buttonhole.color.set(
+    selection.jacketDetails.buttonholeThread ?? selection.fabricMaterial.color,
+  );
 }
 
 export class SuitSceneErrorBoundary extends Component<

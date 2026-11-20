@@ -540,7 +540,15 @@ export const productSeeds = [
     badge: "House favorite",
     featured: true,
     displayOrder: 10,
-    fabricCodes: ["navy-hopsack", "grey-traveller"],
+    // Every cloth the 3D studio can render, since this is the suit it shows.
+    fabricCodes: [
+      "navy-hopsack",
+      "grey-traveller",
+      "charcoal-pick-and-pick",
+      "midnight-barathea",
+      "olive-flannel",
+      "stone-wool-linen",
+    ],
     customizationOptionCodes: houseOptionCodes,
   },
   {

@@ -7,6 +7,7 @@ import {
   tailoringValidationError,
   tailoringSignature,
   hasTailoringRequests,
+  tailoringRows,
 } from "./tailoring";
 import { getSuit3dSelection } from "./three-d/suit-selection";
 import type { CustomizerConfiguration } from "./types";
@@ -157,5 +158,50 @@ describe("maker-neutral tailoring", () => {
     expect(tailoringSignature(a)).not.toBe(
       tailoringSignature({ ...a, choices: { canvas: "half", vents: "side" } }),
     );
+  });
+});
+
+describe("tailoring rows and the 3D preview", () => {
+  it("marks only the values the model draws as previewed", () => {
+    const rows = tailoringRows(
+      {
+        version: 1,
+        choices: {
+          "breast-pocket": "none",
+          "cuff-button-count": "five",
+          "lining-color": "burgundy",
+        },
+        dimensions: {},
+      },
+      {},
+    );
+    const preview = Object.fromEntries(rows.map((r) => [r.id, r.preview]));
+    expect(preview["breast-pocket"]).toBe("detail");
+    expect(preview["cuff-button-count"]).toBe("specification");
+    expect(preview["lining-color"]).toBe("material");
+  });
+
+  it("marks details the chosen jacket cannot draw as specification only", () => {
+    const spec = {
+      version: 1 as const,
+      choices: { "front-cut": "db-four", "buttonhole-thread": "ivory" },
+      dimensions: {},
+    };
+    const preview = (primary: Record<string, string[]>) =>
+      Object.fromEntries(
+        tailoringRows(spec, primary).map((r) => [r.id, r.preview]),
+      );
+    expect(preview({ "jacket-style": ["single-breasted-two-button"] })).toEqual(
+      { "front-cut": "specification", "buttonhole-thread": "detail" },
+    );
+    expect(preview({ "jacket-style": ["double-breasted-six-button"] })).toEqual(
+      { "front-cut": "detail", "buttonhole-thread": "specification" },
+    );
+    expect(
+      preview({
+        "jacket-style": ["single-breasted-one-button"],
+        lapel: ["shawl-lapel"],
+      })["buttonhole-thread"],
+    ).toBe("specification");
   });
 });

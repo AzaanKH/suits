@@ -14,6 +14,7 @@ import {
   emptyTailoring,
   hasTailoringRequests,
   tailoringDisabledReason,
+  isDrawnOnJacket,
   tailoringRows,
   type TailoringSpecification,
   type TailoringArea,
@@ -117,11 +118,23 @@ export function TailoringDetails({
                 className="text-muted-foreground mt-2 text-xs leading-5"
               >
                 {reason ??
-                  (field.preview === "material"
-                    ? "Color preview in 3D; final fabric needs a swatch."
-                    : field.preview === "detail"
-                      ? "Schematic detail preview in 3D."
-                      : "Saved in the specification; not shown in 3D yet.")}
+                  (field.preview === "detail" &&
+                  !isDrawnOnJacket(field.id, configuration.selectedOptionCodes)
+                    ? "Saved in the specification; not drawn on this jacket in 3D."
+                    : field.preview === "material"
+                      ? "Color preview in 3D; final fabric needs a swatch."
+                      : field.preview === "detail" && field.previewValues
+                        ? `Shown in 3D: ${field.options
+                            .filter((o) =>
+                              field.previewValues?.includes(o.value),
+                            )
+                            .map((o) => o.label.toLowerCase())
+                            .join(
+                              ", ",
+                            )}. Other choices are saved in the specification.`
+                        : field.preview === "detail"
+                          ? "Schematic detail preview in 3D."
+                          : "Saved in the specification; not shown in 3D yet.")}
               </p>
             </div>
           );
@@ -197,7 +210,8 @@ export function TailoringDetails({
           Clear tailoring requests
         </Button>
         <p className="text-muted-foreground text-sm" aria-live="polite">
-          {tailoringRows(spec).length} requests
+          {tailoringRows(spec, configuration.selectedOptionCodes).length}{" "}
+          requests
         </p>
       </div>
     </div>
@@ -249,10 +263,12 @@ function DimensionInput({
 
 export function TailoringSummary({
   specification,
+  primary,
 }: {
   specification?: TailoringSpecification;
+  primary: Record<string, string[]>;
 }) {
-  const rows = tailoringRows(specification);
+  const rows = tailoringRows(specification, primary);
   if (!rows.length) return null;
   return (
     <section className="rounded-lg border p-5" aria-label="Tailoring requests">
@@ -300,7 +316,10 @@ export function DownloadSpecification({
         ? "quote-required"
         : "catalog-price",
       referenceDesign: summary,
-      tailoringRequests: tailoringRows(configuration.tailoring),
+      tailoringRequests: tailoringRows(
+        configuration.tailoring,
+        configuration.selectedOptionCodes,
+      ),
       configuration,
       dimensionUnits: "cm",
       dimensionBasis:

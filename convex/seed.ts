@@ -1,4 +1,6 @@
 import type { Id, TableNames } from "./_generated/dataModel";
+import { v } from "convex/values";
+
 import { internalMutation } from "./_generated/server";
 import {
   categorySeeds,
@@ -162,3 +164,35 @@ function requireValue<Key, Value>(
 
   return value;
 }
+
+export const syncProductFabrics = internalMutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { dryRun = false }) => {
+    const updated: string[] = [];
+    for (const seed of productSeeds) {
+      const product = await ctx.db
+        .query("products")
+        .withIndex("by_slug", (q) => q.eq("slug", seed.slug))
+        .unique();
+      if (!product) continue;
+      const availableFabricIds: Id<"fabrics">[] = [];
+      for (const code of seed.fabricCodes) {
+        const fabric = await ctx.db
+          .query("fabrics")
+          .withIndex("by_code", (q) => q.eq("code", code))
+          .unique();
+        if (!fabric) throw new Error(`Missing fabric: ${code}`);
+        availableFabricIds.push(fabric._id);
+      }
+      if (availableFabricIds.join() === product.availableFabricIds.join())
+        continue;
+      updated.push(seed.slug);
+      if (dryRun) continue;
+      await ctx.db.patch(product._id, {
+        availableFabricIds,
+        updatedAt: Date.now(),
+      });
+    }
+    return updated;
+  },
+});

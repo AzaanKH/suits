@@ -8,6 +8,7 @@
     "build": "next build",
     "convex:dev": "convex dev",
     "convex:seed": "convex run seed:seed --push",
+    "convex:sync-fabrics": "convex run seed:syncProductFabrics",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

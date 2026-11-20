@@ -34,4 +34,4 @@ The woven color texture is used with the original garment normal maps. It is an 
 
 The browser first loads `suit-core.glb` with the wool and single-breasted textures (about 2.6 MB), then the other two blocks on demand or in the background. It does not fetch the raw GLB or source PNG files. Lighting is generated locally; no external HDR download is required.
 
-The three jacket blocks have their own collars, shirt inserts, cuffs and normal maps. Shawl lapels select the dinner-jacket block. Lining color, measurements, and unmodeled construction details remain specification requests. The waistcoat is a simplified visual insert; this model does not predict fit, drape, or manufacturing feasibility.
+The three jacket blocks have their own collars, shirt inserts, cuffs and normal maps. Shawl lapels select the dinner-jacket block. Measurements and unmodeled construction details remain specification requests; lining color is drawn on the jacket body's inside faces. The waistcoat is a simplified visual insert; this model does not predict fit, drape, or manufacturing feasibility.

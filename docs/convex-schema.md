@@ -44,4 +44,4 @@ The storefront uses fourteen tables:
 3. In another terminal, run `pnpm convex:seed`.
 4. Run `pnpm dev`.
 
-The seed mutation is internal and idempotent for local development: it clears the six storefront catalog tables and recreates the realistic sample catalog. It does not clear saved user designs. Do not run it against production data.
+The seed mutation is internal and idempotent for local development: it clears the six storefront catalog tables and recreates the realistic sample catalog. It does not clear saved user designs. Do not run it against production data. To change which cloths a product offers in production, edit `fabricCodes` in `convex/seedData.ts`, deploy, then run `pnpm convex:sync-fabrics '{"dryRun": true}' --prod` to list the products whose cloths would change, and `pnpm convex:sync-fabrics --prod` to apply. `seed:syncProductFabrics` patches `availableFabricIds` in place by product slug and fabric code, so product IDs held by saved designs, carts and orders stay valid.
