@@ -27,7 +27,7 @@ export function SectionHeading({
       )}
     >
       <div>
-        <h2 className="text-ink font-serif text-5xl leading-[0.98] tracking-[-0.035em] sm:text-6xl">
+        <h2 className="text-ink font-serif text-4xl leading-[1.02] tracking-[-0.015em] sm:text-5xl">
           {title}
         </h2>
         {description ? (

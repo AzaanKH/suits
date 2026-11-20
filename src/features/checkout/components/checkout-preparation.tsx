@@ -305,10 +305,10 @@ export function CheckoutPreparation({
                       appearance: {
                         theme: "stripe",
                         variables: {
-                          colorPrimary: "#17201b",
-                          colorText: "#17201b",
-                          borderRadius: "8px",
-                          fontFamily: "Manrope, sans-serif",
+                          colorPrimary: "#16191e",
+                          colorText: "#16191e",
+                          borderRadius: "4px",
+                          fontFamily: "Hanken Grotesk, sans-serif",
                         },
                       },
                     },

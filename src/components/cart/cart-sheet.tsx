@@ -37,7 +37,7 @@ export function CartSheet({ checkoutEnabled }: CartSheetProps) {
     <Sheet>
       <SheetTrigger
         data-testid="cart-link"
-        className="text-ink inline-flex min-h-10 items-center gap-2 px-2 text-sm font-bold tracking-[0.08em] uppercase"
+        className="text-ink hover:text-accent inline-flex min-h-10 items-center gap-2 px-2 text-sm font-medium transition-colors"
         aria-label={`Cart with ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
       >
         <ShoppingBag aria-hidden="true" className="size-[1.1rem]" />

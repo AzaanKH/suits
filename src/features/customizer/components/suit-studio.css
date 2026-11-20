@@ -4,7 +4,7 @@
   --studio-muted: var(--muted-foreground);
   --studio-rule: var(--border);
   /* Matches SUIT_MOODS.atelier.background so the 3D canvas blends in. */
-  --studio-backdrop: #ebe4d9;
+  --studio-backdrop: var(--background);
   color: var(--studio-ink);
   background: var(--background);
   display: grid;
@@ -37,11 +37,11 @@
   background: var(--background);
 }
 .studio-heading h1 {
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-size: clamp(42px, 4.3vw, 66px);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(40px, 4vw, 60px);
   line-height: 1;
-  letter-spacing: -0.04em;
-  font-weight: 500;
+  letter-spacing: -0.015em;
+  font-weight: 400;
   margin: 0 0 20px;
 }
 .studio-heading > p {
@@ -86,11 +86,11 @@
   margin-bottom: 19px;
 }
 .studio-step-heading h2 {
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-size: 31px;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 30px;
   line-height: 1.05;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 .studio-reset {
   color: var(--studio-muted);
@@ -355,18 +355,16 @@
 }
 /* Same wordmark and nav treatment as the storefront header. */
 .studio-brand {
-  font-family: var(--font-cormorant), Georgia, serif;
-  letter-spacing: -0.08em;
-  font-size: 2rem;
+  font-family: var(--font-display), Georgia, serif;
+  letter-spacing: 0.04em;
+  font-size: 1.65rem;
   line-height: 1;
 }
 .studio-header nav {
   display: flex;
   gap: 26px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
   align-items: center;
 }
 .studio-header nav a:hover {

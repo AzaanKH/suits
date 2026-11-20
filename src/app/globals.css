@@ -5,8 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--font-manrope);
-  --font-serif: var(--font-cormorant);
+  --font-sans: var(--font-text);
+  --font-serif: var(--font-display);
+  --font-mono: var(--font-data);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -30,6 +31,8 @@
   --color-stone: var(--stone);
   --color-clay: var(--clay);
   --color-accent-strong: var(--accent-strong);
+  --color-chalk: var(--chalk);
+  --color-chalk-light: var(--chalk-light);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -37,29 +40,34 @@
 }
 
 :root {
-  --background: oklch(0.985 0.007 85);
-  --foreground: oklch(0.205 0.018 68);
-  --card: oklch(0.995 0.004 85);
-  --card-foreground: oklch(0.205 0.018 68);
-  --popover: oklch(0.995 0.004 85);
-  --popover-foreground: oklch(0.205 0.018 68);
-  --primary: oklch(0.205 0.018 68);
-  --primary-foreground: oklch(0.985 0.007 85);
-  --secondary: oklch(0.945 0.013 81);
-  --secondary-foreground: oklch(0.205 0.018 68);
-  --muted: oklch(0.945 0.013 81);
-  --muted-foreground: oklch(0.48 0.022 68);
-  --accent: oklch(0.745 0.125 74);
-  --accent-foreground: oklch(0.205 0.018 68);
-  --accent-strong: oklch(0.565 0.12 66);
-  --destructive: oklch(0.52 0.185 28);
-  --border: oklch(0.865 0.017 79);
-  --input: oklch(0.865 0.017 79);
-  --ring: oklch(0.565 0.12 66);
-  --ink: oklch(0.205 0.018 68);
-  --ivory: oklch(0.985 0.007 85);
-  --stone: oklch(0.945 0.013 81);
-  --clay: oklch(0.875 0.028 68);
+  /* The cutting room: pattern paper, drafting ink, one tailor's-chalk blue. */
+  --background: #f3f3ef;
+  --foreground: #16191e;
+  --card: #fafaf7;
+  --card-foreground: #16191e;
+  --popover: #fafaf7;
+  --popover-foreground: #16191e;
+  --primary: #16191e;
+  --primary-foreground: #f3f3ef;
+  --secondary: #e8e9e3;
+  --secondary-foreground: #16191e;
+  --muted: #e8e9e3;
+  --muted-foreground: #5a5f66;
+  --accent: #2c4a8f;
+  --accent-foreground: #f3f3ef;
+  --accent-strong: #1f3770;
+  --destructive: #a3341f;
+  --border: #d3d5ce;
+  --input: #c4c7bf;
+  --ring: #2c4a8f;
+  --ink: #16191e;
+  --ivory: #f3f3ef;
+  --stone: #e8e9e3;
+  --clay: #d9d6cc;
+  --chalk: #2c4a8f;
+  /* Chalk on ink: the same blue, lifted for dark surfaces. */
+  --chalk-light: #a9bdf0;
+  --grid-line: rgb(44 74 143 / 0.075);
   --radius: 0.25rem;
 }
 
@@ -92,17 +100,17 @@
 
 @layer components {
   .nav-link {
-    @apply text-ink hover:text-accent-strong text-sm font-bold tracking-[0.1em] uppercase transition-colors;
+    @apply text-ink hover:text-accent text-sm font-medium transition-colors;
   }
 
   .button-primary,
   .button-secondary,
   .button-accent {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 border px-5 py-3 text-sm font-bold tracking-[0.08em] uppercase transition-colors;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 border px-5 py-3 text-sm font-semibold transition-colors;
   }
 
   .button-primary {
-    @apply border-ink bg-ink text-ivory hover:border-accent-strong hover:bg-accent-strong;
+    @apply border-ink bg-ink text-ivory hover:border-accent hover:bg-accent;
   }
 
   .button-secondary {
@@ -110,11 +118,24 @@
   }
 
   .button-accent {
-    @apply border-accent bg-accent text-ink hover:border-ivory hover:bg-ivory;
+    @apply border-ivory bg-ivory text-ink hover:border-chalk-light hover:bg-chalk-light;
   }
 
   .text-link {
-    @apply text-ink hover:text-accent-strong inline-flex items-center gap-2 text-sm font-bold tracking-[0.08em] uppercase underline-offset-4 transition-colors hover:underline;
+    @apply text-ink hover:text-accent inline-flex items-center gap-2 text-sm font-semibold underline-offset-4 transition-colors hover:underline;
+  }
+
+  /* Pattern paper: a 5 mm drafting grid in faint chalk. */
+  .paper-grid {
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Measurements, cloth specs and order numbers. */
+  .spec {
+    @apply font-mono text-xs tracking-normal tabular-nums;
   }
 
   .form-control {

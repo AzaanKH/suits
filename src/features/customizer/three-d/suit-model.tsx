@@ -118,11 +118,12 @@ export const SUIT_MOODS: Record<
   },
   atelier: {
     label: "Atelier",
-    background: "#ebe4d9",
-    key: "#fff0d8",
-    fill: "#f4e2c9",
+    // Pattern paper, matching the site's --background.
+    background: "#f3f3ef",
+    key: "#fff6ea",
+    fill: "#eceee8",
     exposure: 1.2,
-    shadow: "#5f4b36",
+    shadow: "#3d4350",
   },
   evening: {
     label: "Evening",
@@ -356,7 +357,8 @@ function SuitPiece({
               thickness={3}
               screenspace={false}
               angle={0}
-              color="#b08a4f"
+              // Tailor's chalk: the part a click will change.
+              color="#4a6fd0"
             />,
             mesh,
           )}

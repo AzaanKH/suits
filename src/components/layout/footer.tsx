@@ -29,7 +29,7 @@ export function Footer() {
         <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr]">
           <div>
             <Link
-              className="font-serif text-[2.5rem] leading-none tracking-[-0.08em]"
+              className="font-serif text-[2.5rem] leading-none tracking-[0.02em]"
               href="/"
             >
               ARDEN
@@ -49,9 +49,7 @@ export function Footer() {
           <div className="grid gap-10 sm:grid-cols-[0.7fr_0.8fr_1.4fr]">
             {footerLinks.map((group) => (
               <div key={group.title}>
-                <h2 className="text-accent text-sm font-bold tracking-[0.1em] uppercase">
-                  {group.title}
-                </h2>
+                <h2 className="text-chalk-light spec">{group.title}</h2>
                 <ul className="text-ivory/70 mt-5 space-y-3 text-sm">
                   {group.links.map((link) => (
                     <li key={link.label}>
@@ -67,9 +65,7 @@ export function Footer() {
               </div>
             ))}
             <div>
-              <h2 className="text-accent text-sm font-bold tracking-[0.1em] uppercase">
-                The journal
-              </h2>
+              <h2 className="text-chalk-light spec">The journal</h2>
               <p className="text-ivory/65 mt-5 text-sm leading-6">
                 Occasional notes on cloth, cut, and building a lasting wardrobe.
               </p>
@@ -84,7 +80,7 @@ export function Footer() {
                   placeholder="Email address"
                 />
                 <button
-                  className="text-ivory text-sm font-bold tracking-[0.08em] uppercase"
+                  className="text-ivory text-sm font-semibold"
                   type="submit"
                 >
                   Subscribe
