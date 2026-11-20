@@ -127,7 +127,8 @@ export const SUIT_MOODS: Record<
   },
   evening: {
     label: "Evening",
-    background: "#1b212b",
+    // The dark theme's --background, so the studio matches the site at night.
+    background: "#14171b",
     key: "#dfe7ff",
     fill: "#ffcf9a",
     exposure: 1.05,

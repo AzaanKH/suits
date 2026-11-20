@@ -18,11 +18,13 @@
     "format:check": "prettier --check .",
     "assets:studio:build": "blender --background --python scripts/build-suit-studio.py",
     "assets:studio:textures": "node scripts/optimize-suit-studio.mjs",
-    "assets:studio:split": "node scripts/split-suit-studio.mjs"
+    "assets:studio:split": "node scripts/split-suit-studio.mjs",
+    "assets:hero": "node scripts/render-studio-hero.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@clerk/nextjs": "^7.10.5",
+    "@clerk/ui": "1.44.1",
     "@hookform/resolvers": "^5.9.2",
     "@radix-ui/react-slot": "^1.5.0",
     "@react-three/drei": "^10.7.9",

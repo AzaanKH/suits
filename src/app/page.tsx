@@ -123,13 +123,21 @@ export default function HomePage() {
               className="group bg-background border-border relative mx-auto block aspect-[1200/1520] w-full max-w-[34rem] border"
               aria-label="Open the studio with this suit"
             >
+              {/* One render per theme: atelier light by day, evening light at night. */}
               <Image
                 priority
                 fill
                 sizes="(min-width: 1024px) 34rem, 100vw"
                 src="/images/studio-suit.webp"
                 alt="The House Suit in navy hopsack, rendered in the Arden studio"
-                className="object-contain"
+                className="object-contain dark:hidden"
+              />
+              <Image
+                fill
+                sizes="(min-width: 1024px) 34rem, 100vw"
+                src="/images/studio-suit-dark.webp"
+                alt="The House Suit in navy hopsack, rendered in the Arden studio"
+                className="hidden object-contain dark:block"
               />
               <svg
                 aria-hidden="true"

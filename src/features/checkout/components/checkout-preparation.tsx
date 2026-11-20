@@ -17,6 +17,7 @@ import { CalendarClock, Check, CreditCard, Ruler } from "lucide-react";
 import Link from "next/link";
 import { Component, useMemo, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
+import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
 import { api } from "../../../../convex/_generated/api";
@@ -27,6 +28,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ShippingAddressValues } from "@/features/checkout/schema";
+import {
+  getStripeAppearance,
+  STRIPE_FONTS,
+} from "@/features/checkout/stripe-appearance";
 import type { AddressValidationResult } from "@/lib/usps-addresses";
 
 type CheckoutPreparationProps = {
@@ -65,6 +70,8 @@ export function CheckoutPreparation({
   checkoutEnabled,
 }: CheckoutPreparationProps) {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { resolvedTheme } = useTheme();
+  const stripeScheme = resolvedTheme === "dark" ? "dark" : "light";
   const cart = useQuery(
     api.carts.forCheckout,
     clerkConfigured && isAuthenticated ? {} : "skip",
@@ -302,17 +309,12 @@ export function CheckoutPreparation({
                   options={{
                     clientSecret: checkoutSession.clientSecret,
                     elementsOptions: {
-                      appearance: {
-                        theme: "stripe",
-                        variables: {
-                          colorPrimary: "#16191e",
-                          colorText: "#16191e",
-                          borderRadius: "4px",
-                          fontFamily: "Hanken Grotesk, sans-serif",
-                        },
-                      },
+                      appearance: getStripeAppearance(stripeScheme),
+                      fonts: STRIPE_FONTS,
                     },
                   }}
+                  // The provider applies appearance changes itself
+                  // (changeAppearance), so the open form follows the theme.
                 >
                   <StripeCheckoutForm
                     orderId={checkoutSession.orderId}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Maximize2 } from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   Suspense,
   useCallback,
@@ -36,6 +37,7 @@ type Props = {
 
 export function Suit3dPreview({ configuration, fallback }: Props) {
   const [capability] = useState(getSuit3dCapability);
+  const { resolvedTheme } = useTheme();
   const [view, setView] = useState<View>("Front");
   const [ready, setReady] = useState(false);
   const [cameraRevision, setCameraRevision] = useState(0);
@@ -102,7 +104,9 @@ export function Suit3dPreview({ configuration, fallback }: Props) {
             }}
           >
             <Suspense fallback={null}>
-              <SuitLighting mood="atelier" />
+              <SuitLighting
+                mood={resolvedTheme === "dark" ? "evening" : "atelier"}
+              />
               <TailoredSuit
                 selection={selection}
                 onReady={onReady}

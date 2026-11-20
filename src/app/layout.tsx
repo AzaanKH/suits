@@ -1,9 +1,11 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/ui/themes";
 import type { Metadata } from "next";
 import { Bodoni_Moda, Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
 
 import { CartSyncProvider } from "@/components/cart/cart-sync-provider";
 import { Footer } from "@/components/layout/footer";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Header } from "@/components/layout/header";
 import { Toaster } from "@/components/ui/sonner";
 import { isCheckoutConfigured } from "@/lib/checkout-config";
@@ -48,23 +50,38 @@ export default function RootLayout({
 }>) {
   const checkoutEnabled = isCheckoutConfigured();
   const content = (
-    <ConvexClientProvider>
-      <Header checkoutEnabled={checkoutEnabled} />
-      <CartSyncProvider />
-      <main className="flex-1">{children}</main>
-      <Footer />
-      <Toaster />
-    </ConvexClientProvider>
+    <ThemeProvider>
+      <ConvexClientProvider>
+        <Header checkoutEnabled={checkoutEnabled} />
+        <CartSyncProvider />
+        <main className="flex-1">{children}</main>
+        <Footer />
+        <Toaster />
+      </ConvexClientProvider>
+    </ThemeProvider>
   );
 
   return (
     <html
       lang="en"
+      // next-themes sets the theme class before hydration.
+      suppressHydrationWarning
       className={`${display.variable} ${text.variable} ${data.variable}`}
     >
       <body className="flex min-h-screen flex-col">
         {isClerkConfigured() ? (
           <ClerkProvider
+            // Clerk's shadcn theme reads this site's tokens (--background,
+            // --primary, --border...), so sign-in follows light and dark mode.
+            appearance={{
+              theme: shadcn,
+              variables: {
+                fontFamily: "var(--font-text), sans-serif",
+                borderRadius: "var(--radius)",
+                // shadcn's --input is a border color; as a fill it reads too heavy.
+                colorInput: "var(--background)",
+              },
+            }}
             signInUrl="/sign-in"
             signUpUrl="/sign-up"
             signInFallbackRedirectUrl="/account"

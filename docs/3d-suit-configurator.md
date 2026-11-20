@@ -25,6 +25,10 @@ Both surfaces are disabled when `ENABLE_3D_CONFIGURATOR=false`. The customizer t
 
 Pricing stays in `src/features/customizer/pricing.ts`. The scene only receives visual selections.
 
+## Home page hero
+
+The two hero images (`public/images/studio-suit.webp` and `studio-suit-dark.webp`) are renders of the real studio, one per theme. Re-render them with `pnpm assets:hero` while the app is running whenever the model, materials, lighting, floor or default suit change.
+
 ## Model contract
 
 The model ships as three Meshopt-compressed GLBs in `public/models/suit-studio/`, one per jacket block, plus WebP textures:

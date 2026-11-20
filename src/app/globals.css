@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@clerk/ui/themes/shadcn.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -69,6 +70,39 @@
   --chalk-light: #a9bdf0;
   --grid-line: rgb(44 74 143 / 0.075);
   --radius: 0.25rem;
+}
+
+/* The cutting room at night: drafting ink ground, chalk lines. Ink and ivory
+   swap, so "ink on paper" surfaces (buttons, the process band, the footer)
+   become paper on ink and keep their contrast. */
+.dark {
+  --background: #14171b;
+  --foreground: #e8e9e3;
+  --card: #1b1f24;
+  --card-foreground: #e8e9e3;
+  --popover: #1b1f24;
+  --popover-foreground: #e8e9e3;
+  --primary: #e8e9e3;
+  --primary-foreground: #14171b;
+  --secondary: #21252b;
+  --secondary-foreground: #e8e9e3;
+  --muted: #21252b;
+  --muted-foreground: #9da3ab;
+  --accent: #a9bdf0;
+  --accent-foreground: #14171b;
+  --accent-strong: #c8d5f7;
+  --destructive: #e88a74;
+  --border: #2d3238;
+  --input: #3b4148;
+  --ring: #a9bdf0;
+  --ink: #e8e9e3;
+  --ivory: #14171b;
+  --stone: #21252b;
+  --clay: #2a2e34;
+  --chalk: #a9bdf0;
+  --chalk-light: #2c4a8f;
+  --grid-line: rgb(169 189 240 / 0.06);
+  color-scheme: dark;
 }
 
 @layer base {

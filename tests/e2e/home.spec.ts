@@ -11,6 +11,23 @@ test("leads from the home page into the studio", async ({ page }) => {
   ).toHaveAttribute("href", "/studio/house-navy-hopsack-suit");
 });
 
+test("switches between light and dark themes", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  const html = page.locator("html");
+  const toggle = page.getByRole("button", { name: /^Theme:/ }).first();
+
+  await expect(html).not.toHaveClass(/dark/);
+  await toggle.click(); // system -> light
+  await expect(toggle).toHaveAccessibleName(/Theme: Light/);
+  await toggle.click(); // light -> dark
+  await expect(html).toHaveClass(/dark/);
+
+  // The choice survives a reload.
+  await page.reload();
+  await expect(html).toHaveClass(/dark/);
+});
+
 test("navigates from the collection to a suit detail page", async ({
   page,
 }) => {
