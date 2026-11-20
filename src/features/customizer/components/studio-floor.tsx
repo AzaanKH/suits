@@ -19,14 +19,9 @@ const CLERK_CONFIGURED = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 export type SavedDesignsState = {
   designs: SavedDesignForGallery[] | undefined;
   signedIn: boolean;
-  /** False when accounts are not set up at all, so there is nothing to sign in to. */
   accountsEnabled: boolean;
 };
 
-/**
- * Supplies the visitor's saved designs. Convex's auth hooks only exist under
- * the Clerk provider, so without Clerk this renders the children directly.
- */
 export function WithSavedDesigns({
   children,
 }: {
@@ -60,7 +55,6 @@ function SavedDesignsQuery({
 
 export type SpecRow = { term: string; value: string };
 
-/** The cutter's ticket for a design: cloth first, then each group in order. */
 export function getSpecTicket(
   catalog: CustomizerCatalog,
   configuration: CustomizerConfiguration,
@@ -106,10 +100,8 @@ export function SpecTicket({
 }
 
 const INVITE_KEY = "arden-studio-floor";
-/** Invite the visitor to look around after a few changes and some time... */
 const INVITE_AFTER_CHANGES = 3;
 const INVITE_AFTER_MS = 25_000;
-/** ...or after a while even without changes. */
 const INVITE_AFTER_IDLE_MS = 90_000;
 
 function readInviteState() {
@@ -123,17 +115,10 @@ function readInviteState() {
 export function rememberFloorVisit() {
   try {
     window.sessionStorage.setItem(INVITE_KEY, "visited");
-  } catch {
-    // Private windows can refuse storage; the invite may show again. Harmless.
-  }
+  } catch {}
 }
 
-/**
- * Becomes true once the visitor has been designing for a while: a few changes
- * and some time, or a longer stretch regardless. Once per browser session.
- */
 export function useFloorInvitation(enabled: boolean) {
-  // `/studio/<suit>?explore` invites straight away: a link to share, and a test hook.
   const [due, setDue] = useState(
     () =>
       typeof window !== "undefined" &&

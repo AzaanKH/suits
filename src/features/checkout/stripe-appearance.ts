@@ -1,9 +1,5 @@
 import type { Appearance, CssFontSource } from "@stripe/stripe-js";
 
-/**
- * Stripe renders its fields in its own iframe, so it cannot read this site's
- * CSS variables. These mirror the light and dark tokens in globals.css.
- */
 const PALETTE = {
   light: {
     theme: "stripe",
@@ -38,7 +34,6 @@ export function getStripeAppearance(scheme: "light" | "dark"): Appearance {
   };
 }
 
-/** The site's text face, loaded inside Stripe's iframe. */
 export const STRIPE_FONTS: CssFontSource[] = [
   {
     cssSrc:

@@ -1,9 +1,5 @@
 import type { CustomizerStepCode } from "../steps";
 
-/**
- * Customizer steps that can be edited directly in the full-screen studio.
- * Construction, fit, and review stay in the main customizer.
- */
 export const STUDIO_STEP_CODES = [
   "fabric",
   "jacket-style",
@@ -30,12 +26,6 @@ const PARTS: Record<SuitPart["step"], SuitPart> = {
   extras: { step: "extras", label: "Waistcoat" },
 };
 
-/**
- * Maps a studio GLB mesh name to the customizer step that changes it.
- * Mesh names follow `<block>_<part>[_<variant>]`, where block is
- * `single`, `double`, or `dinner`; see docs/3d-suit-configurator.md.
- * Returns null for meshes the customer cannot change, such as the shirt.
- */
 export function getSuitPartForMesh(name: string): SuitPart | null {
   if (name.startsWith("shirt_") || /^(single|double|dinner)_shirt/.test(name))
     return null;

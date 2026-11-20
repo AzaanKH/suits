@@ -43,9 +43,6 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // Without Clerk, still provide auth (always signed out): components call
-  // useConvexAuth(), which throws without an auth provider, so the build and
-  // CI without Clerk keys would fail.
   return (
     <ConvexProviderWithAuth client={convex} useAuth={useSignedOut}>
       {children}

@@ -76,7 +76,6 @@ const SuitStudioCanvas = dynamic(
   },
 );
 
-/** What the 3D can and cannot show for a step, so options that look alike make sense. */
 const STEP_NOTES: Partial<Record<StudioStepCode, string>> = {
   trousers:
     "The jacket steps aside so you can see the waistband: belt loops, side adjusters or a pleat. Brace buttons sit inside the waistband.",
@@ -118,7 +117,6 @@ function StudioExperienceBody({
   const activeStep: StudioStepCode = isStudioStepCode(currentStepCode)
     ? currentStepCode
     : "fabric";
-  // Until the visitor picks a lighting mood, follow the site theme.
   const { resolvedTheme } = useTheme();
   const [chosenMood, setMood] = useState<SuitMood | null>(null);
   const mood: SuitMood =
@@ -126,12 +124,10 @@ function StudioExperienceBody({
   const [turntable, setTurntable] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [insets, setInsets] = useState({ right: 0, bottom: 0 });
-  // A state ref, so measuring starts when the panel actually mounts (after the catalog loads).
   const [panel, setPanel] = useState<HTMLElement | null>(null);
   const captureRef = useRef<StudioCapture | null>(null);
   const stopTurntable = useCallback(() => setTurntable(false), []);
 
-  // The studio floor: other suits the visitor can walk up to for ideas.
   const [floor, setFloor] = useState<FloorMode>("off");
   const [inspectedId, setInspectedId] = useState<string | null>(null);
   const [hint, setHint] = useState<"hidden" | "found" | "dismissed">("hidden");
@@ -143,7 +139,6 @@ function StudioExperienceBody({
     catalog?.product.slug === SUIT_3D_PRODUCT_SLUG;
   const inviteDue = useFloorInvitation(studioReady);
   const invited = inviteDue && floor === "off" && hint === "hidden";
-  // Suits load (hidden) as soon as the visitor is invited, so they are ready to step out.
   const floorArmed = inviteDue || floor !== "off" || hint !== "hidden";
   const galleryDesigns = useMemo<GalleryDesign[]>(
     () =>
@@ -190,7 +185,6 @@ function StudioExperienceBody({
 
   const enterFloor = useCallback((mode: Exclude<FloorMode, "off">) => {
     rememberFloorVisit();
-    // The turntable orbits the visitor's suit; on the floor it would fight the camera.
     setTurntable(false);
     setFloor(mode);
     setHint((current) => (current === "dismissed" ? current : "found"));
@@ -200,14 +194,12 @@ function StudioExperienceBody({
     setInspectedId(null);
     setHint((current) => (current === "found" ? "dismissed" : current));
   }, []);
-  // Turning the camera after the invitation is the cue to reveal the room.
   const onCameraStart = useCallback(() => {
     if (invited) enterFloor("free");
   }, [invited, enterFloor]);
   const inspect = useCallback(
     (id: string | null) => {
       if (id) enterFloor(floor === "off" ? "free" : floor);
-      // Back to the lineup: step back to the overview, not stay in a close-up.
       else setFloor("overview");
       setInspectedId(id);
     },
@@ -231,7 +223,6 @@ function StudioExperienceBody({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [dirty]);
 
-  // The panel floats over the scene; report how much it covers so the camera can re-center.
   useLayoutEffect(() => {
     if (!panel || !panelOpen) return;
     const measure = () => {

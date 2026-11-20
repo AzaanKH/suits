@@ -17,7 +17,6 @@ const LABELS: Record<ThemeChoice, string> = {
 
 const ICONS = { system: Monitor, light: Sun, dark: Moon };
 
-// The stored theme is only known in the browser; render a neutral icon on the server.
 const subscribe = () => () => {};
 const useHydrated = () =>
   useSyncExternalStore(

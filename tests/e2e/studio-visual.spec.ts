@@ -1,13 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 
-/**
- * UI checks for studio problems that unit tests can't see: what the pointer
- * targets and what the scene shows. Geometry (buttons on the cloth, pockets
- * sealed and seated) is covered by src/features/customizer/three-d/suit-geometry.test.ts.
- *
- * The studio exposes `window.__ardenStudio.screenPoint(meshName)` when the
- * page sets `window.__ARDEN_TEST__` before load, so tests can point at a part.
- */
 const SUIT = "house-navy-hopsack-suit";
 
 declare global {
@@ -22,7 +14,6 @@ declare global {
 async function openStudio(page: Page) {
   await page.addInitScript(() => {
     window.__ARDEN_TEST__ = true;
-    // Keep the floor invitation out of the way.
     sessionStorage.setItem("arden-studio-floor", "visited");
   });
   await page.goto(`/studio/${SUIT}`);
@@ -40,13 +31,10 @@ async function step(page: Page, name: string) {
     .getByRole("navigation", { name: "Studio steps" })
     .getByRole("button", { name })
     .click();
-  // The camera flies to the step's part; wait for it to settle.
   await page.waitForTimeout(1500);
 }
 
 async function hoverPart(page: Page, mesh: string, side?: 1 | -1) {
-  // The scene shows a new selection a few frames after the click; under
-  // software WebGL with parallel workers that can take seconds.
   let point: { x: number; y: number } | null = null;
   await expect
     .poll(
@@ -71,7 +59,6 @@ test("pointing at a button targets the buttons, not the jacket", async ({
     const tooltip = await hoverPart(page, button);
     await expect(tooltip, button).toHaveText("Change buttons");
   }
-  // Clicking one opens the Buttons step.
   const point = await page.evaluate(() =>
     window.__ardenStudio!.screenPoint("single_button_11"),
   );
@@ -106,7 +93,6 @@ test("the trousers step shows only the trousers", async ({ page }) => {
   await expect(scene).toHaveAttribute("data-trousers-only", "false");
   await step(page, "Trousers");
   await expect(scene).toHaveAttribute("data-trousers-only", "true");
-  // The jacket is gone, so a waistband detail is directly visible.
   await page
     .getByRole("region", { name: "Design options" })
     .getByText("Belt loops", { exact: true })

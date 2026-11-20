@@ -1,4 +1,3 @@
-/* Full-screen studio. Covers the site header so the scene owns the viewport. */
 .suit-atelier {
   --atelier-ink: var(--ink);
   --atelier-muted: var(--muted-foreground);
@@ -56,7 +55,6 @@
   }
 }
 
-/* Top bar */
 .atelier-bar {
   position: absolute;
   top: 20px;
@@ -106,7 +104,6 @@
   color: #aab3bf;
 }
 
-/* Scene tools */
 .atelier-tools {
   position: absolute;
   left: 24px;
@@ -168,7 +165,6 @@
   }
 }
 
-/* Options panel */
 .atelier-panel {
   position: absolute;
   top: 20px;
@@ -232,14 +228,12 @@
   overscroll-behavior: contain;
   padding: 16px 22px 20px;
 }
-/* The panel is narrower than the customizer column; one option per row reads better. */
 .atelier-options .grid {
   grid-template-columns: minmax(0, 1fr);
 }
 .atelier-options .studio-fabric-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-/* The order ticket: what the cutter will read, in the cutting room's mono. */
 .atelier-ticket {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -295,10 +289,6 @@
   transform: scale(0.98);
 }
 
-/* The studio floor ----------------------------------------------------- */
-
-/* A chalk note: the invitation to look around. */
-/* Sits just above the scene tools, so it never covers them. */
 .atelier-hint {
   position: absolute;
   left: 24px;
@@ -349,7 +339,6 @@
   }
 }
 
-/* Swing tickets above the suits on the floor (rendered by drei's Html). */
 .atelier-floor-tag {
   display: grid;
   gap: 1px;
@@ -452,7 +441,6 @@
   text-underline-offset: 3px;
 }
 
-/* Phones and narrow tablets: options become a bottom sheet. */
 @media (max-width: 899px) {
   .atelier-bar {
     top: 12px;
@@ -516,14 +504,12 @@
   .atelier-ticket.is-inline {
     display: grid;
   }
-  /* Above the bottom sheet, not behind it. */
   .atelier-hint {
     left: 12px;
     bottom: auto;
     top: 112px;
     width: calc(100% - 24px);
   }
-  /* On a phone the panel already says how to inspect; keep the scene clear. */
   .atelier-hint[data-stage="found"] {
     display: none;
   }

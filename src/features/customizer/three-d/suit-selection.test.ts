@@ -170,7 +170,6 @@ describe("3D jacket details from Details requests", () => {
     expect(isSuitMeshVisible("double_button_upper_9", withRequests({}))).toBe(
       true,
     );
-    // The request means nothing on a single-breasted jacket.
     expect(
       withRequests({ "front-cut": "db-four" }, single).jacketDetails.fourByTwo,
     ).toBe(false);
@@ -178,13 +177,10 @@ describe("3D jacket details from Details requests", () => {
 
   it("keeps the sleeve buttons nearest the cuff edge", () => {
     const two = withRequests({ "cuff-button-count": "two" }, single);
-    // Right sleeve, from the cuff edge up: 1, 0, 2.
     expect(isSuitMeshVisible("single_button_1", two)).toBe(true);
     expect(isSuitMeshVisible("single_button_0", two)).toBe(true);
     expect(isSuitMeshVisible("single_button_2", two)).toBe(false);
-    // The jacket's front buttons are not sleeve buttons.
     expect(isSuitMeshVisible("single_button_10", two)).toBe(true);
-    // Four and five need meshes the model lacks: it keeps its own three.
     const four = withRequests({ "cuff-button-count": "four" }, single);
     expect(four.jacketDetails.sleeveButtons).toBeNull();
     expect(isSuitMeshVisible("single_button_2", four)).toBe(true);

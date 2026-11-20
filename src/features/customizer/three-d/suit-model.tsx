@@ -51,18 +51,15 @@ import { getSuitPartForMesh, type SuitPart } from "./suit-parts";
 BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 
-// Bump after regenerating the GLBs or textures so browsers skip cached copies.
 const ASSET_VERSION = "?v=6";
 const MODELS = "/models/suit-studio/";
 const TEXTURES = MODELS + "textures/";
 
-/** Shared meshes plus the default single-breasted block. Always loaded. */
 export const SUIT_CORE_URL = `${MODELS}suit-core.glb${ASSET_VERSION}`;
 const CORE_TEXTURE_URLS = [
   `${TEXTURES}wool-albedo.webp${ASSET_VERSION}`,
   `${TEXTURES}single-normal.webp${ASSET_VERSION}`,
 ];
-/** The other jacket blocks load the first time a selection needs them. */
 const BLOCK_ASSETS: Record<
   Exclude<SuitBlock, "single">,
   { model: string; normal: string }
@@ -77,7 +74,6 @@ const BLOCK_ASSETS: Record<
   },
 };
 
-/** Fetches the other jacket blocks in the background so switching is instant. */
 export function preloadSuitBlocks() {
   for (const { model, normal } of Object.values(BLOCK_ASSETS)) {
     useGLTF.preload(model);
@@ -94,7 +90,6 @@ function clearSuitAssets() {
   }
 }
 
-/** Hidden garment blocks move to this layer so pointer raycasts skip them. */
 const HIDDEN_LAYER = 31;
 
 export type SuitMood = "daylight" | "atelier" | "evening";
@@ -120,7 +115,6 @@ export const SUIT_MOODS: Record<
   },
   atelier: {
     label: "Atelier",
-    // Pattern paper, matching the site's --background.
     background: "#f3f3ef",
     key: "#fff6ea",
     fill: "#eceee8",
@@ -129,7 +123,6 @@ export const SUIT_MOODS: Record<
   },
   evening: {
     label: "Evening",
-    // The dark theme's --background, so the studio matches the site at night.
     background: "#14171b",
     key: "#dfe7ff",
     fill: "#ffcf9a",
@@ -141,20 +134,13 @@ export const SUIT_MOODS: Record<
 type TailoredSuitProps = {
   selection: Suit3dSelection;
   onReady?: () => void;
-  /** Receives the suit group once, for camera framing. */
   onModel?: (model: Group) => void;
-  /** Enables part hover and click. Leave undefined for a passive preview. */
   interaction?: {
     hoveredStep: SuitPart["step"] | null;
     onHover: (part: SuitPart | null, event: ThreeEvent<PointerEvent>) => void;
     onSelect: (part: SuitPart) => void;
   };
-  /** Fetch the other jacket blocks once the suit is on screen. */
   preloadBlocks?: boolean;
-  /**
-   * Show only the trousers: their options (loops, side adjusters, pleats) sit
-   * at the waistband, under the jacket.
-   */
   trousersOnly?: boolean;
 };
 
@@ -168,9 +154,6 @@ export function TailoredSuit({
   preloadBlocks = false,
   trousersOnly = false,
 }: TailoredSuitProps) {
-  // A block swap may need a download. Rendering a deferred copy of the selection
-  // keeps the current suit on screen until the new block has loaded; a suspended
-  // background render never replaces committed UI with the Suspense fallback.
   const shown = useDeferredValue(selection);
   const block = getSuitBlock(shown);
   const { scene } = useGLTF(SUIT_CORE_URL);
@@ -187,7 +170,6 @@ export function TailoredSuit({
     wool.needsUpdate = true;
     return { wool, normal: toGltfNormal(normalSource) };
   }, [woolSource, normalSource]);
-  // Built once per texture set; selection changes only update uniforms below.
   const materials = useMemo(
     () => createMaterials(textures.wool, textures.normal),
     [textures],
@@ -201,10 +183,8 @@ export function TailoredSuit({
     const group = groupRef.current;
     if (!group) return;
     applySelectionToMaterials(materials, shown);
-    // Mutate through traverse: three.js objects are imperative, not React state.
     group.traverse((object) => {
       if (!(object instanceof Mesh)) return;
-      // A button's hit target follows the button (traverse visits it after).
       if (object.userData.hitProxy) {
         object.layers.mask = object.parent!.layers.mask;
         return;
@@ -212,9 +192,7 @@ export function TailoredSuit({
       object.visible =
         isSuitMeshVisible(object.name, shown) &&
         (!trousersOnly || getSuitPartForMesh(object.name)?.step === "trousers");
-      // three.js raycasts invisible meshes; a separate layer keeps hidden blocks unclickable.
       object.layers.set(object.visible ? 0 : HIDDEN_LAYER);
-      // The clone keeps source material names until first assignment. Store them once.
       object.userData.slot ??= (
         Array.isArray(object.material) ? object.material[0] : object.material
       ).name;
@@ -279,7 +257,6 @@ export function TailoredSuit({
         interaction
           ? (event: ThreeEvent<MouseEvent>) => {
               event.stopPropagation();
-              // Ignore the click that ends an orbit drag.
               if (event.delta > 6) return;
               const part = partUnderPointer(event);
               if (part) interaction.onSelect(part);
@@ -293,9 +270,6 @@ export function TailoredSuit({
         interactive={Boolean(interaction)}
       />
       {block === "double" ? (
-        // The double-breasted shirt is open between its collar points. Without
-        // this backing the gap shows the jacket's dark interior (the model has
-        // no body inside). It stops below the collar band's inner edge.
         <mesh name="shirt_backing" position={[0, 1.378, 0.07]}>
           <planeGeometry args={[0.1, 0.155]} />
           <primitive object={materials.Shirt} attach="material" />
@@ -329,7 +303,6 @@ function SuitBlockModel({
   const normalSource = useTexture(assets.normal);
   const model = useMemo(() => scene.clone(true), [scene]);
   const normal = useMemo(() => toGltfNormal(normalSource), [normalSource]);
-  // Runs before the parent's layout effect assigns materials in the same commit.
   useLayoutEffect(() => {
     setBlockNormal(materials, block, normal);
   }, [materials, block, normal]);
@@ -343,11 +316,6 @@ function SuitBlockModel({
   );
 }
 
-/**
- * The part under the pointer. Hover outlines are unnamed child meshes that the
- * pointer can land on first; skip them and use the first named surface (which
- * may be one the customer can't change, such as the shirt).
- */
 function partUnderPointer(event: { intersections: { object: Object3D }[] }) {
   const hit = event.intersections.find((h) => h.object.name);
   return hit ? getSuitPartForMesh(hit.object.name) : null;
@@ -362,7 +330,6 @@ function SuitPiece({
 }: {
   object: Object3D;
   hoveredStep: SuitPart["step"] | null;
-  /** Builds raycast acceleration structures for hover and click. */
   interactive: boolean;
 }) {
   const meshes = useMemo(() => {
@@ -372,17 +339,11 @@ function SuitPiece({
     });
     return list;
   }, [object]);
-  // Per piece rather than drei's <Bvh>, which only indexes meshes present at
-  // its first mount and would miss blocks that load later. Clones share
-  // geometry, so each geometry is indexed once.
   useEffect(() => {
     if (!interactive) return;
     const buttons: Mesh[] = [];
     object.traverse((child) => {
       if (!(child instanceof Mesh) || child.userData.hitProxy) return;
-      // Accelerate only the large meshes. On the small pocket panels the
-      // BVH raycast missed faces three.js's own raycast finds, so the pocket
-      // could not be pointed at; at a few thousand triangles they don't need it.
       const triangles = (child.geometry.index?.count ?? 0) / 3;
       if (triangles >= 20_000) {
         if (!child.geometry.boundsTree) child.geometry.computeBoundsTree();
@@ -391,8 +352,6 @@ function SuitPiece({
       if (getSuitPartForMesh(child.name)?.step === "buttons")
         buttons.push(child);
     });
-    // Buttons are 6 mm deep and 1–2 cm across: the pointer nearly always lands
-    // on the jacket behind them. Give each an invisible, larger target.
     for (const button of buttons) {
       if (button.userData.hasHitProxy) continue;
       button.userData.hasHitProxy = true;
@@ -401,7 +360,7 @@ function SuitPiece({
       const proxy = new Mesh(HIT_PROXY_GEOMETRY);
       proxy.name = button.name;
       proxy.userData.hitProxy = true;
-      proxy.visible = false; // never drawn; three.js still raycasts it
+      proxy.visible = false;
       proxy.position.copy(sphere.center);
       proxy.scale.setScalar(Math.max(0.012, sphere.radius * 1.8));
       proxy.layers.mask = button.layers.mask;
@@ -418,13 +377,9 @@ function SuitPiece({
         <Fragment key={mesh.uuid}>
           {createPortal(
             <Outlines
-              // drei 10.7.9 swaps the shader branches: screenspace={false} is the
-              // pixel-width path. Re-check if drei fixes it. angle={0} keeps the
-              // mesh normals instead of re-creasing the quantized geometry.
               thickness={3}
               screenspace={false}
               angle={0}
-              // Tailor's chalk: the part a click will change.
               color="#4a6fd0"
             />,
             mesh,
@@ -435,7 +390,6 @@ function SuitPiece({
   );
 }
 
-/** glTF UVs expect textures without the default vertical flip. */
 function toGltfNormal(source: Texture) {
   const normal = source.clone();
   normal.flipY = false;
@@ -460,11 +414,6 @@ export function SuitLighting({
 }: {
   mood?: SuitMood;
   shadowResolution?: number;
-  /**
-   * Set when the studio's post-processing composer (ambient occlusion plus
-   * tone mapping) renders the frame. The background is pre-compensated so it
-   * still lands on the mood color, and contact shadows are left to the AO.
-   */
   postProcessed?: boolean;
 }) {
   const preset = SUIT_MOODS[mood];
@@ -506,7 +455,6 @@ export function SuitLighting({
         intensity={mood === "evening" ? 2.6 : 1.9}
         color={preset.fill}
       />
-      {/* frames={1} bakes the environment once; the key remounts it per mood. */}
       <Environment key={mood} resolution={256} frames={1}>
         <Lightformer
           form="rect"
@@ -532,9 +480,6 @@ export function SuitLighting({
           rotation={[Math.PI / 2, 0, 0]}
         />
       </Environment>
-      {/* ContactShadows' own depth pass breaks under the post-processing
-          composer (it reads back as light blotches). The composer's ambient
-          occlusion grounds the suit there instead. */}
       {postProcessed ? null : (
         <ContactShadows
           key={`shadow-${mood}`}
@@ -552,16 +497,10 @@ export function SuitLighting({
   );
 }
 
-/**
- * The linear color that three's ACESFilmicToneMapping maps to `hex`, so a
- * tone-mapped background keeps its exact design color. Inverts the curve in
- * three/src/renderers/shaders/ShaderChunk/tonemapping_pars_fragment.glsl.js.
- */
 function untoneMapped(hex: string, exposure: number): Color {
-  const target = new Color(hex); // sRGB hex -> linear working space
+  const target = new Color(hex);
   const y = multiply(ACES_OUTPUT_INVERSE, [target.r, target.g, target.b]);
   const z = y.map((v) => {
-    // Solve RRTAndODTFit(x) = v for x >= 0.
     const a = 1 - 0.983729 * v;
     const b = 0.0245786 - 0.432951 * v;
     const c = -(0.000090537 + 0.238081 * v);
@@ -589,7 +528,6 @@ function invert3(m: Matrix): Matrix {
   ];
 }
 
-// Row-major forms of the column-major GLSL matrices in three's ACES chunk.
 const ACES_INPUT_INVERSE = invert3([
   [0.59719, 0.35458, 0.04823],
   [0.076, 0.90834, 0.01566],
@@ -614,8 +552,6 @@ function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
       envMapIntensity: 0.65,
       side: DoubleSide,
     });
-  // Double and Dinner slots start on the single normal map; SuitBlockModel
-  // swaps in the block's own map when it loads.
   const mats: SuitMaterials = {
     Cloth: cloth(),
     ClothDouble: cloth(),
@@ -643,9 +579,6 @@ function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
       side: DoubleSide,
     }),
     Buttonhole: new MeshPhysicalMaterial({ roughness: 0.7, sheen: 0.3 }),
-    // Patch, slanted and jetted pockets are panels built in the asset script: they
-    // take the woven cloth but not the body's normal map, whose darts and seams
-    // they cannot line up with.
     PocketPanel: new MeshPhysicalMaterial({
       map: wool,
       roughness: 0.88,
@@ -658,21 +591,13 @@ function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
   };
   for (const [name, material] of Object.entries(mats)) {
     material.name = name;
-    // The jacket body is lined: its inside faces take the lining color.
     if (material.side === DoubleSide)
       shadeInterior(material, name.startsWith("Cloth"));
   }
   return mats;
 }
 
-/**
- * The suit is a hollow shell with no body inside. Without this, the inside of
- * the collar, cuffs, and hems is lit like the outside and reads as a bright
- * white hole. Back faces get a fraction of the light, like a garment's
- * shadowed interior.
- */
 function shadeInterior(material: MeshPhysicalMaterial, lined = false) {
-  // Kept on the material so a lining change is a uniform update, not a recompile.
   const lining = { value: new Color("#111827") };
   material.userData.lining = lining;
   material.onBeforeCompile = (shader) => {

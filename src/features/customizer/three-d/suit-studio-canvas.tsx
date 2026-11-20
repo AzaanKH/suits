@@ -41,11 +41,6 @@ import { GALLERY_RADIUS, getGalleryPlacement } from "./suit-gallery-designs";
 
 export type StudioCapture = () => Promise<string>;
 
-/**
- * What the camera is doing. `fit` frames the active part of the visitor's suit;
- * the others belong to exploring the floor: `free` leaves the camera to the
- * visitor, `overview` lifts it above the room, `inspect` walks up to one suit.
- */
 export type StudioView =
   | { kind: "fit" }
   | { kind: "free" }
@@ -59,16 +54,13 @@ type Props = {
   mood: SuitMood;
   turntable: boolean;
   onTurntableStop: () => void;
-  /** Screen area covered by floating UI, so the suit centers in what remains. */
   insets: { right: number; bottom: number };
   captureRef: MutableRefObject<StudioCapture | null>;
   fallback: ReactNode;
-  /** Suits on the floor. Empty until the visitor is first invited to look around. */
   gallery: GallerySuitView[];
   view: StudioView;
   inspectedId: string | null;
   onInspect: (id: string) => void;
-  /** The visitor started orbiting or zooming. */
   onCameraStart: () => void;
 };
 
@@ -112,7 +104,6 @@ export function SuitStudioCanvas({
         part: SuitPart | null,
         event: { nativeEvent: PointerEvent },
       ) => {
-        // Position updates go straight to the DOM; state changes only when the part does.
         const tooltip = tooltipRef.current;
         if (tooltip && part) {
           tooltip.style.transform = `translate(${event.nativeEvent.clientX + 14}px, ${event.nativeEvent.clientY + 14}px)`;
@@ -131,7 +122,6 @@ export function SuitStudioCanvas({
     [hoveredPart, onSelectStep, onTurntableStop],
   );
 
-  // The trouser options sit at the waistband, under the jacket.
   const trousersOnly = view.kind === "fit" && activeStep === "trousers";
   const block = getSuitBlock(selection);
   const pocketMesh = ["flap", "slanted", "welt", "patch"]
@@ -160,7 +150,6 @@ export function SuitStudioCanvas({
           dpr={capability.simplified ? [1, 1.5] : [1, 2]}
           frameloop={turntable ? "always" : "demand"}
           shadows
-          // Meshes carry BVH indexes (see SuitPiece); only the nearest hit matters.
           raycaster={{ firstHitOnly: true }}
           gl={{ antialias: true, powerPreference: "high-performance" }}
           onCreated={({ gl }) => {
@@ -184,7 +173,6 @@ export function SuitStudioCanvas({
               onModel={setModel}
               interaction={interaction}
               preloadBlocks
-              // The trouser options sit at the waistband, under the jacket.
               trousersOnly={trousersOnly}
             />
             <Podium mood={mood} />
@@ -201,8 +189,6 @@ export function SuitStudioCanvas({
             />
           ) : null}
           {capability.simplified ? null : (
-            // Ambient occlusion grounds folds, lapel rolls, and pocket edges
-            // that direct light alone leaves flat. Skipped on low-power devices.
             <EffectComposer multisampling={4}>
               <N8AO
                 aoRadius={0.12}
@@ -211,8 +197,6 @@ export function SuitStudioCanvas({
                 quality="medium"
                 halfRes
               />
-              {/* The composer renders to a linear buffer, which skips the
-                  renderer's own tone mapping; reapply R3F's ACES default. */}
               <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
             </EffectComposer>
           )}
@@ -252,7 +236,6 @@ export function SuitStudioCanvas({
 function Podium({ mood }: { mood: SuitMood }) {
   const color =
     mood === "evening" ? "#2a313d" : mood === "atelier" ? "#dcded6" : "#e2e6e9";
-  // Top sits just under the contact-shadow plane (y 0.024) so it is not captured as a caster.
   return (
     <mesh position={[0, -0.02, 0]} receiveShadow>
       <cylinderGeometry args={[0.62, 0.66, 0.08, 96]} />
@@ -261,11 +244,6 @@ function Podium({ mood }: { mood: SuitMood }) {
   );
 }
 
-/**
- * For browser tests: when the page sets `window.__ARDEN_TEST__` before load,
- * `window.__ardenStudio.screenPoint(meshName)` returns where a visible part's
- * centre is on screen, so a test can point at it. Inert otherwise.
- */
 function TestHook() {
   const get = useThree((s) => s.get);
   useEffect(() => {
@@ -275,7 +253,6 @@ function TestHook() {
     };
     if (!w.__ARDEN_TEST__) return;
     w.__ardenStudio = {
-      /** `side` picks the wearer's left (-1) or right (1) of a paired part. */
       screenPoint(name: string, side?: 1 | -1) {
         const { scene, camera, gl } = get();
         let target: Mesh | null = null;
@@ -342,7 +319,6 @@ function StudioCamera({
   const inspectIndex = view.kind === "inspect" ? view.index : -1;
   const inspectCount = view.kind === "inspect" ? view.count : 0;
 
-  // Shift the projection so the suit centers in the area not covered by the panel.
   useLayoutEffect(() => {
     const { camera, invalidate } = get();
     if (!(camera instanceof PerspectiveCamera)) return;
@@ -360,17 +336,14 @@ function StudioCamera({
 
   const previousView = useRef(view.kind);
 
-  // Fly to the garment part for the active step.
   useEffect(() => {
     const c = controls.current;
     if (!model || !c || view.kind !== "fit") return;
-    // Back from the floor: face the suit again before framing it.
     const returning = previousView.current !== "fit";
     previousView.current = "fit";
     if (returning) void c.rotateTo(0.19, Math.PI * 0.47, !reducedMotion);
     const all = new Box3();
     const part = new Box3();
-    // On the first frame the GLB's world matrices have not been computed yet.
     model.updateWorldMatrix(true, true);
     model.traverse((object) => {
       if (!(object instanceof Mesh) || !object.visible) return;
@@ -378,13 +351,11 @@ function StudioCamera({
       if (getSuitPartForMesh(object.name)?.step === activeStep)
         part.expandByObject(object);
     });
-    all.expandByPoint(new Vector3(0, -0.06, 0)); // keep the podium in the full view
-    // The trouser options are all at the waistband: frame that, not the legs.
+    all.expandByPoint(new Vector3(0, -0.06, 0));
     if (activeStep === "trousers" && !part.isEmpty()) {
       part.min.y = Math.max(part.min.y, 0.55);
       part.max.y = Math.min(part.max.y, 1.02);
     }
-    // Fabric, or a hidden part such as an unselected waistcoat, frames the whole suit.
     const target = activeStep === "fabric" || part.isEmpty() ? all : part;
     const extent = target.getSize(new Vector3()).length();
     const padding = Math.max(0.06, extent * 0.12);
@@ -396,26 +367,19 @@ function StudioCamera({
       paddingLeft: padding,
       paddingRight: padding,
     });
-    // With frameloop="demand" the controls only move the camera inside a frame; request one.
     get().invalidate();
   }, [model, activeStep, reducedMotion, get, view.kind]);
 
-  // Exploring the floor: lift above the room, or walk up to one suit.
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
     if (view.kind === "fit") return;
     previousView.current = view.kind;
-    // Azimuth accumulates across full turns; bring it back into ±π so the
-    // floor's front-half limits clamp from the right side.
     c.normalizeRotations();
     const animate = !reducedMotion;
     const portrait = size.width < size.height;
     if (view.kind === "overview") {
-      // Step back and up from the front: the visitor's suit in the foreground,
-      // the lineup over its shoulders. Portrait screens need more distance.
       const back = portrait ? 1.6 : 1;
-      // Raised enough that the lineup clears the visitor's suit's shoulders.
       void c.setLookAt(
         0.9 * back,
         3.6 * back,
@@ -427,18 +391,15 @@ function StudioCamera({
       );
     } else if (view.kind === "inspect") {
       const { position } = getGalleryPlacement(inspectIndex, inspectCount);
-      // Walk up at a three-quarter angle, which also keeps the visitor's own
-      // suit (at the center) out of the line of sight.
       const distance = portrait ? 4.6 : 3.2;
       const [x, , z] = position;
       const length = Math.hypot(x, z);
-      const [ux, uz] = [-x / length, -z / length]; // toward the center
+      const [ux, uz] = [-x / length, -z / length];
       const turn = 0.45;
       const options = [turn, -turn].map((a) => [
         ux * Math.cos(a) + uz * Math.sin(a),
         -ux * Math.sin(a) + uz * Math.cos(a),
       ]);
-      // Of the two angles, take the one nearer the front of the room.
       const [dx, dz] = options[0][1] >= options[1][1] ? options[0] : options[1];
       void c.setLookAt(
         x + dx * distance,
@@ -473,8 +434,6 @@ function StudioCamera({
       truckSpeed={0}
       minDistance={0.45}
       maxDistance={view.kind === "fit" ? 7 : 14}
-      // On the floor the lineup stands behind the visitor's suit; keep the
-      // camera in the front half of the room so it never walks into it.
       minAzimuthAngle={view.kind === "fit" ? -Infinity : -Math.PI * 0.5}
       maxAzimuthAngle={view.kind === "fit" ? Infinity : Math.PI * 0.5}
       minPolarAngle={Math.PI * 0.12}
@@ -489,20 +448,16 @@ function CaptureBridge({
   clearHover,
 }: {
   captureRef: MutableRefObject<StudioCapture | null>;
-  /** Removes the hover outline so it does not end up in the photo. */
   clearHover: () => void;
 }) {
   const get = useThree((s) => s.get);
   useEffect(() => {
     captureRef.current = async () => {
       clearHover();
-      // Two frames: one for React to commit, one for the scene to redraw.
       await new Promise((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(resolve)),
       );
       const { gl, advance } = get();
-      // Render a frame synchronously, through any post-processing, so the
-      // buffer is current without preserveDrawingBuffer.
       advance(performance.now());
       return gl.domElement.toDataURL("image/png");
     };

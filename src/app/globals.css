@@ -41,7 +41,6 @@
 }
 
 :root {
-  /* The cutting room: pattern paper, drafting ink, one tailor's-chalk blue. */
   --background: #f3f3ef;
   --foreground: #16191e;
   --card: #fafaf7;
@@ -66,15 +65,11 @@
   --stone: #e8e9e3;
   --clay: #d9d6cc;
   --chalk: #2c4a8f;
-  /* Chalk on ink: the same blue, lifted for dark surfaces. */
   --chalk-light: #a9bdf0;
   --grid-line: rgb(44 74 143 / 0.075);
   --radius: 0.25rem;
 }
 
-/* The cutting room at night: drafting ink ground, chalk lines. Ink and ivory
-   swap, so "ink on paper" surfaces (buttons, the process band, the footer)
-   become paper on ink and keep their contrast. */
 .dark {
   --background: #14171b;
   --foreground: #e8e9e3;
@@ -159,7 +154,6 @@
     @apply text-ink hover:text-accent inline-flex items-center gap-2 text-sm font-semibold underline-offset-4 transition-colors hover:underline;
   }
 
-  /* Pattern paper: a 5 mm drafting grid in faint chalk. */
   .paper-grid {
     background-image:
       linear-gradient(var(--grid-line) 1px, transparent 1px),
@@ -167,7 +161,6 @@
     background-size: 20px 20px;
   }
 
-  /* Measurements, cloth specs and order numbers. */
   .spec {
     @apply font-mono text-xs tracking-normal tabular-nums;
   }

@@ -158,7 +158,6 @@ function CameraRig({ view, revision }: { view: View; revision: number }) {
   useLayoutEffect(() => {
     const { camera, invalidate } = get();
     const target = view === "Detail" ? [0, 1.24, 0] : [0, 0.79, 0];
-    // Maintain full-garment framing in both tall desktop and wide mobile stages.
     const distance = 3.6;
     if (camera instanceof OrthographicCamera) {
       camera.zoom = Math.min(
