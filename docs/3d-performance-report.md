@@ -8,15 +8,15 @@ The model is split by jacket block. A visitor first downloads the shared meshes 
 
 | Asset                         | When                    |         Bytes |
 | ----------------------------- | ----------------------- | ------------: |
-| `suit-core.glb` (Meshopt)     | First render            |     1,099,872 |
+| `suit-core.glb` (Meshopt)     | First render            |     1,103,208 |
 | `textures/wool-albedo.webp`   | First render            |       712,456 |
 | `textures/single-normal.webp` | First render            |       883,448 |
-| **First render**              |                         | **2,695,776** |
+| **First render**              |                         | **2,699,112** |
 | `suit-double.glb`             | Background or on demand |       510,560 |
 | `textures/double-normal.webp` | Background or on demand |     1,206,356 |
-| `suit-dinner.glb`             | Background or on demand |       599,476 |
+| `suit-dinner.glb`             | Background or on demand |       602,840 |
 | `textures/dinner-normal.webp` | Background or on demand |     1,179,388 |
-| **Everything**                |                         | **6,191,556** |
+| **Everything**                |                         | **6,198,256** |
 
 Before the split, the first render needed all 6,631,876 bytes. It now needs 59% less. The total also dropped, because two lapel meshes that no selection can show (`single_lapel_shawl`, `double_lapel_shawl`) are no longer exported.
 
@@ -26,10 +26,10 @@ The studio route also loads `postprocessing` and N8AO for ambient occlusion: one
 
 | File              |   Triangles |
 | ----------------- | ----------: |
-| `suit-core.glb`   |     274,480 |
+| `suit-core.glb`   |     274,960 |
 | `suit-double.glb` |     110,660 |
-| `suit-dinner.glb` |     139,908 |
-| **All blocks**    | **525,048** |
+| `suit-dinner.glb` |     140,388 |
+| **All blocks**    | **526,008** |
 
 `suit-core.glb` holds the shared meshes (trousers, waistcoat, trouser details, shirt buttons) plus the single-breasted block. One jacket block is visible at a time, so 180k–260k triangles render.
 

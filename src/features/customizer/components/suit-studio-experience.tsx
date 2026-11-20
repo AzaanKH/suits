@@ -212,10 +212,10 @@ function StudioExperienceBody({
   const selectStep = useCallback(
     (step: StudioStepCode) => {
       leaveFloor();
-      setInsideView(false);
+      if (step !== activeStep) setInsideView(false);
       setStep(step);
     },
-    [leaveFloor, setStep],
+    [leaveFloor, setStep, activeStep],
   );
 
   useEffect(() => {

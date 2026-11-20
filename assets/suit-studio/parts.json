@@ -355,6 +355,10 @@
     "vertices": 216,
     "triangles": 428
   },
+  "single_body_patch": {
+    "vertices": 275,
+    "triangles": 480
+  },
   "single_inpocket_chest_l": {
     "vertices": 250,
     "triangles": 496
@@ -450,6 +454,10 @@
   "dinner_ticket_jetted": {
     "vertices": 216,
     "triangles": 404
+  },
+  "dinner_body_patch": {
+    "vertices": 275,
+    "triangles": 480
   },
   "dinner_inpocket_chest_l": {
     "vertices": 250,

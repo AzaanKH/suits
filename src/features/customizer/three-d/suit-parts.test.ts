@@ -16,6 +16,7 @@ describe("studio part registry", () => {
     ["double_button_upper_9", "buttons"],
     ["single_buttonhole", "buttons"],
     ["single_body", "jacket-style"],
+    ["dinner_body_patch", "jacket-style"],
     ["double_cuff_15", "jacket-style"],
     ["trousers", "trousers"],
     ["pleat_-1_0", "trousers"],

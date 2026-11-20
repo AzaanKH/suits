@@ -326,7 +326,7 @@ def fit_uv_map(body,x0,x1,z0,z1):
     bu[i]+=row[i]*u.x;bv[i]+=row[i]*u.y
     for j in range(3):A[i][j]+=row[i]*row[j]
  return solve3(A,bu),solve3(A,bv)
-def pocket_panel(kind,variant,lift=.0015,thickness=.0024,cols=26,rows=14,clearance=.0006,name=None,frames=None,inside=False,tall=None,material='Cloth'):
+def pocket_panel(kind,variant,lift=.0015,thickness=.0024,cols=26,rows=14,clearance=.0006,name=None,frames=None,inside=False,tall=None,material='Cloth',fill=False):
  body=bpy.data.objects[f'{kind}_body'];tree=BVHTree.FromObject(body,bpy.context.evaluated_depsgraph_get())
  flap=bpy.data.objects[f'{kind}_pocket_flap'];verts=[];faces=[];uvs=[];floor=[];supported=[]
  for side in [-1,1]:
@@ -373,7 +373,7 @@ def pocket_panel(kind,variant,lift=.0015,thickness=.0024,cols=26,rows=14,clearan
   for i in range(start,len(verts)):
    v=verts[i];hit,normal,_,_=tree.ray_cast(Vector((v.x,-1,v.z)),Vector((0,1,0)))
    ok=hit is not None and normal.y<-1e-4 and hit.y<0
-   supported.append(ok);cloth.append(hit.y if ok else v.y+lift)
+   supported.append(ok or fill);cloth.append(hit.y if ok else v.y-lift if inside else v.y+lift)
   ys=[c+lift if inside else c-lift for c in cloth]
   for _ in range(12):
    nxt=ys[:]
@@ -453,6 +453,12 @@ for kind in ['single','double','dinner']:
  ticket={-1:(.085 if kind=='double' else .065,.145,hip+.04)}
  pocket_panel(kind,'flap',name=f'{kind}_ticket_flap',frames=ticket,tall=.026,thickness=.0015,cols=30,rows=10)
  pocket_panel(kind,'welt',name=f'{kind}_ticket_jetted',frames=ticket,tall=.008,lift=.0012,thickness=.0012,rows=3)
+ breast=bpy.data.objects.get(f'{kind}_breast')
+ if breast:
+  bv=[v.co for v in breast.data.vertices]
+  x0,x1=min(v.x for v in bv)-.008,max(v.x for v in bv)+.008;top=max(v.z for v in bv)+.008
+  pocket_panel(kind,'welt',name=f'{kind}_body_patch',frames={1:(x0,x1,top)},inside=True,tall=top-min(v.z for v in bv)+.008,lift=.002,thickness=0,cols=24,rows=10,clearance=.0015,fill=True)
+  patch=bpy.data.objects[f'{kind}_body_patch'].data;bm=bmesh.new();bm.from_mesh(patch);bmesh.ops.reverse_faces(bm,faces=bm.faces[:]);bm.to_mesh(patch);bm.free()
  near=.08 if kind=='double' else .07
  for slot,frames in [('chest_l',{1:(near,.145,1.21)}),('chest_r',{-1:(near,.145,1.21)}),('pen',{1:(.09,.135,1.15)}),('lower_l',{1:(near,.13,1.04)}),('lower_r',{-1:(near,.13,1.04)})]:
   pocket_panel(kind,'welt',name=f'{kind}_inpocket_{slot}',frames=frames,inside=True,tall=.012,lift=.005,thickness=.001,cols=24,rows=4,clearance=.004)

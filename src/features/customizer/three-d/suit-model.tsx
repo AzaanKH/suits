@@ -153,7 +153,7 @@ const INSIDE_CLIP = [new Plane(new Vector3(0, 0, 1), -0.02)];
 function isInsideViewMesh(name: string) {
   return (
     /^(single|double|dinner)_/.test(name) &&
-    !/_(shirt|cuff|pocket_|ticket_)/.test(name)
+    !/_(shirt|cuff|pocket_|ticket_)|_breast$/.test(name)
   );
 }
 
@@ -346,16 +346,28 @@ function SuitBlockModel({
   );
 }
 
-function isClipped(hit: Intersection) {
-  const material = (hit.object as Mesh).material;
-  const planes = (Array.isArray(material) ? material[0] : material)
-    ?.clippingPlanes;
-  return planes?.some((plane) => plane.distanceToPoint(hit.point) < 0) ?? false;
+function partUnderPointer(event: { intersections: { object: Object3D }[] }) {
+  const hit = event.intersections.find((h) => h.object.name);
+  return hit ? getSuitPartForMesh(hit.object.name) : null;
 }
 
-function partUnderPointer(event: { intersections: Intersection[] }) {
-  const hit = event.intersections.find((h) => h.object.name && !isClipped(h));
-  return hit ? getSuitPartForMesh(hit.object.name) : null;
+function clipAwareRaycast(base: Mesh["raycast"]): Mesh["raycast"] {
+  return function (this: Mesh, raycaster, intersects) {
+    const material = Array.isArray(this.material)
+      ? this.material[0]
+      : this.material;
+    const planes = material?.clippingPlanes;
+    if (!planes?.length) return base.call(this, raycaster, intersects);
+    const firstHitOnly = raycaster.firstHitOnly;
+    raycaster.firstHitOnly = false;
+    const hits: Intersection[] = [];
+    base.call(this, raycaster, hits);
+    raycaster.firstHitOnly = firstHitOnly;
+    const kept = hits
+      .filter((hit) => planes.every((p) => p.distanceToPoint(hit.point) >= 0))
+      .sort((a, b) => a.distance - b.distance);
+    intersects.push(...(firstHitOnly ? kept.slice(0, 1) : kept));
+  };
 }
 
 const HIT_PROXY_GEOMETRY = new SphereGeometry(1, 12, 8);
@@ -384,9 +396,13 @@ function SuitPiece({
     object.traverse((child) => {
       if (!(child instanceof Mesh) || child.userData.hitProxy) return;
       const triangles = (child.geometry.index?.count ?? 0) / 3;
-      if (triangles >= 20_000) {
-        if (!child.geometry.boundsTree) child.geometry.computeBoundsTree();
-        child.raycast = acceleratedRaycast;
+      if (!child.userData.clipAware) {
+        child.userData.clipAware = true;
+        if (triangles >= 20_000 && !child.geometry.boundsTree)
+          child.geometry.computeBoundsTree();
+        child.raycast = clipAwareRaycast(
+          triangles >= 20_000 ? acceleratedRaycast : Mesh.prototype.raycast,
+        );
       }
       if (getSuitPartForMesh(child.name)?.step === "buttons")
         buttons.push(child);
