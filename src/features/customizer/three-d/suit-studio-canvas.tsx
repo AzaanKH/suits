@@ -32,8 +32,21 @@ import {
   type SuitPart,
 } from "./suit-parts";
 import { getSuit3dSelection } from "./suit-selection";
+import { StudioFloor, SuitGallery, type GallerySuitView } from "./suit-gallery";
+import { GALLERY_RADIUS, getGalleryPlacement } from "./suit-gallery-designs";
 
 export type StudioCapture = () => Promise<string>;
+
+/**
+ * What the camera is doing. `fit` frames the active part of the visitor's suit;
+ * the others belong to exploring the floor: `free` leaves the camera to the
+ * visitor, `overview` lifts it above the room, `inspect` walks up to one suit.
+ */
+export type StudioView =
+  | { kind: "fit" }
+  | { kind: "free" }
+  | { kind: "overview" }
+  | { kind: "inspect"; index: number; count: number };
 
 type Props = {
   configuration: CustomizerConfiguration;
@@ -46,6 +59,13 @@ type Props = {
   insets: { right: number; bottom: number };
   captureRef: MutableRefObject<StudioCapture | null>;
   fallback: ReactNode;
+  /** Suits on the floor. Empty until the visitor is first invited to look around. */
+  gallery: GallerySuitView[];
+  view: StudioView;
+  inspectedId: string | null;
+  onInspect: (id: string) => void;
+  /** The visitor started orbiting or zooming. */
+  onCameraStart: () => void;
 };
 
 export function SuitStudioCanvas({
@@ -58,7 +78,17 @@ export function SuitStudioCanvas({
   insets,
   captureRef,
   fallback,
+  gallery,
+  view,
+  inspectedId,
+  onInspect,
+  onCameraStart,
 }: Props) {
+  const [reducedMotion] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
   const [capability] = useState(getSuit3dCapability);
   const [ready, setReady] = useState(false);
   const [hoveredPart, setHoveredPart] = useState<SuitPart | null>(null);
@@ -113,7 +143,7 @@ export function SuitStudioCanvas({
         data-lapel={selection.selectedCodes.lapel}
       >
         <Canvas
-          camera={{ fov: 30, position: [0.9, 1.1, 4.6], near: 0.05, far: 40 }}
+          camera={{ fov: 30, position: [0.9, 1.1, 4.6], near: 0.05, far: 90 }}
           dpr={capability.simplified ? [1, 1.5] : [1, 2]}
           frameloop={turntable ? "always" : "demand"}
           shadows
@@ -144,6 +174,17 @@ export function SuitStudioCanvas({
             />
             <Podium mood={mood} />
           </Suspense>
+          <StudioFloor mood={mood} wide={view.kind !== "fit"} />
+          {gallery.length > 0 ? (
+            <SuitGallery
+              designs={gallery}
+              revealed={view.kind !== "fit"}
+              inspectedId={inspectedId}
+              mood={mood}
+              reducedMotion={reducedMotion}
+              onInspect={onInspect}
+            />
+          ) : null}
           {capability.simplified ? null : (
             // Ambient occlusion grounds folds, lapel rolls, and pocket edges
             // that direct light alone leaves flat. Skipped on low-power devices.
@@ -165,7 +206,12 @@ export function SuitStudioCanvas({
             activeStep={activeStep}
             insets={insets}
             turntable={turntable}
-            onUserControl={onTurntableStop}
+            view={view}
+            reducedMotion={reducedMotion}
+            onUserControl={() => {
+              onTurntableStop();
+              onCameraStart();
+            }}
           />
           <CaptureBridge captureRef={captureRef} clearHover={clearHover} />
         </Canvas>
@@ -204,23 +250,24 @@ function StudioCamera({
   activeStep,
   insets,
   turntable,
+  view,
+  reducedMotion,
   onUserControl,
 }: {
   model: Group | null;
   activeStep: StudioStepCode;
   insets: { right: number; bottom: number };
   turntable: boolean;
+  view: StudioView;
+  reducedMotion: boolean;
   onUserControl: () => void;
 }) {
   const controls = useRef<ComponentRef<typeof CameraControls>>(null);
   const get = useThree((s) => s.get);
   const size = useThree((s) => s.size);
   const framed = useRef(false);
-  const [reducedMotion] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
+  const inspectIndex = view.kind === "inspect" ? view.index : -1;
+  const inspectCount = view.kind === "inspect" ? view.count : 0;
 
   // Shift the projection so the suit centers in the area not covered by the panel.
   useLayoutEffect(() => {
@@ -238,10 +285,16 @@ function StudioCamera({
     invalidate();
   }, [get, size.width, size.height, insets.right, insets.bottom]);
 
+  const previousView = useRef(view.kind);
+
   // Fly to the garment part for the active step.
   useEffect(() => {
     const c = controls.current;
-    if (!model || !c) return;
+    if (!model || !c || view.kind !== "fit") return;
+    // Back from the floor: face the suit again before framing it.
+    const returning = previousView.current !== "fit";
+    previousView.current = "fit";
+    if (returning) void c.rotateTo(0.19, Math.PI * 0.47, !reducedMotion);
     const all = new Box3();
     const part = new Box3();
     // On the first frame the GLB's world matrices have not been computed yet.
@@ -267,7 +320,68 @@ function StudioCamera({
     });
     // With frameloop="demand" the controls only move the camera inside a frame; request one.
     get().invalidate();
-  }, [model, activeStep, reducedMotion, get]);
+  }, [model, activeStep, reducedMotion, get, view.kind]);
+
+  // Exploring the floor: lift above the room, or walk up to one suit.
+  useEffect(() => {
+    const c = controls.current;
+    if (!c) return;
+    if (view.kind === "fit") return;
+    previousView.current = view.kind;
+    // Azimuth accumulates across full turns; bring it back into ±π so the
+    // floor's front-half limits clamp from the right side.
+    c.normalizeRotations();
+    const animate = !reducedMotion;
+    const portrait = size.width < size.height;
+    if (view.kind === "overview") {
+      // Step back and up from the front: the visitor's suit in the foreground,
+      // the lineup over its shoulders. Portrait screens need more distance.
+      const back = portrait ? 1.6 : 1;
+      // Raised enough that the lineup clears the visitor's suit's shoulders.
+      void c.setLookAt(
+        0.9 * back,
+        3.6 * back,
+        7.4 * back,
+        0,
+        0.55,
+        -GALLERY_RADIUS * 0.5,
+        animate,
+      );
+    } else if (view.kind === "inspect") {
+      const { position } = getGalleryPlacement(inspectIndex, inspectCount);
+      // Walk up at a three-quarter angle, which also keeps the visitor's own
+      // suit (at the center) out of the line of sight.
+      const distance = portrait ? 4.6 : 3.2;
+      const [x, , z] = position;
+      const length = Math.hypot(x, z);
+      const [ux, uz] = [-x / length, -z / length]; // toward the center
+      const turn = 0.45;
+      const options = [turn, -turn].map((a) => [
+        ux * Math.cos(a) + uz * Math.sin(a),
+        -ux * Math.sin(a) + uz * Math.cos(a),
+      ]);
+      // Of the two angles, take the one nearer the front of the room.
+      const [dx, dz] = options[0][1] >= options[1][1] ? options[0] : options[1];
+      void c.setLookAt(
+        x + dx * distance,
+        1.2,
+        z + dz * distance,
+        x,
+        0.85,
+        z,
+        animate,
+      );
+    } else return;
+    get().invalidate();
+  }, [
+    view.kind,
+    inspectIndex,
+    inspectCount,
+    reducedMotion,
+    get,
+    size.width,
+    size.height,
+  ]);
 
   useFrame((_, delta) => {
     if (turntable) void controls.current?.rotate(delta * 0.35, 0, false);
@@ -280,7 +394,11 @@ function StudioCamera({
       smoothTime={reducedMotion ? 0 : 0.4}
       truckSpeed={0}
       minDistance={0.45}
-      maxDistance={7}
+      maxDistance={view.kind === "fit" ? 7 : 14}
+      // On the floor the lineup stands behind the visitor's suit; keep the
+      // camera in the front half of the room so it never walks into it.
+      minAzimuthAngle={view.kind === "fit" ? -Infinity : -Math.PI * 0.5}
+      maxAzimuthAngle={view.kind === "fit" ? Infinity : Math.PI * 0.5}
       minPolarAngle={Math.PI * 0.12}
       maxPolarAngle={Math.PI * 0.6}
       onStart={onUserControl}

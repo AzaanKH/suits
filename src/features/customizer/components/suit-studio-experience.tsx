@@ -3,28 +3,27 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Camera,
   ChevronRight,
+  Compass,
   PanelRightClose,
   PanelRightOpen,
   RotateCw,
 } from "lucide-react";
 import {
-  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 
 import { EmptyState } from "@/components/storefront/empty-state";
-import {
-  calculateConfigurationPrice,
-  getSelectedFabric,
-} from "@/features/customizer/pricing";
+import { calculateConfigurationPrice } from "@/features/customizer/pricing";
 import {
   CUSTOMIZER_STEPS,
   type CustomizerGroupCode,
@@ -39,10 +38,28 @@ import {
   STUDIO_STEP_CODES,
   type StudioStepCode,
 } from "../three-d/suit-parts";
-import { SUIT_3D_PRODUCT_SLUG } from "../three-d/suit-selection";
-import type { StudioCapture } from "../three-d/suit-studio-canvas";
+import { getSuit3dCapability } from "../three-d/device-support";
+import {
+  buildGalleryDesigns,
+  type GalleryDesign,
+} from "../three-d/suit-gallery-designs";
+import {
+  getSuit3dSelection,
+  SUIT_3D_PRODUCT_SLUG,
+} from "../three-d/suit-selection";
+import type { StudioCapture, StudioView } from "../three-d/suit-studio-canvas";
 import { useCustomizerCatalog } from "../use-customizer-catalog";
 import { FabricStep, OptionGroupStep } from "./option-steps";
+import {
+  FloorHint,
+  FloorPanel,
+  getSpecTicket,
+  rememberFloorVisit,
+  SpecTicket,
+  useFloorInvitation,
+  WithSavedDesigns,
+  type SavedDesignsState,
+} from "./studio-floor";
 import "./suit-studio.css";
 import "./suit-studio-experience.css";
 
@@ -63,11 +80,33 @@ const DESKTOP_QUERY = "(min-width: 900px)";
 const NO_INSETS = { right: 0, bottom: 0 };
 
 export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
+  return (
+    <WithSavedDesigns>
+      {(savedDesigns) => (
+        <StudioExperienceBody
+          productSlug={productSlug}
+          savedDesigns={savedDesigns}
+        />
+      )}
+    </WithSavedDesigns>
+  );
+}
+
+type FloorMode = "off" | "free" | "overview";
+
+function StudioExperienceBody({
+  productSlug,
+  savedDesigns,
+}: {
+  productSlug: string;
+  savedDesigns: SavedDesignsState;
+}) {
   const { customizerData, catalog } = useCustomizerCatalog(productSlug);
   const configuration = useCustomizerStore((s) => s.configuration);
   const currentStepCode = useCustomizerStore((s) => s.currentStepCode);
   const dirty = useCustomizerStore((s) => s.dirty);
   const setStep = useCustomizerStore((s) => s.setStep);
+  const wearDesign = useCustomizerStore((s) => s.wearDesign);
   const activeStep: StudioStepCode = isStudioStepCode(currentStepCode)
     ? currentStepCode
     : "fabric";
@@ -83,9 +122,95 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
   const [panel, setPanel] = useState<HTMLElement | null>(null);
   const captureRef = useRef<StudioCapture | null>(null);
   const stopTurntable = useCallback(() => setTurntable(false), []);
+
+  // The studio floor: other suits the visitor can walk up to for ideas.
+  const [floor, setFloor] = useState<FloorMode>("off");
+  const [inspectedId, setInspectedId] = useState<string | null>(null);
+  const [hint, setHint] = useState<"hidden" | "found" | "dismissed">("hidden");
+  const [lowPower] = useState(
+    () => typeof window !== "undefined" && getSuit3dCapability().simplified,
+  );
+  const studioReady =
+    Boolean(catalog && configuration) &&
+    catalog?.product.slug === SUIT_3D_PRODUCT_SLUG;
+  const inviteDue = useFloorInvitation(studioReady);
+  const invited = inviteDue && floor === "off" && hint === "hidden";
+  // Suits load (hidden) as soon as the visitor is invited, so they are ready to step out.
+  const floorArmed = inviteDue || floor !== "off" || hint !== "hidden";
+  const galleryDesigns = useMemo<GalleryDesign[]>(
+    () =>
+      floorArmed && catalog && configuration && studioReady
+        ? buildGalleryDesigns(
+            catalog,
+            configuration,
+            savedDesigns.designs,
+            lowPower ? 4 : 7,
+          )
+        : [],
+    [
+      floorArmed,
+      catalog,
+      configuration,
+      studioReady,
+      savedDesigns.designs,
+      lowPower,
+    ],
+  );
+  const gallery = useMemo(
+    () =>
+      galleryDesigns.map((design) => ({
+        id: design.id,
+        name: design.name,
+        sourceLabel: design.sourceLabel,
+        selection: getSuit3dSelection(design.configuration),
+      })),
+    [galleryDesigns],
+  );
+  const inspectedIndex = galleryDesigns.findIndex((d) => d.id === inspectedId);
+  const inspected = galleryDesigns[inspectedIndex] ?? null;
+  const view = useMemo<StudioView>(() => {
+    if (floor !== "off" && inspectedIndex >= 0)
+      return {
+        kind: "inspect",
+        index: inspectedIndex,
+        count: galleryDesigns.length,
+      };
+    if (floor === "overview") return { kind: "overview" };
+    if (floor === "free") return { kind: "free" };
+    return { kind: "fit" };
+  }, [floor, inspectedIndex, galleryDesigns.length]);
+
+  const enterFloor = useCallback((mode: Exclude<FloorMode, "off">) => {
+    rememberFloorVisit();
+    // The turntable orbits the visitor's suit; on the floor it would fight the camera.
+    setTurntable(false);
+    setFloor(mode);
+    setHint((current) => (current === "dismissed" ? current : "found"));
+  }, []);
+  const leaveFloor = useCallback(() => {
+    setFloor("off");
+    setInspectedId(null);
+    setHint((current) => (current === "found" ? "dismissed" : current));
+  }, []);
+  // Turning the camera after the invitation is the cue to reveal the room.
+  const onCameraStart = useCallback(() => {
+    if (invited) enterFloor("free");
+  }, [invited, enterFloor]);
+  const inspect = useCallback(
+    (id: string | null) => {
+      if (id) enterFloor(floor === "off" ? "free" : floor);
+      // Back to the lineup: step back to the overview, not stay in a close-up.
+      else setFloor("overview");
+      setInspectedId(id);
+    },
+    [enterFloor, floor],
+  );
   const selectStep = useCallback(
-    (step: StudioStepCode) => setStep(step),
-    [setStep],
+    (step: StudioStepCode) => {
+      leaveFloor();
+      setStep(step);
+    },
+    [leaveFloor, setStep],
   );
 
   useEffect(() => {
@@ -158,15 +283,14 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
   }
 
   const price = calculateConfigurationPrice(catalog, configuration);
-  const fabric = getSelectedFabric(catalog, configuration);
-  // One ticket line per group, in the order the cutter reads them.
-  const ticket = new Map<string, string[]>();
-  for (const item of price.selectedModifiers) {
-    if (item.stepCode === "fabric") continue;
-    ticket.set(item.groupLabel, [
-      ...(ticket.get(item.groupLabel) ?? []),
-      item.optionLabel,
-    ]);
+
+  function wear(design: GalleryDesign) {
+    if (!catalog) return;
+    wearDesign(catalog, design.configuration);
+    leaveFloor();
+    toast.success(`You're wearing the ${design.name.toLowerCase()}.`, {
+      description: "Change anything you like, or look around again.",
+    });
   }
   const step =
     CUSTOMIZER_STEPS.find((s) => s.code === activeStep) ?? CUSTOMIZER_STEPS[0];
@@ -199,6 +323,11 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
         onTurntableStop={stopTurntable}
         insets={panel && panelOpen ? insets : NO_INSETS}
         captureRef={captureRef}
+        gallery={gallery}
+        view={view}
+        inspectedId={inspected?.id ?? null}
+        onInspect={inspect}
+        onCameraStart={onCameraStart}
         fallback={
           <div className="suit-atelier is-message">
             <EmptyState
@@ -247,9 +376,24 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
           aria-pressed={turntable}
           aria-label="Turntable"
           title="Turntable"
-          onClick={() => setTurntable((value) => !value)}
+          onClick={() => {
+            if (!turntable) leaveFloor();
+            setTurntable((value) => !value);
+          }}
         >
           <RotateCw aria-hidden="true" className="size-4" />
+        </button>
+        <button
+          type="button"
+          className="atelier-icon-button"
+          aria-pressed={floor !== "off"}
+          aria-label={floor === "off" ? "Explore the floor" : "Back to my suit"}
+          title={floor === "off" ? "Explore the floor" : "Back to my suit"}
+          onClick={() =>
+            floor === "off" ? enterFloor("overview") : leaveFloor()
+          }
+        >
+          <Compass aria-hidden="true" className="size-4" />
         </button>
         <button
           type="button"
@@ -276,80 +420,91 @@ export function SuitStudioExperience({ productSlug }: { productSlug: string }) {
         </button>
       </div>
 
+      {invited || (hint === "found" && floor !== "off") ? (
+        <FloorHint
+          stage={invited ? "invite" : "found"}
+          hasSaved={Boolean(savedDesigns.designs?.length)}
+          onShow={() => enterFloor("overview")}
+          onDismiss={() => {
+            rememberFloorVisit();
+            setHint("dismissed");
+          }}
+        />
+      ) : null}
+
       {panelOpen ? (
         <section
           ref={setPanel}
           className="atelier-panel"
           aria-label="Design options"
         >
-          <nav className="atelier-steps" aria-label="Studio steps">
-            {STUDIO_STEP_CODES.map((code) => (
-              <button
-                key={code}
-                type="button"
-                aria-current={code === activeStep ? "step" : undefined}
-                onClick={() => selectStep(code)}
-              >
-                {CUSTOMIZER_STEPS.find((s) => s.code === code)?.shortLabel}
-              </button>
-            ))}
-          </nav>
-          <div className="atelier-panel-heading">
-            <h1>
-              {activeStep === "fabric" ? "Choose your cloth" : step.label}
-            </h1>
-            <p>Click any part of the suit to change it.</p>
-          </div>
-          <div className="atelier-options">
-            {activeStep === "fabric" ? (
-              <FabricStep catalog={catalog} configuration={configuration} />
-            ) : group ? (
-              <OptionGroupStep
-                catalog={catalog}
-                configuration={configuration}
-                group={group}
-              />
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                This section is not available for the selected suit.
-              </p>
-            )}
-          </div>
-          <dl className="atelier-ticket" aria-label="Your specification">
-            {fabric ? (
-              <>
-                <dt>Cloth</dt>
-                <dd>
-                  {fabric.name} · {fabric.weight}
-                </dd>
-              </>
-            ) : null}
-            {[...ticket].map(([group, labels]) => (
-              <Fragment key={group}>
-                <dt>{group}</dt>
-                <dd>{labels.join(", ")}</dd>
-              </Fragment>
-            ))}
-          </dl>
-          <div className="atelier-panel-actions">
-            {nextStep ? (
-              <button
-                type="button"
-                className="atelier-secondary"
-                onClick={() => selectStep(nextStep.code as StudioStepCode)}
-              >
-                Next: {nextStep.shortLabel}
-              </button>
-            ) : null}
-            <Link
-              className="atelier-primary"
-              href={customizeHref}
-              onClick={() => setStep("tailoring")}
-            >
-              Continue to details
-              <ChevronRight aria-hidden="true" className="size-4" />
-            </Link>
-          </div>
+          {floor !== "off" ? (
+            <FloorPanel
+              catalog={catalog}
+              designs={galleryDesigns}
+              inspected={inspected}
+              savedDesigns={savedDesigns}
+              onInspect={inspect}
+              onWear={wear}
+              onLeave={leaveFloor}
+            />
+          ) : (
+            <>
+              <nav className="atelier-steps" aria-label="Studio steps">
+                {STUDIO_STEP_CODES.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    aria-current={code === activeStep ? "step" : undefined}
+                    onClick={() => selectStep(code)}
+                  >
+                    {CUSTOMIZER_STEPS.find((s) => s.code === code)?.shortLabel}
+                  </button>
+                ))}
+              </nav>
+              <div className="atelier-panel-heading">
+                <h1>
+                  {activeStep === "fabric" ? "Choose your cloth" : step.label}
+                </h1>
+                <p>Click any part of the suit to change it.</p>
+              </div>
+              <div className="atelier-options">
+                {activeStep === "fabric" ? (
+                  <FabricStep catalog={catalog} configuration={configuration} />
+                ) : group ? (
+                  <OptionGroupStep
+                    catalog={catalog}
+                    configuration={configuration}
+                    group={group}
+                  />
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    This section is not available for the selected suit.
+                  </p>
+                )}
+              </div>
+              <SpecTicket rows={getSpecTicket(catalog, configuration)} />
+              <div className="atelier-panel-actions">
+                {nextStep ? (
+                  <button
+                    type="button"
+                    className="atelier-secondary"
+                    onClick={() => selectStep(nextStep.code as StudioStepCode)}
+                  >
+                    Next: {nextStep.shortLabel}
+                  </button>
+                ) : null}
+                <Link
+                  className="atelier-primary"
+                  href={customizeHref}
+                  onClick={() => setStep("tailoring")}
+                >
+                  Continue to details
+                  <ChevronRight aria-hidden="true" className="size-4" />
+                </Link>
+              </div>
+            </>
+          )}
         </section>
       ) : null}
     </div>

@@ -36,6 +36,11 @@ type CustomizerState = {
     catalog: CustomizerCatalog,
     configuration: CustomizerConfiguration,
   ) => void;
+  /** Replaces the design with another (e.g. one from the studio floor), keeping the step. */
+  wearDesign: (
+    catalog: CustomizerCatalog,
+    configuration: CustomizerConfiguration,
+  ) => void;
   setStep: (stepCode: CustomizerStepCode) => void;
   goBack: () => void;
   goNext: () => void;
@@ -87,6 +92,12 @@ export const useCustomizerStore = create<CustomizerState>((set) => ({
       currentStepCode: "fabric",
       configuration: normalizeConfiguration(catalog, configuration),
       dirty: false,
+    })),
+  wearDesign: (catalog, configuration) =>
+    set(() => ({
+      activeProductSlug: catalog.product.slug,
+      configuration: normalizeConfiguration(catalog, configuration),
+      dirty: true,
     })),
   setStep: (stepCode) =>
     set(() => ({
