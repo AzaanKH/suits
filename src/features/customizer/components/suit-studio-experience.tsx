@@ -76,6 +76,14 @@ const SuitStudioCanvas = dynamic(
   },
 );
 
+/** What the 3D can and cannot show for a step, so options that look alike make sense. */
+const STEP_NOTES: Partial<Record<StudioStepCode, string>> = {
+  trousers:
+    "The jacket steps aside so you can see the waistband: belt loops, side adjusters or a pleat. Brace buttons sit inside the waistband.",
+  extras:
+    "The waistcoat shows inside the jacket. Working cuffs, a monogram and full canvas are made to your specification but not drawn.",
+};
+
 const DESKTOP_QUERY = "(min-width: 900px)";
 const NO_INSETS = { right: 0, bottom: 0 };
 
@@ -466,7 +474,10 @@ function StudioExperienceBody({
                 <h1>
                   {activeStep === "fabric" ? "Choose your cloth" : step.label}
                 </h1>
-                <p>Click any part of the suit to change it.</p>
+                <p>
+                  {STEP_NOTES[activeStep] ??
+                    "Click any part of the suit to change it."}
+                </p>
               </div>
               <div className="atelier-options">
                 {activeStep === "fabric" ? (

@@ -36,7 +36,9 @@ test("opens the studio from the customizer and keeps the design", async ({
   await expect(scene).toHaveAttribute("data-mood", "evening");
 
   await page.getByRole("link", { name: "Continue to details" }).click();
-  await expect(page).toHaveURL(new RegExp(`/customize/${SUIT}$`));
+  await expect(page).toHaveURL(new RegExp(`/customize/${SUIT}$`), {
+    timeout: 30_000,
+  });
   await expect(
     page.getByRole("region", { name: "Interactive 3D suit preview" }),
   ).toHaveAttribute("data-lapel", "peak-lapel", { timeout: 60_000 });

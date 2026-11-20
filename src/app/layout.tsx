@@ -82,6 +82,17 @@ export default function RootLayout({
                 colorInput: "var(--background)",
               },
             }}
+            // Brand-neutral until the name is final: Clerk's defaults read
+            // "Sign in to <app name>" from the dashboard.
+            localization={{
+              signIn: {
+                start: {
+                  title: "Sign in",
+                  titleCombined: "Continue",
+                },
+                emailCode: { subtitle: "to continue" },
+              },
+            }}
             signInUrl="/sign-in"
             signUpUrl="/sign-up"
             signInFallbackRedirectUrl="/account"

@@ -31,7 +31,11 @@ import {
   type StudioStepCode,
   type SuitPart,
 } from "./suit-parts";
-import { getSuit3dSelection } from "./suit-selection";
+import {
+  getSuit3dSelection,
+  getSuitBlock,
+  isSuitMeshVisible,
+} from "./suit-selection";
 import { StudioFloor, SuitGallery, type GallerySuitView } from "./suit-gallery";
 import { GALLERY_RADIUS, getGalleryPlacement } from "./suit-gallery-designs";
 
@@ -127,6 +131,13 @@ export function SuitStudioCanvas({
     [hoveredPart, onSelectStep, onTurntableStop],
   );
 
+  // The trouser options sit at the waistband, under the jacket.
+  const trousersOnly = view.kind === "fit" && activeStep === "trousers";
+  const block = getSuitBlock(selection);
+  const pocketMesh = ["flap", "slanted", "welt", "patch"]
+    .map((style) => `${block}_pocket_${style}`)
+    .find((name) => isSuitMeshVisible(name, selection));
+
   if (!capability.supported) return <>{fallback}</>;
 
   return (
@@ -141,6 +152,8 @@ export function SuitStudioCanvas({
         data-mood={mood}
         data-jacket={selection.selectedCodes.jacket}
         data-lapel={selection.selectedCodes.lapel}
+        data-pocket-mesh={pocketMesh}
+        data-trousers-only={trousersOnly}
       >
         <Canvas
           camera={{ fov: 30, position: [0.9, 1.1, 4.6], near: 0.05, far: 90 }}
@@ -171,6 +184,8 @@ export function SuitStudioCanvas({
               onModel={setModel}
               interaction={interaction}
               preloadBlocks
+              // The trouser options sit at the waistband, under the jacket.
+              trousersOnly={trousersOnly}
             />
             <Podium mood={mood} />
           </Suspense>
@@ -214,6 +229,7 @@ export function SuitStudioCanvas({
             }}
           />
           <CaptureBridge captureRef={captureRef} clearHover={clearHover} />
+          <TestHook />
         </Canvas>
         {!ready ? (
           <div className="studio-scene-loading" role="status">
@@ -243,6 +259,81 @@ function Podium({ mood }: { mood: SuitMood }) {
       <meshStandardMaterial color={color} roughness={0.9} />
     </mesh>
   );
+}
+
+/**
+ * For browser tests: when the page sets `window.__ARDEN_TEST__` before load,
+ * `window.__ardenStudio.screenPoint(meshName)` returns where a visible part's
+ * centre is on screen, so a test can point at it. Inert otherwise.
+ */
+function TestHook() {
+  const get = useThree((s) => s.get);
+  useEffect(() => {
+    const w = window as Window & {
+      __ARDEN_TEST__?: boolean;
+      __ardenStudio?: unknown;
+    };
+    if (!w.__ARDEN_TEST__) return;
+    let lastMoved = 0;
+    let watching = false;
+    w.__ardenStudio = {
+      now: () => performance.now(),
+      cameraSettled(since: number) {
+        const controls = get().controls as ComponentRef<
+          typeof CameraControls
+        > | null;
+        if (!controls) return false;
+        if (!watching) {
+          watching = true;
+          controls.addEventListener("update", () => {
+            lastMoved = performance.now();
+          });
+        }
+        if (controls.active) return false;
+        const now = performance.now();
+        return lastMoved > since ? now - lastMoved > 250 : now - since > 800;
+      },
+      /** `side` picks the wearer's left (-1) or right (1) of a paired part. */
+      screenPoint(name: string, side?: 1 | -1) {
+        const { scene, camera, gl } = get();
+        let target: Mesh | null = null;
+        scene.traverseVisible((object) => {
+          if (
+            !target &&
+            object instanceof Mesh &&
+            object.name === name &&
+            object.layers.isEnabled(0)
+          )
+            target = object;
+        });
+        if (!target) return null;
+        const mesh = target as Mesh;
+        const position = mesh.geometry.getAttribute("position");
+        const centre = new Vector3();
+        const vertex = new Vector3();
+        let count = 0;
+        for (let i = 0; i < position.count; i++) {
+          vertex
+            .fromBufferAttribute(position, i)
+            .applyMatrix4(mesh.matrixWorld);
+          if (side && vertex.x * side <= 0) continue;
+          centre.add(vertex);
+          count++;
+        }
+        if (!count) return null;
+        const point = centre.divideScalar(count).project(camera);
+        const rect = gl.domElement.getBoundingClientRect();
+        return {
+          x: rect.left + ((point.x + 1) / 2) * rect.width,
+          y: rect.top + ((1 - point.y) / 2) * rect.height,
+        };
+      },
+    };
+    return () => {
+      delete w.__ardenStudio;
+    };
+  }, [get]);
+  return null;
 }
 
 function StudioCamera({
@@ -306,6 +397,11 @@ function StudioCamera({
         part.expandByObject(object);
     });
     all.expandByPoint(new Vector3(0, -0.06, 0)); // keep the podium in the full view
+    // The trouser options are all at the waistband: frame that, not the legs.
+    if (activeStep === "trousers" && !part.isEmpty()) {
+      part.min.y = Math.max(part.min.y, 0.55);
+      part.max.y = Math.min(part.max.y, 1.02);
+    }
     // Fabric, or a hidden part such as an unselected waistcoat, frames the whole suit.
     const target = activeStep === "fabric" || part.isEmpty() ? all : part;
     const extent = target.getSize(new Vector3()).length();

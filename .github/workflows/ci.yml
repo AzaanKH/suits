@@ -17,7 +17,10 @@ jobs:
     name: Typecheck, lint, unit tests, format
     runs-on: ubuntu-latest
     steps:
+      # Git LFS: the geometry test reads the shipped 3D models.
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: pnpm/action-setup@v4 # version from package.json "packageManager"
       - uses: actions/setup-node@v4
         with:
