@@ -117,6 +117,8 @@ function GallerySuit({
   // frameloop="demand": request frames until the rise or sink settles.
   useEffect(() => {
     revealedAt.current = performance.now();
+    // The click target unmounts on hide, so no pointer-out arrives to clear this.
+    if (!revealed) document.body.style.cursor = "";
     invalidate();
   }, [revealed, invalidate]);
 
@@ -161,21 +163,24 @@ function GallerySuit({
         />
       </mesh>
       {/* A cheap stand-in for clicks: raycasting the suit's own 200k triangles
-          on every pointer move would stall the frame. */}
-      <mesh
-        position={[0, 0.85, 0]}
-        visible={false}
-        onClick={inspect}
-        onPointerOver={(event) => {
-          event.stopPropagation();
-          document.body.style.cursor = "pointer";
-        }}
-        onPointerOut={() => {
-          document.body.style.cursor = "";
-        }}
-      >
-        <cylinderGeometry args={[0.5, 0.5, 1.8, 12]} />
-      </mesh>
+          on every pointer move would stall the frame. Only while raised: three.js
+          raycasts invisible objects, so a hidden suit would still catch clicks. */}
+      {revealed ? (
+        <mesh
+          position={[0, 0.85, 0]}
+          visible={false}
+          onClick={inspect}
+          onPointerOver={(event) => {
+            event.stopPropagation();
+            document.body.style.cursor = "pointer";
+          }}
+          onPointerOut={() => {
+            document.body.style.cursor = "";
+          }}
+        >
+          <cylinderGeometry args={[0.5, 0.5, 1.8, 12]} />
+        </mesh>
+      ) : null}
       {revealed ? (
         <Html
           position={[0, 1.86, 0]}
