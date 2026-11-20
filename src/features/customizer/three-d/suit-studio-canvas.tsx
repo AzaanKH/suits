@@ -171,6 +171,8 @@ export function SuitStudioCanvas({
               onModel={setModel}
               interaction={interaction}
               preloadBlocks
+              // The trouser options sit at the waistband, under the jacket.
+              trousersOnly={view.kind === "fit" && activeStep === "trousers"}
             />
             <Podium mood={mood} />
           </Suspense>
@@ -306,6 +308,11 @@ function StudioCamera({
         part.expandByObject(object);
     });
     all.expandByPoint(new Vector3(0, -0.06, 0)); // keep the podium in the full view
+    // The trouser options are all at the waistband: frame that, not the legs.
+    if (activeStep === "trousers" && !part.isEmpty()) {
+      part.min.y = Math.max(part.min.y, 0.55);
+      part.max.y = Math.min(part.max.y, 1.02);
+    }
     // Fabric, or a hidden part such as an unselected waistcoat, frames the whole suit.
     const target = activeStep === "fabric" || part.isEmpty() ? all : part;
     const extent = target.getSize(new Vector3()).length();
