@@ -299,7 +299,6 @@ describe("studio model geometry", () => {
     it.each(POCKET_STYLES)(
       `${block} %s pockets sit on the cloth, in front and not floating`,
       (style) => {
-        if (!meshes.has(`${block}_pocket_${style}`)) return;
         expectSeated(
           block,
           `${block}_pocket_${style}`,

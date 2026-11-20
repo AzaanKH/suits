@@ -198,7 +198,7 @@ export function TailoredSuit({
     if (!group) return;
     applySelectionToMaterials(materials, shown);
     group.traverse((object) => {
-      if (!(object instanceof Mesh)) return;
+      if (!(object instanceof Mesh) || !object.name) return;
       if (object.userData.hitProxy) {
         object.layers.mask = object.parent!.layers.mask;
         return;
