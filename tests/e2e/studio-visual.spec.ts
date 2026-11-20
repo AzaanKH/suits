@@ -154,3 +154,42 @@ test("the trousers step shows only the trousers", async ({ page }) => {
   await step(page, "Buttons");
   await expect(scene).toHaveAttribute("data-trousers-only", "false");
 });
+
+test("the pockets step adds a ticket pocket and shows the inside pockets", async ({
+  page,
+}) => {
+  const scene = await openStudio(page);
+  await step(page, "Pockets");
+  const ticket = page.getByRole("group", { name: "Ticket pocket" });
+  const inside = page.getByRole("group", { name: "Interior pockets" });
+
+  await ticket.getByRole("button", { name: "Flap", exact: true }).click();
+  await expect(scene).toHaveAttribute("data-inside-view", "false");
+  await expect(await hoverPart(page, "single_ticket_flap", -1)).toHaveText(
+    "Change pockets",
+  );
+
+  await inside.getByRole("button", { name: "Travel pockets" }).click();
+  await expect(scene).toHaveAttribute("data-inside-view", "true");
+  await page.waitForTimeout(1500);
+  for (const slot of ["chest_l", "pen", "lower_r"]) {
+    const tooltip = await hoverPart(page, `single_inpocket_${slot}`);
+    await expect(tooltip, slot).toHaveText("Change pockets");
+  }
+
+  await inside.getByRole("button", { name: "None", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.__ardenStudio!.screenPoint("single_inpocket_chest_l"),
+      ),
+    )
+    .toBeNull();
+
+  await page.getByRole("button", { name: "Back to the front" }).click();
+  await expect(scene).toHaveAttribute("data-inside-view", "false");
+  await page.getByRole("button", { name: "View inside" }).click();
+  await expect(scene).toHaveAttribute("data-inside-view", "true");
+  await step(page, "Buttons");
+  await expect(scene).toHaveAttribute("data-inside-view", "false");
+});

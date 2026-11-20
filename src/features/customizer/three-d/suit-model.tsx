@@ -30,11 +30,14 @@ import {
   DoubleSide,
   Mesh,
   MeshPhysicalMaterial,
+  Plane,
   RepeatWrapping,
   SphereGeometry,
   SRGBColorSpace,
   Vector2,
+  Vector3,
   type Group,
+  type Intersection,
   type Object3D,
   type Texture,
 } from "three";
@@ -51,7 +54,7 @@ import { getSuitPartForMesh, type SuitPart } from "./suit-parts";
 BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 
-const ASSET_VERSION = "?v=6";
+const ASSET_VERSION = "?v=7";
 const MODELS = "/models/suit-studio/";
 const TEXTURES = MODELS + "textures/";
 
@@ -142,7 +145,17 @@ type TailoredSuitProps = {
   };
   preloadBlocks?: boolean;
   trousersOnly?: boolean;
+  insideView?: boolean;
 };
+
+const INSIDE_CLIP = [new Plane(new Vector3(0, 0, 1), -0.02)];
+
+function isInsideViewMesh(name: string) {
+  return (
+    /^(single|double|dinner)_/.test(name) &&
+    !/_(shirt|cuff|pocket_|ticket_)/.test(name)
+  );
+}
 
 type SuitMaterials = Record<string, MeshPhysicalMaterial>;
 
@@ -153,6 +166,7 @@ export function TailoredSuit({
   interaction,
   preloadBlocks = false,
   trousersOnly = false,
+  insideView = false,
 }: TailoredSuitProps) {
   const shown = useDeferredValue(selection);
   const block = getSuitBlock(shown);
@@ -191,7 +205,9 @@ export function TailoredSuit({
       }
       object.visible =
         isSuitMeshVisible(object.name, shown) &&
-        (!trousersOnly || getSuitPartForMesh(object.name)?.step === "trousers");
+        (!trousersOnly ||
+          getSuitPartForMesh(object.name)?.step === "trousers") &&
+        (!insideView || isInsideViewMesh(object.name));
       object.layers.set(object.visible ? 0 : HIDDEN_LAYER);
       object.userData.slot ??= (
         Array.isArray(object.material) ? object.material[0] : object.material
@@ -204,7 +220,9 @@ export function TailoredSuit({
           : "";
       object.material = object.name.endsWith("_buttonhole")
         ? materials.Buttonhole
-        : /_pocket_(flap|patch|slanted|welt)$/.test(object.name)
+        : /_(pocket_(flap|patch|slanted|welt)|ticket_(flap|jetted)|inpocket_(chest_l|chest_r|pen|lower_l|lower_r))$/.test(
+              object.name,
+            )
           ? materials.PocketPanel
           : (materials[`${slot}${variant}`] ??
             materials[slot] ??
@@ -213,7 +231,14 @@ export function TailoredSuit({
     });
     invalidate();
     onReady?.();
-  }, [shown, block, materials, invalidate, onReady, trousersOnly]);
+  }, [shown, block, materials, invalidate, onReady, trousersOnly, insideView]);
+
+  const get = useThree((s) => s.get);
+  useLayoutEffect(() => {
+    get().gl.localClippingEnabled = true;
+    showInside(materials, insideView);
+    invalidate();
+  }, [get, materials, insideView, invalidate]);
 
   useEffect(() => {
     if (!preloadBlocks) return;
@@ -268,6 +293,7 @@ export function TailoredSuit({
         object={core}
         hoveredStep={hoveredStep}
         interactive={Boolean(interaction)}
+        clipped={insideView}
       />
       {block === "double" ? (
         <mesh name="shirt_backing" position={[0, 1.378, 0.07]}>
@@ -281,6 +307,7 @@ export function TailoredSuit({
           materials={materials}
           hoveredStep={hoveredStep}
           interactive={Boolean(interaction)}
+          clipped={insideView}
         />
       )}
     </group>
@@ -292,11 +319,13 @@ function SuitBlockModel({
   materials,
   hoveredStep,
   interactive,
+  clipped,
 }: {
   block: Exclude<SuitBlock, "single">;
   materials: SuitMaterials;
   hoveredStep: SuitPart["step"] | null;
   interactive: boolean;
+  clipped: boolean;
 }) {
   const assets = BLOCK_ASSETS[block];
   const { scene } = useGLTF(assets.model);
@@ -312,12 +341,20 @@ function SuitBlockModel({
       object={model}
       hoveredStep={hoveredStep}
       interactive={interactive}
+      clipped={clipped}
     />
   );
 }
 
-function partUnderPointer(event: { intersections: { object: Object3D }[] }) {
-  const hit = event.intersections.find((h) => h.object.name);
+function isClipped(hit: Intersection) {
+  const material = (hit.object as Mesh).material;
+  const planes = (Array.isArray(material) ? material[0] : material)
+    ?.clippingPlanes;
+  return planes?.some((plane) => plane.distanceToPoint(hit.point) < 0) ?? false;
+}
+
+function partUnderPointer(event: { intersections: Intersection[] }) {
+  const hit = event.intersections.find((h) => h.object.name && !isClipped(h));
   return hit ? getSuitPartForMesh(hit.object.name) : null;
 }
 
@@ -327,10 +364,12 @@ function SuitPiece({
   object,
   hoveredStep,
   interactive,
+  clipped,
 }: {
   object: Object3D;
   hoveredStep: SuitPart["step"] | null;
   interactive: boolean;
+  clipped: boolean;
 }) {
   const meshes = useMemo(() => {
     const list: Mesh[] = [];
@@ -381,6 +420,7 @@ function SuitPiece({
               screenspace={false}
               angle={0}
               color="#4a6fd0"
+              clippingPlanes={clipped ? INSIDE_CLIP : undefined}
             />,
             mesh,
           )}
@@ -579,6 +619,7 @@ function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
       side: DoubleSide,
     }),
     Buttonhole: new MeshPhysicalMaterial({ roughness: 0.7, sheen: 0.3 }),
+    Pocketing: new MeshPhysicalMaterial({ color: "#07080b", roughness: 0.9 }),
     PocketPanel: new MeshPhysicalMaterial({
       map: wool,
       roughness: 0.88,
@@ -589,18 +630,39 @@ function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
       side: DoubleSide,
     }),
   };
+  const interior = { value: INTERIOR_LIGHT };
   for (const [name, material] of Object.entries(mats)) {
     material.name = name;
+    material.userData.interior = interior;
     if (material.side === DoubleSide)
-      shadeInterior(material, name.startsWith("Cloth"));
+      shadeInterior(material, interior, name.startsWith("Cloth"));
   }
   return mats;
 }
 
-function shadeInterior(material: MeshPhysicalMaterial, lined = false) {
+function showInside(mats: SuitMaterials, inside: boolean) {
+  for (const material of Object.values(mats)) {
+    material.clippingPlanes = inside ? INSIDE_CLIP : [];
+    material.clipShadows = true;
+  }
+  (mats.Cloth.userData.interior as { value: number }).value = inside
+    ? 1
+    : INTERIOR_LIGHT;
+}
+
+function shadeInterior(
+  material: MeshPhysicalMaterial,
+  interior: { value: number },
+  lined = false,
+) {
   const lining = { value: new Color("#111827") };
   material.userData.lining = lining;
   material.onBeforeCompile = (shader) => {
+    shader.uniforms.interiorLight = interior;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "void main() {",
+      "uniform float interiorLight;\nvoid main() {",
+    );
     if (lined) {
       shader.uniforms.liningColor = lining;
       shader.fragmentShader = shader.fragmentShader
@@ -615,13 +677,13 @@ function shadeInterior(material: MeshPhysicalMaterial, lined = false) {
       "#include <lights_fragment_end>",
       `#include <lights_fragment_end>
       if (!gl_FrontFacing) {
-        reflectedLight.directDiffuse *= ${INTERIOR_LIGHT};
-        reflectedLight.indirectDiffuse *= ${INTERIOR_LIGHT};
-        reflectedLight.directSpecular *= ${INTERIOR_LIGHT};
-        reflectedLight.indirectSpecular *= ${INTERIOR_LIGHT};
+        reflectedLight.directDiffuse *= interiorLight;
+        reflectedLight.indirectDiffuse *= interiorLight;
+        reflectedLight.directSpecular *= interiorLight;
+        reflectedLight.indirectSpecular *= interiorLight;
         #ifdef USE_SHEEN
-          sheenSpecularDirect *= ${INTERIOR_LIGHT};
-          sheenSpecularIndirect *= ${INTERIOR_LIGHT};
+          sheenSpecularDirect *= interiorLight;
+          sheenSpecularIndirect *= interiorLight;
         #endif
       }`,
     );
@@ -630,7 +692,7 @@ function shadeInterior(material: MeshPhysicalMaterial, lined = false) {
     lined ? "suit-interior-lined" : "suit-interior";
 }
 
-const INTERIOR_LIGHT = "0.45";
+const INTERIOR_LIGHT = 0.45;
 
 const sheenTint = new Color("#c3ccda");
 

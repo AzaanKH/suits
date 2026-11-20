@@ -28,6 +28,12 @@ Both surfaces are disabled when `ENABLE_3D_CONFIGURATOR=false`. The customizer t
 
 Pricing stays in `src/features/customizer/pricing.ts`. The scene only receives visual selections.
 
+## Inside view
+
+The Pockets step has a ticket pocket choice, an interior pockets choice (standard: both chest pockets and a pen pocket; travel adds a lower pair; minimal: the left chest pocket; none) and a **View inside** toggle. Both are Details requests (`ticket-pocket`, `inside-pockets`), so they are saved with the design and do not change the price. Choosing interior pockets turns View inside on; leaving the step turns it off.
+
+View inside turns the camera to face the jacket's back and clips every suit material at z = 0.02 (`INSIDE_CLIP` in `suit-model.tsx`), so the back half is cut away and the lining of the front panels shows. It also hides the shirt, cuffs, trousers, waistcoat and the outside pockets, whose backs sit at the cloth surface and would print through, and raises the interior light from 0.45 to 1. The hover outline uses the same clip, and pointing ignores clipped-away hits.
+
 ## The studio floor
 
 After the visitor has made a few changes (three changes and 25 s, or 90 s regardless; once per browser session), a note invites them to look around. Turning the camera, or "Show me", raises a lineup of other suits in an arc just behind the visitor's own (4 m away, facing it): the house picks in `HOUSE_PICKS`, plus up to three of the signed-in visitor's saved designs for the same suit (four suits in total on low-power devices). Clicking a suit or its tag walks the camera up to it; "Wear this design" replaces the visitor's design through `wearDesign` in the customizer store. House picks keep the visitor's fit and personal details; saved designs come back as saved.
@@ -48,9 +54,10 @@ The two hero images (`public/images/studio-suit.webp` and `studio-suit-dark.webp
 
 - **Pocket openings.** The source cuts each hip-pocket flap and its bag out of the jacket body. `keep_pocket_cloth` copies those faces out, fills the hole in the low-poly body before subdivision, and lays the fill and its rim on a surface fitted to the clean cloth around it, so no style leaves a gap or a ridge. `close_cuts` closes two small dart openings in the dinner and double-breasted bodies.
 - **Pockets.** Every hip-pocket style (`pocket_flap`, `pocket_slanted`, `pocket_welt`, `pocket_patch`) is a panel built by `pocket_panel`: shaped in front view, laid on the cloth with at least 0.6 mm clearance, smoothed so seams do not print through, and dropped where there is no front cloth beneath it. The studio draws them with the `PocketPanel` material: the woven cloth without the body's normal map.
+- **Ticket and inside pockets.** `pocket_panel` also takes explicit frames. The ticket pocket (`ticket_flap`, `ticket_jetted`) sits on the wearer's right, 4 cm above the hip flap; on the double-breasted it starts clear of the overlapping front edge. Inside pockets are jetted openings on the lining side (`inside=True`): lips 4–5 mm behind the cloth and a dark `Pocketing` mouth on top, named `inpocket_{chest_l,chest_r,pen,lower_l,lower_r}` plus `_mouth`. They stop at |x| = 0.145 (0.13 for the lower pair), before the front curves round to the side seams.
 - **Buttons.** `seat` sets every jacket and shirt button on the cloth beneath it, oriented outward from the centre line. The single-breasted and dinner front buttons sit on the under forepart, clear of the overlapping front edge.
 
-`src/features/customizer/three-d/suit-geometry.test.ts` checks the shipped GLBs for these defects: buttons off or under the cloth, see-through openings, pockets sunk, floating or holed, and gross bulges around the pockets. Run it after every rebuild. `tests/e2e/studio-visual.spec.ts` checks that buttons and pockets can be pointed at and that the trousers step shows only the trousers; it uses `window.__ardenStudio.screenPoint`, which the studio exposes only when a page sets `window.__ARDEN_TEST__`.
+`src/features/customizer/three-d/suit-geometry.test.ts` checks the shipped GLBs for these defects: buttons off or under the cloth, see-through openings, pockets sunk, floating or holed, and gross bulges around the pockets. Run it after every rebuild. `tests/e2e/studio-visual.spec.ts` checks that buttons and pockets can be pointed at that the trousers step shows only the trousers, that hovering the jacket outlines no folds around the pocket flaps, and that the ticket and inside pockets can be shown and pointed at; it uses `window.__ardenStudio.screenPoint`, which the studio exposes only when a page sets `window.__ARDEN_TEST__`.
 
 Raycasts use three-mesh-bvh only for meshes of 20,000 triangles or more. On the small pocket panels it missed faces that three.js's own raycast finds, so the pockets could not be pointed at.
 
@@ -69,7 +76,7 @@ The model ships as three Meshopt-compressed GLBs in `public/models/suit-studio/`
 Mesh names follow `<block>_<part>[_<variant>]`:
 
 - **Blocks:** `single_*` (single-breasted), `double_*` (double-breasted), `dinner_*` (shawl-lapel dinner jacket). Only one block is visible at a time.
-- **Parts:** `body`, `cuff`, `collar`, `lapel_{notch,peak,shawl}`, `pocket_{flap,slanted,welt,patch}`, `breast`, `button_N`, `buttonhole`, `shirt_N`.
+- **Parts:** `body`, `cuff`, `collar`, `lapel_{notch,peak,shawl}`, `pocket_{flap,slanted,welt,patch}`, `ticket_{flap,jetted}`, `inpocket_{chest_l,chest_r,pen,lower_l,lower_r}[_mouth]`, `breast`, `button_N`, `buttonhole`, `shirt_N`.
 - **Shared, block-independent meshes:** `trousers`, `pleat_*`, `waist_loop_*`, `waist_adjuster_*`, `waistcoat`, `vest_button_*`, `shirt_button_*`.
 
 Material slots come from the Blender material name stored on each mesh: `Cloth`, `Lapel`, `Trouser`, `Waistcoat`, `Shirt`, `Button`, `Lining`. Cloth and lapel slots get a `Double` or `Dinner` suffix at runtime so each block uses its own normal map.
@@ -99,4 +106,4 @@ After regenerating the GLBs or textures, bump `ASSET_VERSION` in `suit-model.tsx
 
 ## Limits
 
-This is a visualization model adapted from a CC0 MakeHuman suit, not a pattern-derived garment. It does not predict fit or drape. Measurements and unmodeled construction details are recorded as specification requests. Details requests the model can draw (lining color on the jacket's inside faces, breast pocket, lapel buttonhole and its thread, one to three sleeve buttons, the 4×2 double-breasted) list their drawable values in `previewValues` in `src/features/customizer/tailoring.ts`; other values stay specification only. See [research-fully-customizable-3d-suit.md](research-fully-customizable-3d-suit.md) for the path to production-grade garments, and [3d-performance-report.md](3d-performance-report.md) for payload numbers.
+This is a visualization model adapted from a CC0 MakeHuman suit, not a pattern-derived garment. It does not predict fit or drape. Measurements and unmodeled construction details are recorded as specification requests. Details requests the model can draw (lining color on the jacket's inside faces, breast pocket, ticket pocket, interior pockets, lapel buttonhole and its thread, one to three sleeve buttons, the 4×2 double-breasted) list their drawable values in `previewValues` in `src/features/customizer/tailoring.ts`; other values stay specification only. See [research-fully-customizable-3d-suit.md](research-fully-customizable-3d-suit.md) for the path to production-grade garments, and [3d-performance-report.md](3d-performance-report.md) for payload numbers.

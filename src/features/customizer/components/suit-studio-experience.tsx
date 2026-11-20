@@ -50,6 +50,7 @@ import {
 import type { StudioCapture, StudioView } from "../three-d/suit-studio-canvas";
 import { useCustomizerCatalog } from "../use-customizer-catalog";
 import { FabricStep, OptionGroupStep } from "./option-steps";
+import { StudioPocketDetails } from "./studio-pocket-details";
 import {
   FloorHint,
   FloorPanel,
@@ -77,6 +78,8 @@ const SuitStudioCanvas = dynamic(
 );
 
 const STEP_NOTES: Partial<Record<StudioStepCode, string>> = {
+  pockets:
+    "Click any part of the suit to change it. View inside to see the interior pockets on the lining.",
   trousers:
     "The jacket steps aside so you can see the waistband: belt loops, side adjusters or a pleat. Brace buttons sit inside the waistband.",
   extras:
@@ -205,9 +208,11 @@ function StudioExperienceBody({
     },
     [enterFloor, floor],
   );
+  const [insideView, setInsideView] = useState(false);
   const selectStep = useCallback(
     (step: StudioStepCode) => {
       leaveFloor();
+      setInsideView(false);
       setStep(step);
     },
     [leaveFloor, setStep],
@@ -327,6 +332,7 @@ function StudioExperienceBody({
         inspectedId={inspected?.id ?? null}
         onInspect={inspect}
         onCameraStart={onCameraStart}
+        insideView={insideView}
         fallback={
           <div className="suit-atelier is-message">
             <EmptyState
@@ -474,11 +480,20 @@ function StudioExperienceBody({
                 {activeStep === "fabric" ? (
                   <FabricStep catalog={catalog} configuration={configuration} />
                 ) : group ? (
-                  <OptionGroupStep
-                    catalog={catalog}
-                    configuration={configuration}
-                    group={group}
-                  />
+                  <>
+                    <OptionGroupStep
+                      catalog={catalog}
+                      configuration={configuration}
+                      group={group}
+                    />
+                    {activeStep === "pockets" ? (
+                      <StudioPocketDetails
+                        configuration={configuration}
+                        insideView={insideView}
+                        onInsideView={setInsideView}
+                      />
+                    ) : null}
+                  </>
                 ) : (
                   <p className="text-muted-foreground text-sm">
                     This section is not available for the selected suit.

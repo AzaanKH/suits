@@ -346,5 +346,149 @@
   "waist_adjuster_1": {
     "vertices": 96,
     "triangles": 188
+  },
+  "single_ticket_flap": {
+    "vertices": 682,
+    "triangles": 1360
+  },
+  "single_ticket_jetted": {
+    "vertices": 216,
+    "triangles": 428
+  },
+  "single_inpocket_chest_l": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "single_inpocket_chest_l_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "single_inpocket_chest_r": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "single_inpocket_chest_r_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "single_inpocket_pen": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "single_inpocket_pen_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "single_inpocket_lower_l": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "single_inpocket_lower_l_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "single_inpocket_lower_r": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "single_inpocket_lower_r_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "double_ticket_flap": {
+    "vertices": 682,
+    "triangles": 1360
+  },
+  "double_ticket_jetted": {
+    "vertices": 216,
+    "triangles": 428
+  },
+  "double_inpocket_chest_l": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "double_inpocket_chest_l_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "double_inpocket_chest_r": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "double_inpocket_chest_r_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "double_inpocket_pen": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "double_inpocket_pen_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "double_inpocket_lower_l": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "double_inpocket_lower_l_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "double_inpocket_lower_r": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "double_inpocket_lower_r_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "dinner_ticket_flap": {
+    "vertices": 682,
+    "triangles": 1320
+  },
+  "dinner_ticket_jetted": {
+    "vertices": 216,
+    "triangles": 404
+  },
+  "dinner_inpocket_chest_l": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "dinner_inpocket_chest_l_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "dinner_inpocket_chest_r": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "dinner_inpocket_chest_r_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "dinner_inpocket_pen": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "dinner_inpocket_pen_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "dinner_inpocket_lower_l": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "dinner_inpocket_lower_l_mouth": {
+    "vertices": 75,
+    "triangles": 96
+  },
+  "dinner_inpocket_lower_r": {
+    "vertices": 250,
+    "triangles": 496
+  },
+  "dinner_inpocket_lower_r_mouth": {
+    "vertices": 75,
+    "triangles": 96
   }
 }

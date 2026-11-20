@@ -198,6 +198,47 @@ describe("3D jacket details from Details requests", () => {
     expect(isSuitMeshVisible("single_buttonhole", standard)).toBe(true);
   });
 
+  it("shows the interior pockets for each request, standard by default", () => {
+    const shown = (choice: string | undefined) => {
+      const selection = withRequests(
+        choice ? { "inside-pockets": choice } : {},
+        single,
+      );
+      return ["chest_l", "chest_r", "pen", "lower_l", "lower_r"].filter(
+        (slot) =>
+          isSuitMeshVisible(`single_inpocket_${slot}`, selection) &&
+          isSuitMeshVisible(`single_inpocket_${slot}_mouth`, selection),
+      );
+    };
+    expect(shown(undefined)).toEqual(["chest_l", "chest_r", "pen"]);
+    expect(shown("travel")).toEqual([
+      "chest_l",
+      "chest_r",
+      "pen",
+      "lower_l",
+      "lower_r",
+    ]);
+    expect(shown("minimal")).toEqual(["chest_l"]);
+    expect(shown("none")).toEqual([]);
+    expect(
+      isSuitMeshVisible("double_inpocket_chest_l", withRequests({}, single)),
+    ).toBe(false);
+  });
+
+  it("shows the requested ticket pocket only", () => {
+    const visible = (choice: string | undefined) =>
+      ["flap", "jetted"].filter((style) =>
+        isSuitMeshVisible(
+          `single_ticket_${style}`,
+          withRequests(choice ? { "ticket-pocket": choice } : {}, single),
+        ),
+      );
+    expect(visible(undefined)).toEqual([]);
+    expect(visible("none")).toEqual([]);
+    expect(visible("flap")).toEqual(["flap"]);
+    expect(visible("jetted")).toEqual(["jetted"]);
+  });
+
   it("carries the lining colour and buttonhole thread", () => {
     const selection = withRequests({
       "lining-color": "burgundy",
