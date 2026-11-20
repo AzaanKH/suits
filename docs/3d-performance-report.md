@@ -8,15 +8,15 @@ The model is split by jacket block. A visitor first downloads the shared meshes 
 
 | Asset                         | When                    |         Bytes |
 | ----------------------------- | ----------------------- | ------------: |
-| `suit-core.glb` (Meshopt)     | First render            |     1,062,768 |
+| `suit-core.glb` (Meshopt)     | First render            |     1,067,920 |
 | `textures/wool-albedo.webp`   | First render            |       712,456 |
 | `textures/single-normal.webp` | First render            |       883,448 |
-| **First render**              |                         | **2,658,672** |
-| `suit-double.glb`             | Background or on demand |       468,860 |
+| **First render**              |                         | **2,663,824** |
+| `suit-double.glb`             | Background or on demand |       476,540 |
 | `textures/double-normal.webp` | Background or on demand |     1,206,356 |
-| `suit-dinner.glb`             | Background or on demand |       576,620 |
+| `suit-dinner.glb`             | Background or on demand |       565,780 |
 | `textures/dinner-normal.webp` | Background or on demand |     1,179,388 |
-| **Everything**                |                         | **6,089,896** |
+| **Everything**                |                         | **6,091,888** |
 
 Before the split, the first render needed all 6,631,876 bytes. It now needs 60% less. The total also dropped, because two lapel meshes that no selection can show (`single_lapel_shawl`, `double_lapel_shawl`) are no longer exported.
 
@@ -26,10 +26,10 @@ The studio route also loads `postprocessing` and N8AO for ambient occlusion: one
 
 | File              |   Triangles |
 | ----------------- | ----------: |
-| `suit-core.glb`   |     266,104 |
-| `suit-double.glb` |     101,360 |
-| `suit-dinner.glb` |     134,620 |
-| **All blocks**    | **502,084** |
+| `suit-core.glb`   |     269,732 |
+| `suit-double.glb` |     105,912 |
+| `suit-dinner.glb` |     135,224 |
+| **All blocks**    | **510,868** |
 
 `suit-core.glb` holds the shared meshes (trousers, waistcoat, trouser details, shirt buttons) plus the single-breasted block. One jacket block is visible at a time, so 180k–260k triangles render.
 

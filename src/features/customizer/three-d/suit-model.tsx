@@ -52,7 +52,7 @@ BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 
 // Bump after regenerating the GLBs or textures so browsers skip cached copies.
-const ASSET_VERSION = "?v=5";
+const ASSET_VERSION = "?v=6";
 const MODELS = "/models/suit-studio/";
 const TEXTURES = MODELS + "textures/";
 
@@ -226,7 +226,7 @@ export function TailoredSuit({
           : "";
       object.material = object.name.endsWith("_buttonhole")
         ? materials.Buttonhole
-        : /_pocket_(patch|slanted|base)$/.test(object.name)
+        : /_pocket_(flap|patch|slanted|welt)$/.test(object.name)
           ? materials.PocketPanel
           : (materials[`${slot}${variant}`] ??
             materials[slot] ??
@@ -265,7 +265,7 @@ export function TailoredSuit({
         interaction
           ? (event: ThreeEvent<PointerEvent>) => {
               event.stopPropagation();
-              interaction.onHover(getSuitPartForMesh(event.object.name), event);
+              interaction.onHover(partUnderPointer(event), event);
             }
           : undefined
       }
@@ -281,7 +281,7 @@ export function TailoredSuit({
               event.stopPropagation();
               // Ignore the click that ends an orbit drag.
               if (event.delta > 6) return;
-              const part = getSuitPartForMesh(event.object.name);
+              const part = partUnderPointer(event);
               if (part) interaction.onSelect(part);
             }
           : undefined
@@ -343,6 +343,16 @@ function SuitBlockModel({
   );
 }
 
+/**
+ * The part under the pointer. Hover outlines are unnamed child meshes that the
+ * pointer can land on first; skip them and use the first named surface (which
+ * may be one the customer can't change, such as the shirt).
+ */
+function partUnderPointer(event: { intersections: { object: Object3D }[] }) {
+  const hit = event.intersections.find((h) => h.object.name);
+  return hit ? getSuitPartForMesh(hit.object.name) : null;
+}
+
 const HIT_PROXY_GEOMETRY = new SphereGeometry(1, 12, 8);
 
 function SuitPiece({
@@ -370,8 +380,14 @@ function SuitPiece({
     const buttons: Mesh[] = [];
     object.traverse((child) => {
       if (!(child instanceof Mesh) || child.userData.hitProxy) return;
-      if (!child.geometry.boundsTree) child.geometry.computeBoundsTree();
-      child.raycast = acceleratedRaycast;
+      // Accelerate only the large meshes. On the small pocket panels the
+      // BVH raycast missed faces three.js's own raycast finds, so the pocket
+      // could not be pointed at; at a few thousand triangles they don't need it.
+      const triangles = (child.geometry.index?.count ?? 0) / 3;
+      if (triangles >= 20_000) {
+        if (!child.geometry.boundsTree) child.geometry.computeBoundsTree();
+        child.raycast = acceleratedRaycast;
+      }
       if (getSuitPartForMesh(child.name)?.step === "buttons")
         buttons.push(child);
     });
@@ -627,7 +643,7 @@ function createMaterials(wool: Texture, normal: Texture): SuitMaterials {
       side: DoubleSide,
     }),
     Buttonhole: new MeshPhysicalMaterial({ roughness: 0.7, sheen: 0.3 }),
-    // Patch, slanted and pocket-base panels are built in the asset script: they
+    // Patch, slanted and jetted pockets are panels built in the asset script: they
     // take the woven cloth but not the body's normal map, whose darts and seams
     // they cannot line up with.
     PocketPanel: new MeshPhysicalMaterial({

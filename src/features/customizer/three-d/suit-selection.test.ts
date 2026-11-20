@@ -127,21 +127,9 @@ describe("3D mesh visibility", () => {
     expect(getSuitBlock(single)).toBe("single");
     expect(isSuitMeshVisible("single_pocket_welt", single)).toBe(true);
     expect(isSuitMeshVisible("single_pocket_flap", single)).toBe(false);
-    // The opening's backing shows under styles that leave it uncovered...
-    expect(isSuitMeshVisible("single_pocket_base", single)).toBe(true);
     expect(isSuitMeshVisible("single_button_11", single)).toBe(false);
     expect(isSuitMeshVisible("single_button_10", single)).toBe(true);
     expect(isSuitMeshVisible("shirt_button_0", single)).toBe(true);
-  });
-
-  it("leaves the straight flap to cover its own pocket opening", () => {
-    const flap = withOptions({
-      "jacket-style": ["single-breasted-two-button"],
-      lapel: ["notch-lapel"],
-      pockets: ["straight-flap-pockets"],
-    });
-    expect(isSuitMeshVisible("single_pocket_flap", flap)).toBe(true);
-    expect(isSuitMeshVisible("single_pocket_base", flap)).toBe(false);
   });
 
   it("follows trouser and waistcoat choices for shared meshes", () => {
