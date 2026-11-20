@@ -272,6 +272,15 @@ export function TailoredSuit({
         hoveredStep={hoveredStep}
         interactive={Boolean(interaction)}
       />
+      {block === "double" ? (
+        // The double-breasted shirt is open between its collar points. Without
+        // this backing the gap shows the jacket's dark interior (the model has
+        // no body inside). It stops below the collar band's inner edge.
+        <mesh name="shirt_backing" position={[0, 1.378, 0.07]}>
+          <planeGeometry args={[0.1, 0.155]} />
+          <primitive object={materials.Shirt} attach="material" />
+        </mesh>
+      ) : null}
       {block === "single" ? null : (
         <SuitBlockModel
           block={block}
