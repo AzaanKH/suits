@@ -44,7 +44,15 @@ The two hero images (`public/images/studio-suit.webp` and `studio-suit-dark.webp
 
 ## Build-script fitting
 
-`scripts/build-suit-studio.py` fits derived parts to the body after import. It fills the hip-pocket openings in the single-breasted and dinner bodies, and builds the patch, slanted and `pocket_base` meshes as panels laid onto a smooth surface fitted to the body around each pocket. The studio draws these panels with the `PocketPanel` material: the woven cloth, but not the body's normal map. It also seats every button on the cloth beneath it; the single-breasted and dinner front buttons sit on the under forepart, clear of the overlapping front edge.
+`scripts/build-suit-studio.py` repairs and fits parts the source model gets wrong:
+
+- **Pocket openings.** The source cuts each hip-pocket flap and its bag out of the jacket body. `keep_pocket_cloth` copies those faces out, fills the hole in the low-poly body before subdivision, and lays the fill and its rim on a surface fitted to the clean cloth around it, so no style leaves a gap or a ridge. `close_cuts` closes two small dart openings in the dinner and double-breasted bodies.
+- **Pockets.** Every hip-pocket style (`pocket_flap`, `pocket_slanted`, `pocket_welt`, `pocket_patch`) is a panel built by `pocket_panel`: shaped in front view, laid on the cloth with at least 0.6 mm clearance, smoothed so seams do not print through, and dropped where there is no front cloth beneath it. The studio draws them with the `PocketPanel` material: the woven cloth without the body's normal map.
+- **Buttons.** `seat` sets every jacket and shirt button on the cloth beneath it, oriented outward from the centre line. The single-breasted and dinner front buttons sit on the under forepart, clear of the overlapping front edge.
+
+`src/features/customizer/three-d/suit-geometry.test.ts` checks the shipped GLBs for these defects: buttons off or under the cloth, see-through openings, pockets sunk, floating or holed, and gross bulges around the pockets. Run it after every rebuild. `tests/e2e/studio-visual.spec.ts` checks that buttons and pockets can be pointed at and that the trousers step shows only the trousers; it uses `window.__ardenStudio.screenPoint`, which the studio exposes only when a page sets `window.__ARDEN_TEST__`.
+
+Raycasts use three-mesh-bvh only for meshes of 20,000 triangles or more. On the small pocket panels it missed faces that three.js's own raycast finds, so the pockets could not be pointed at.
 
 ## Model contract
 
@@ -61,7 +69,7 @@ The model ships as three Meshopt-compressed GLBs in `public/models/suit-studio/`
 Mesh names follow `<block>_<part>[_<variant>]`:
 
 - **Blocks:** `single_*` (single-breasted), `double_*` (double-breasted), `dinner_*` (shawl-lapel dinner jacket). Only one block is visible at a time.
-- **Parts:** `body`, `cuff`, `collar`, `lapel_{notch,peak,shawl}`, `pocket_{flap,slanted,welt,patch}`, `pocket_base` (a backing over the hip-pocket opening, shown under every style except the straight flap, which covers it itself), `breast`, `button_N`, `buttonhole`, `shirt_N`.
+- **Parts:** `body`, `cuff`, `collar`, `lapel_{notch,peak,shawl}`, `pocket_{flap,slanted,welt,patch}`, `breast`, `button_N`, `buttonhole`, `shirt_N`.
 - **Shared, block-independent meshes:** `trousers`, `pleat_*`, `waist_loop_*`, `waist_adjuster_*`, `waistcoat`, `vest_button_*`, `shirt_button_*`.
 
 Material slots come from the Blender material name stored on each mesh: `Cloth`, `Lapel`, `Trouser`, `Waistcoat`, `Shirt`, `Button`, `Lining`. Cloth and lapel slots get a `Double` or `Dinner` suffix at runtime so each block uses its own normal map.
