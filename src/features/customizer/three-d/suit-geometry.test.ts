@@ -263,7 +263,6 @@ describe("studio model geometry", () => {
         const bz = frontZ(body, x, y);
         if (hit === null || bz === null) continue;
         const pz = hit.point.z;
-        if (pz < bz - 0.005) continue;
         samples++;
         if (pz < bz + 0.0002) {
           sunk++;
