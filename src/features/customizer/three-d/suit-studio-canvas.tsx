@@ -149,7 +149,7 @@ export function SuitStudioCanvas({
           camera={{ fov: 30, position: [0.9, 1.1, 4.6], near: 0.05, far: 90 }}
           dpr={capability.simplified ? [1, 1.5] : [1, 2]}
           frameloop={turntable ? "always" : "demand"}
-          shadows
+          shadows="percentage"
           raycaster={{ firstHitOnly: true }}
           gl={{ antialias: true, powerPreference: "high-performance" }}
           onCreated={({ gl }) => {
@@ -253,6 +253,15 @@ function TestHook() {
     };
     if (!w.__ARDEN_TEST__) return;
     w.__ardenStudio = {
+      async look(
+        position: [number, number, number],
+        target: [number, number, number],
+      ) {
+        const { controls, invalidate } = get();
+        const camera = controls as ComponentRef<typeof CameraControls> | null;
+        await camera?.setLookAt(...position, ...target, false);
+        invalidate();
+      },
       screenPoint(name: string, side?: 1 | -1) {
         const { scene, camera, gl } = get();
         let target: Mesh | null = null;

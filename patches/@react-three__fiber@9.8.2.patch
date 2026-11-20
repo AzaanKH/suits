@@ -1,0 +1,39 @@
+diff --git a/dist/events-0dab3c53.cjs.dev.js b/dist/events-0dab3c53.cjs.dev.js
+index 705fbd514d4207a07fb3c6c28e631903746d5789..69d12dc229422473fd69a46dae6959ccc0cad6cf 100644
+--- a/dist/events-0dab3c53.cjs.dev.js
++++ b/dist/events-0dab3c53.cjs.dev.js
+@@ -1229,7 +1229,7 @@ const createStore = (invalidate, advance) => {
+       linear: false,
+       flat: false,
+       controls: null,
+-      clock: new THREE__namespace.Clock(),
++      clock: Object.assign(Object.create(THREE__namespace.Clock.prototype), { autoStart: true, startTime: 0, oldTime: 0, elapsedTime: 0, running: false }),
+       pointer,
+       mouse: pointer,
+       frameloop: 'always',
+diff --git a/dist/events-98e95d43.cjs.prod.js b/dist/events-98e95d43.cjs.prod.js
+index c265e9e358f1fd6d7155216b013471ab445b9ce4..dc69c9346140392381ff7b48d9a47678847bf0bb 100644
+--- a/dist/events-98e95d43.cjs.prod.js
++++ b/dist/events-98e95d43.cjs.prod.js
+@@ -1229,7 +1229,7 @@ const createStore = (invalidate, advance) => {
+       linear: false,
+       flat: false,
+       controls: null,
+-      clock: new THREE__namespace.Clock(),
++      clock: Object.assign(Object.create(THREE__namespace.Clock.prototype), { autoStart: true, startTime: 0, oldTime: 0, elapsedTime: 0, running: false }),
+       pointer,
+       mouse: pointer,
+       frameloop: 'always',
+diff --git a/dist/events-e51d7528.esm.js b/dist/events-e51d7528.esm.js
+index 6c801a280936890feb78c502a0bf47cd2b478e15..a7dbd551686200d0182f5288b62d02afb54c0ea0 100644
+--- a/dist/events-e51d7528.esm.js
++++ b/dist/events-e51d7528.esm.js
+@@ -1204,7 +1204,7 @@ const createStore = (invalidate, advance) => {
+       linear: false,
+       flat: false,
+       controls: null,
+-      clock: new THREE.Clock(),
++      clock: Object.assign(Object.create(THREE.Clock.prototype), { autoStart: true, startTime: 0, oldTime: 0, elapsedTime: 0, running: false }),
+       pointer,
+       mouse: pointer,
+       frameloop: 'always',

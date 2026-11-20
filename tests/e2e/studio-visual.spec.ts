@@ -6,6 +6,10 @@ declare global {
   interface Window {
     __ARDEN_TEST__?: boolean;
     __ardenStudio?: {
+      look(
+        position: [number, number, number],
+        target: [number, number, number],
+      ): Promise<void>;
       screenPoint(name: string, side?: 1 | -1): { x: number; y: number } | null;
     };
   }
@@ -86,6 +90,53 @@ test("each pocket style can be pointed at and shows its own mesh", async ({
     const tooltip = await hoverPart(page, mesh, 1);
     await expect(tooltip, label).toHaveText("Change pockets");
   }
+});
+
+type Box = { x: number; y: number; width: number; height: number };
+
+async function outlinePixels(page: Page, box: Box) {
+  const shot = await page.screenshot({ clip: box });
+  return page.evaluate(async (png) => {
+    const blob = await (await fetch(`data:image/png;base64,${png}`)).blob();
+    const bitmap = await createImageBitmap(blob);
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const context = canvas.getContext("2d")!;
+    context.drawImage(bitmap, 0, 0);
+    const { data } = context.getImageData(0, 0, bitmap.width, bitmap.height);
+    let count = 0;
+    for (let i = 0; i < data.length; i += 4)
+      if (data[i + 2] > 150 && data[i + 2] - data[i] > 90) count++;
+    return count;
+  }, shot.toString("base64"));
+}
+
+test("hovering the jacket outlines its edge, not the cloth around the pockets", async ({
+  page,
+}) => {
+  await openStudio(page);
+  await page.evaluate(() =>
+    window.__ardenStudio!.look([0, 0.95, 0.85], [0, 0.93, 0.1]),
+  );
+  await page.waitForTimeout(1000);
+  const boxes: Box[] = [];
+  for (const side of [1, -1] as const) {
+    const flap = await page.evaluate(
+      (s) => window.__ardenStudio!.screenPoint("single_pocket_flap", s),
+      side,
+    );
+    expect(flap, "pocket flap on screen").not.toBeNull();
+    boxes.push({ x: flap!.x - 50, y: flap!.y - 25, width: 100, height: 50 });
+  }
+  const before = await Promise.all(boxes.map((b) => outlinePixels(page, b)));
+  await page.mouse.move(boxes[0].x + 50, boxes[0].y - 90);
+  await expect(page.locator(".atelier-tooltip")).toHaveText("Change jacket");
+  await page.waitForTimeout(500);
+  const after = await Promise.all(boxes.map((b) => outlinePixels(page, b)));
+  for (const [i, box] of boxes.entries())
+    expect(
+      after[i] - before[i],
+      `outline pixels inside ${JSON.stringify(box)}`,
+    ).toBeLessThan(40);
 });
 
 test("the trousers step shows only the trousers", async ({ page }) => {

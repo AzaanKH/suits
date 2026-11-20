@@ -88,7 +88,7 @@ export function Suit3dPreview({ configuration, fallback }: Props) {
             }}
             dpr={capability.simplified ? [1, 1.5] : [1, 2]}
             frameloop="demand"
-            shadows
+            shadows="percentage"
             gl={{
               antialias: true,
               alpha: true,
